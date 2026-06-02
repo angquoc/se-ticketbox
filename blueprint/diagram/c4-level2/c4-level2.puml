@@ -1,0 +1,69 @@
+@startuml
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Container.puml
+
+LAYOUT_WITH_LEGEND()
+title TicketBox - C4 Level 2 Container Diagram
+
+' ==========================================
+' TÁC NHÂN NGOẠI VI
+' ==========================================
+Person(customer, "Khán giả", "Xem concert, chọn vé, thanh toán, nhận e-ticket QR và check-in tại cổng.")
+Person(organizer, "Ban tổ chức", "Tạo concert, cấu hình vé, theo dõi doanh thu, upload PDF press kit và CSV khách mời.")
+Person(staff, "Nhân sự soát vé", "Quét QR và xác nhận vé hợp lệ tại cổng sự kiện.")
+
+' ==========================================
+' HỆ THỐNG NGOẠI VI
+' ==========================================
+System_Ext(payment, "Cổng thanh toán VNPAY / MoMo", "Xử lý giao dịch thanh toán và trả về kết quả.")
+System_Ext(ai, "Dịch vụ AI", "Sinh Artist Bio từ hồ sơ nghệ sĩ hoặc press kit PDF.")
+System_Ext(notification, "Dịch vụ Email / Notification", "Gửi xác nhận mua vé, e-ticket và nhắc nhở trước concert.")
+
+' ==========================================
+' HỆ THỐNG TICKETBOX (CONTAINERS)
+' ==========================================
+System_Boundary(ticketbox, "Hệ thống TicketBox") {
+    
+    Container(customer_web, "Customer Web App", "Next.js", "Cung cấp giao diện mua vé, xem sơ đồ ghế realtime và quản lý e-ticket cá nhân.")
+    Container(admin_web, "Admin Dashboard", "Next.js", "Giao diện quản trị để tạo concert, cấu hình loại vé và xem biểu đồ thống kê.")
+    Container(staff_pwa, "Staff Scanner PWA", "Next.js PWA / IndexedDB", "Hỗ trợ quét QR soát vé với cơ chế offline-first, lưu log vào IndexedDB và đồng bộ lên server khi có mạng.")
+
+    Container(api_server, "API Server (Modular Monolith)", "NestJS / Node.js", "Xử lý logic cốt lõi. Cung cấp RESTful API cho các tác vụ auth, order, payment và check-in.")
+    Container(worker, "Background Worker", "Node.js Worker / BullMQ", "Tiến trình chạy ngầm xử lý tác vụ nặng: parse PDF bóc text gọi AI, import CSV, Delayed Job hoàn vé.")
+
+    ContainerDb(postgres, "Primary Database", "PostgreSQL", "Lưu trữ dữ liệu bền vững (ACID): Thông tin user, quyền sở hữu resource, vé, và đơn hàng pending.")
+    ContainerDb(redis, "In-Memory Store & Queue", "Redis", "Đảm nhiệm: Cache-aside, Virtual Waiting Room, Idempotency keys, Reservation TTL, Lua Script trừ vé và lưu Job BullMQ.")
+    ContainerDb(minio, "Object Storage", "MinIO / Supabase Storage", "Lưu trữ file tĩnh: Ảnh concert, sơ đồ ghế SVG, PDF press kit, CSV khách mời.")
+}
+
+' ==========================================
+' LUỒNG TƯƠNG TÁC (RELATIONSHIPS)
+' ==========================================
+
+Rel(customer, customer_web, "Truy cập", "HTTPS")
+Rel(organizer, admin_web, "Truy cập", "HTTPS")
+Rel(staff, staff_pwa, "Truy cập", "HTTPS")
+
+Rel(customer_web, api_server, "Gọi API (Mua vé, xem ghế)", "JSON/HTTPS")
+Rel(admin_web, api_server, "Gọi API (Quản lý, upload)", "JSON/HTTPS")
+Rel(staff_pwa, api_server, "Đồng bộ log check-in local lên server", "JSON/HTTPS")
+
+Rel(api_server, postgres, "Đọc/Ghi dữ liệu", "TCP/SQL")
+Rel(api_server, redis, "Lưu/Đọc Cache, chạy Lua Script & Khởi tạo Job", "TCP/Redis")
+Rel(api_server, minio, "Upload file", "TCP/S3 API")
+
+Rel(worker, redis, "Kéo Job (BullMQ Polling)", "TCP/Redis")
+Rel(worker, postgres, "Cập nhật trạng thái xử lý", "TCP/SQL")
+Rel(worker, minio, "Tải file PDF/CSV về xử lý nội bộ", "TCP/S3 API")
+
+' Giao tiếp với các hệ thống ngoại vi
+Rel(api_server, payment, "Khởi tạo URL thanh toán", "JSON/HTTPS")
+Rel(payment, api_server, "Gửi Webhook cập nhật trạng thái đơn", "JSON/HTTPS")
+
+Rel(worker, ai, "Gửi nội dung Text bóc từ PDF", "JSON/HTTPS")
+Rel(worker, notification, "Kích hoạt gửi Email/Push", "JSON/HTTPS")
+
+' Luồng phản hồi trực tiếp về Người dùng
+Rel(payment, customer, "Hiển thị giao diện và xác thực thanh toán", "HTTPS")
+Rel(notification, customer, "Gửi Email/Push Notification trực tiếp", "SMTP/HTTPS")
+
+@enduml

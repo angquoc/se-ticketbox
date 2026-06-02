@@ -1,0 +1,139 @@
+@startuml
+!theme plain
+top to bottom direction
+
+skinparam linetype polyline
+skinparam nodesep 160
+skinparam ranksep 190
+skinparam defaultTextAlignment center
+skinparam wrapWidth 180
+skinparam maxMessageSize 180
+
+skinparam rectangle {
+    BackgroundColor White
+    BorderColor #333333
+    RoundCorner 10
+}
+skinparam database {
+    BackgroundColor #E8F5E9
+    BorderColor #2E7D32
+}
+skinparam component {
+    BackgroundColor #E3F2FD
+    BorderColor #1565C0
+}
+skinparam node {
+    BackgroundColor #FAFAFA
+    BorderColor #999999
+}
+
+title Sơ đồ Kiến trúc Tổng thể (High-Level Architecture) - TicketBox
+
+node "1. Presentation Layer\n(Client Tier)" as client_tier {
+    component "Customer Web App\n(Next.js)" as web_customer
+    component "Admin Dashboard\n(Next.js)" as web_admin
+    
+    rectangle "Staff Scanner PWA" {
+        component "Scanner App UI" as app_staff
+        database "IndexedDB\n(Local Offline Logs)" as local_db
+        app_staff -down-> local_db : Verify Signed QR\nSave Offline Log
+    }
+}
+
+node "2. Edge Middleware /\nAPI Entry Layer" as edge_tier {
+    component "Routing & Edge Middleware\n(Basic Bot Protection,\nRate Limit)" as gateway
+}
+
+node "3. Application Layer\n(Compute Tier)" as app_tier {
+    together {
+        component "API Server\n(Modular Monolith)\n[NestJS / Node.js]" as api_server {
+            rectangle "Token Bucket / Waiting Room\nAuth | Ticket | Order | Check-in" as api_modules
+        }
+        
+        component "Background Worker\n[Node.js + BullMQ]" as worker {
+            rectangle "AI Bio | CSV Import\nNotification | Expire Order Job" as worker_tasks
+        }
+    }
+}
+
+node "4. Data & State Layer" as data_tier {
+    together {
+        database "PostgreSQL\nPrimary DB - ACID" as pg_db
+        database "Redis\nToken Bucket | Waiting Room\nIdempotency | Reservation TTL\nLua Script | BullMQ" as redis_db
+        database "Object Storage\nMinIO / Supabase Storage" as minio_db
+    }
+}
+
+node "5. External Services Layer" as ext_tier {
+    together {
+        component "Payment Gateway\nVNPAY / MoMo Mock" as ext_payment
+        component "AI Provider\nLLM" as ext_ai
+        component "Notification Service\nEmail / Push" as ext_noti
+    }
+}
+
+' ==============================
+' CĂN CHỈNH LAYOUT
+' ==============================
+web_customer -[hidden]right- web_admin
+web_admin -[hidden]right- app_staff
+
+gateway -[hidden]down- api_server
+
+api_server -[hidden]right- worker
+
+api_server -[hidden]down- pg_db
+worker -[hidden]down- minio_db
+
+pg_db -[hidden]right- redis_db
+redis_db -[hidden]right- minio_db
+
+redis_db -[hidden]down- ext_ai
+
+ext_payment -[hidden]right- ext_ai
+ext_ai -[hidden]right- ext_noti
+
+' ==============================
+' LUỒNG TƯƠNG TÁC
+' ==============================
+
+' Client -> API Entry
+web_customer -[#000000,bold]-> gateway : Browse Concerts\nBuy Tickets
+web_admin -[#000000,bold]-> gateway : Manage Concerts\nUpload PDF / CSV
+app_staff -[#000000,bold]-> gateway : Sync Offline\nCheck-in Logs
+
+' API Entry -> Application
+gateway -[#000000,bold]-> api_server : Route Requests\nGuard / Limit
+
+' API Server -> Data Layer
+api_server -[#1565C0,bold]-> pg_db : ACID Data\nUsers / Orders / Tickets
+api_server -[#1565C0,bold]-> redis_db : Cache / Lua\nQueue / Reservation
+api_server -[#1565C0,bold]-> minio_db : Store Files\nPDF / CSV / SVG
+
+' Worker -> Data Layer
+worker -[#E65100,dashed]-> redis_db : Pull BullMQ\nJobs
+worker -[#E65100,bold]-> pg_db : Update Job\nResults
+worker -[#E65100,bold]-> minio_db : Read Uploaded\nFiles
+
+' Payment Integration
+api_server -[#2E7D32,bold]-> ext_payment : Create Payment\nURL
+ext_payment -[#2E7D32,bold]-> gateway : Payment\nWebhook
+
+' Worker -> External Services
+worker -[#2E7D32,bold]-> ext_ai : Generate\nArtist Bio
+worker -[#2E7D32,bold]-> ext_noti : Send Ticket\nReminder
+
+' External Services -> User
+ext_payment -[#8E24AA,dashed]-> web_customer : Payment\nRedirect
+ext_noti -[#8E24AA,dashed]-> web_customer : Email / Push\nNotification
+
+legend right
+|= Màu |= Ý nghĩa |
+|<#000000><color:white>Đen</color> | Client request / API entry |
+|<#1565C0><color:white>Xanh dương</color> | Internal data access |
+|<#E65100><color:white>Cam</color> | Background job processing |
+|<#2E7D32><color:white>Xanh lá</color> | External service integration |
+|<#8E24AA><color:white>Tím</color> | External response to user |
+endlegend
+
+@enduml

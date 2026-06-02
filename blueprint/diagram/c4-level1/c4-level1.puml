@@ -1,0 +1,29 @@
+@startuml
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Context.puml
+
+LAYOUT_LEFT_RIGHT()
+title TicketBox - C4 Level 1 System Context
+
+Person(customer, "Khán giả", "Xem concert, chọn vé, thanh toán, nhận e-ticket QR và check-in tại cổng.")
+Person(organizer, "Ban tổ chức", "Tạo concert, cấu hình vé, theo dõi doanh thu, upload PDF press kit và CSV khách mời.")
+Person(staff, "Nhân sự soát vé", "Quét QR và xác nhận vé hợp lệ tại cổng sự kiện.")
+
+System(ticketbox, "Hệ thống TicketBox", "Nền tảng số hóa quy trình bán vé concert, phát hành e-ticket QR và hỗ trợ check-in.")
+
+System_Ext(payment, "Cổng thanh toán VNPAY / MoMo", "Xử lý giao dịch thanh toán và trả về kết quả.")
+System_Ext(ai, "Dịch vụ AI", "Sinh Artist Bio từ hồ sơ nghệ sĩ hoặc press kit PDF.")
+System_Ext(notification, "Dịch vụ Email / Notification", "Gửi xác nhận mua vé, e-ticket và nhắc nhở trước concert.")
+
+Rel(customer, ticketbox, "Xem concert, mua vé, nhận e-ticket QR")
+Rel(organizer, ticketbox, "Quản lý concert, cấu hình vé, upload PDF/CSV")
+Rel(staff, ticketbox, "Quét QR và đồng bộ check-in")
+
+Rel(ticketbox, payment, "Khởi tạo yêu cầu thanh toán")
+Rel(ticketbox, ai, "Gửi nội dung PDF để sinh Artist Bio")
+Rel(ticketbox, notification, "Yêu cầu gửi thông báo và e-ticket")
+
+Rel(payment, customer, "Hiển thị giao diện và xác thực thanh toán")
+Rel(notification, customer, "Gửi email và thông báo trực tiếp đến")
+
+SHOW_LEGEND()
+@enduml
