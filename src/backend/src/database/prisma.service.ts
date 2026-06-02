@@ -8,10 +8,13 @@ import * as dotenv from 'dotenv';
 dotenv.config();
 
 @Injectable()
-export class PrismaService extends PrismaClient implements OnModuleInit, OnModuleDestroy {
+export class PrismaService
+  extends PrismaClient
+  implements OnModuleInit, OnModuleDestroy
+{
   constructor() {
     const connectionString = process.env.DATABASE_URL;
-    
+
     // Rào chắn kiểm tra: Nếu không có biến môi trường sẽ báo lỗi ngay
     if (!connectionString) {
       throw new Error('DATABASE_URL is missing in .env file!');
@@ -19,7 +22,7 @@ export class PrismaService extends PrismaClient implements OnModuleInit, OnModul
 
     const pool = new Pool({ connectionString });
     const adapter = new PrismaPg(pool);
-    
+
     super({ adapter });
   }
 
