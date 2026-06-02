@@ -101,216 +101,412 @@ Với cơ chế giữ chỗ, TicketBox **không tạo bảng Reservation riêng*
 Schema entity chính:
 
 ```prisma
-enum Role {
+// UserRole represents the access level of a user in the system.
+enum UserRole {
   CUSTOMER
   ORGANIZER
-  STAFF
+  CHECKIN_STAFF
   ADMIN
 }
 
+// ConcertStatus tracks the lifecycle state of a concert.
 enum ConcertStatus {
   DRAFT
   PUBLISHED
+  SALE_OPEN
+  SALE_CLOSED
   CANCELLED
+  COMPLETED
 }
 
+// TicketTypeStatus indicates the availability state of a ticket type.
+enum TicketTypeStatus {
+  ACTIVE
+  INACTIVE
+  SOLD_OUT
+}
+
+// OrderStatus tracks the lifecycle of a customer order.
 enum OrderStatus {
-  PENDING
+  PENDING_PAYMENT
   PAID
   EXPIRED
   CANCELLED
-  FAILED
+  PAYMENT_FAILED
+  REFUNDED
 }
 
+// PaymentProvider identifies the third-party payment gateway used.
+enum PaymentProvider {
+  MOCK
+  MOMO
+  VNPAY
+}
+
+// PaymentStatus reflects the outcome of a payment transaction.
 enum PaymentStatus {
   INITIATED
   SUCCESS
   FAILED
   TIMEOUT
+  CANCELLED
 }
 
+// TicketStatus tracks the usage state of an individual ticket.
 enum TicketStatus {
   ISSUED
   CHECKED_IN
   CANCELLED
+  REFUNDED
+}
+
+// IdempotencyStatus tracks the processing state of an idempotency key.
+enum IdempotencyStatus {
+  PROCESSING
+  COMPLETED
+  FAILED
+}
+
+// CheckinStatus describes the result of a ticket check-in attempt.
+enum CheckinStatus {
+  SUCCESS
+  INVALID_TICKET
+  ALREADY_CHECKED_IN
+  OFFLINE_PENDING
+  REJECTED_CONFLICT
+}
+
+// ReservationStatus indicates the state of a ticket reservation hold.
+enum ReservationStatus {
+  ACTIVE
+  RELEASED
+  CONVERTED
+  EXPIRED
 }
 
 model User {
-  id           String   @id @default(uuid())
-  email        String   @unique
+  id           String @id @default(uuid())
+  email        String @unique
+  phone        String?
   passwordHash String
   fullName     String?
-  phone        String?
-  role         Role     @default(CUSTOMER)
+  role         UserRole @default(CUSTOMER)
 
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
-
-  organizedConcerts Concert[] @relation("OrganizerConcerts")
   orders             Order[]
-  checkinLogs        CheckinLog[]
+  tickets            Ticket[]
+  reservations       TicketReservation[]
+  idempotencyKeys    IdempotencyKey[]
+  ticketCounters     UserTicketCounter[]
+  organizedConcerts  Concert[] @relation("OrganizerConcerts")
+  checkinLogs        CheckinLog[] @relation("StaffCheckins")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 model Concert {
-  id            String        @id @default(uuid())
-  organizerId   String
-  title         String
-  slug          String        @unique
-  description   String?
-  artistBio     String?
-  venue         String
-  startsAt      DateTime
+  id           String @id @default(uuid())
+  organizerId  String
 
-  // Thời điểm mở bán mặc định của concert.
-  // Từng TicketType vẫn có salesStartAt riêng để hỗ trợ mỗi hạng vé mở bán ở thời điểm khác nhau.
-  salesStartAt  DateTime?
+  title        String
+  slug         String @unique
+  description  String?
+  artistBio    String?
+  venue        String
+
+  startsAt     DateTime
+  saleStartsAt DateTime?
+  saleEndsAt   DateTime?
 
   status        ConcertStatus @default(DRAFT)
   seatMapUrl    String?
   coverImageUrl String?
 
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  organizer        User @relation("OrganizerConcerts", fields: [organizerId], references: [id])
+  ticketTypes      TicketType[]
+  orders           Order[]
+  tickets          Ticket[]
+  checkinLogs      CheckinLog[]
+  guestListEntries GuestListEntry[]
+  uploadedFiles    UploadedFile[]
 
-  organizer         User @relation("OrganizerConcerts", fields: [organizerId], references: [id])
-  ticketTypes       TicketType[]
-  orders            Order[]
-  guestListEntries  GuestListEntry[]
-  uploadedFiles     UploadedFile[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([status, startsAt])
+  @@index([saleStartsAt, saleEndsAt])
 }
 
 model TicketType {
-  id           String   @id @default(uuid())
-  concertId    String
-  name         String
-  price        Int
-  totalQty     Int
-  soldQty      Int      @default(0)
-  maxPerUser   Int
-  salesStartAt DateTime
-  salesEndAt   DateTime?
+  id        String  @id @default(uuid())
+  concertId String
+  concert   Concert @relation(fields: [concertId], references: [id])
 
-  concert     Concert @relation(fields: [concertId], references: [id])
-  orderItems  OrderItem[]
-  tickets     Ticket[]
+  name  String
+  price Int
+
+  totalQty    Int
+  soldQty     Int @default(0)
+  reservedQty Int @default(0)
+
+  maxPerUser Int
+
+  saleStartsAt DateTime
+  saleEndsAt   DateTime?
+
+  status TicketTypeStatus @default(ACTIVE)
+
+  orderItems   OrderItem[]
+  tickets      Ticket[]
+  reservations TicketReservation[]
+  userCounters UserTicketCounter[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@unique([concertId, name])
+  @@index([concertId, status])
 }
 
 model Order {
-  id             String      @id @default(uuid())
-  userId         String
-  concertId      String
-  status         OrderStatus @default(PENDING)
-  totalAmount    Int
-  idempotencyKey String?
-  expiresAt      DateTime?
-  paidAt         DateTime?
+  id     String @id @default(uuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id])
 
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
+  concertId String
+  concert   Concert @relation(fields: [concertId], references: [id])
 
-  user           User @relation(fields: [userId], references: [id])
-  concert        Concert @relation(fields: [concertId], references: [id])
+  status OrderStatus @default(PENDING_PAYMENT)
+
+  totalAmountInVnd Int
+  currency         String @default("VND")
+
+  expiresAt           DateTime?
+  paidAt              DateTime?
+  cancelledAt         DateTime?
+  inventoryReleasedAt DateTime?
+  releaseReason       String?
+
   items          OrderItem[]
-  payment        Payment?
+  payments       PaymentTransaction[]
   tickets        Ticket[]
+  idempotencyKey IdempotencyKey?
+  reservation    TicketReservation?
 
-  @@unique([userId, idempotencyKey])
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId, status])
   @@index([concertId, status])
-  @@index([expiresAt])
+  @@index([status, expiresAt])
 }
 
 model OrderItem {
   id           String @id @default(uuid())
   orderId      String
   ticketTypeId String
+
+  order      Order      @relation(fields: [orderId], references: [id])
+  ticketType TicketType @relation(fields: [ticketTypeId], references: [id])
+
   quantity     Int
   unitPrice    Int
+  subtotal     Int
 
-  order        Order @relation(fields: [orderId], references: [id])
-  ticketType   TicketType @relation(fields: [ticketTypeId], references: [id])
+  tickets Ticket[]
+
+  createdAt DateTime @default(now())
+
+  @@index([orderId])
+  @@index([ticketTypeId])
 }
 
-model Payment {
-  id             String        @id @default(uuid())
-  orderId         String        @unique
-  provider        String
-  amount          Int
-  status          PaymentStatus @default(INITIATED)
-  transactionCode String        @unique
-  paymentUrl      String?
-  rawWebhook      Json?
-  createdAt       DateTime      @default(now())
-  updatedAt       DateTime      @updatedAt
+model TicketReservation {
+  id           String @id @default(uuid())
+  orderId      String @unique
+  userId       String
+  ticketTypeId String
 
-  order           Order @relation(fields: [orderId], references: [id])
+  order      Order      @relation(fields: [orderId], references: [id])
+  user       User       @relation(fields: [userId], references: [id])
+  ticketType TicketType @relation(fields: [ticketTypeId], references: [id])
+
+  quantity Int
+  status   ReservationStatus @default(ACTIVE)
+
+  expiresAt DateTime
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([status, expiresAt])
+  @@index([userId, ticketTypeId, status])
+}
+
+model PaymentTransaction {
+  id      String @id @default(uuid())
+  orderId String
+  order   Order  @relation(fields: [orderId], references: [id])
+
+  provider PaymentProvider
+  status   PaymentStatus @default(INITIATED)
+
+  amount Int
+
+  providerTransactionId String?
+
+  paymentUrl String?
+  rawWebhook Json?
+
+  receivedAt DateTime?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@unique([provider, providerTransactionId])
+  @@index([orderId, status])
 }
 
 model Ticket {
-  id           String       @id @default(uuid())
+  id           String @id @default(uuid())
   orderId      String
+  orderItemId  String
+  concertId    String
   ticketTypeId String
-  qrPayload    String
-  qrSignature  String
-  status       TicketStatus @default(ISSUED)
-  checkedInAt  DateTime?
+  userId       String
 
-  order        Order      @relation(fields: [orderId], references: [id])
-  ticketType   TicketType @relation(fields: [ticketTypeId], references: [id])
-  checkinLogs  CheckinLog[]
+  order      Order      @relation(fields: [orderId], references: [id])
+  orderItem  OrderItem  @relation(fields: [orderItemId], references: [id])
+  concert    Concert    @relation(fields: [concertId], references: [id])
+  ticketType TicketType @relation(fields: [ticketTypeId], references: [id])
+  user       User       @relation(fields: [userId], references: [id])
 
-  @@index([ticketTypeId])
-  @@index([status])
+  qrTokenHash String @unique
+  qrSignature String?
+
+  status      TicketStatus @default(ISSUED)
+  checkedInAt DateTime?
+
+  checkinLogs CheckinLog[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([orderId])
+  @@index([concertId, status])
+  @@index([ticketTypeId, status])
+  @@index([userId, status])
+}
+
+model IdempotencyKey {
+  id     String @id @default(uuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id])
+
+  key         String
+  requestHash String
+
+  status IdempotencyStatus @default(PROCESSING)
+
+  resourceType String?
+  orderId      String? @unique
+  order        Order?  @relation(fields: [orderId], references: [id])
+
+  responseBody Json?
+
+  expiresAt DateTime
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, key])
+  @@index([expiresAt])
+}
+
+model UserTicketCounter {
+  userId       String
+  ticketTypeId String
+
+  user       User       @relation(fields: [userId], references: [id])
+  ticketType TicketType @relation(fields: [ticketTypeId], references: [id])
+
+  paidQty     Int @default(0)
+  reservedQty Int @default(0)
+
+  updatedAt DateTime @updatedAt
+
+  @@id([userId, ticketTypeId])
 }
 
 model CheckinLog {
-  id          String   @id @default(uuid())
-  ticketId    String
-  staffId     String
-  deviceId    String
-  scannedAt   DateTime
-  syncedAt    DateTime?
-  isOffline   Boolean  @default(false)
-  conflict    Boolean  @default(false)
+  id        String @id @default(uuid())
+  ticketId  String?
+  staffId   String
+  concertId String?
 
-  ticket      Ticket @relation(fields: [ticketId], references: [id])
-  staff       User   @relation(fields: [staffId], references: [id])
+  ticket  Ticket?  @relation(fields: [ticketId], references: [id])
+  staff   User     @relation("StaffCheckins", fields: [staffId], references: [id])
+  concert Concert? @relation(fields: [concertId], references: [id])
 
+  deviceId String
+  gate     String?
+
+  offlineEventId String?
+
+  status    CheckinStatus
+  reason    String?
+  isOffline Boolean @default(false)
+  conflict  Boolean @default(false)
+
+  scannedAt DateTime
+  syncedAt  DateTime?
+
+  createdAt DateTime @default(now())
+
+  @@unique([deviceId, offlineEventId])
   @@index([ticketId])
   @@index([staffId])
+  @@index([concertId])
+  @@index([scannedAt])
 }
 
 model GuestListEntry {
-  id          String   @id @default(uuid())
-  concertId   String
+  id        String @id @default(uuid())
+  concertId String
+  concert   Concert @relation(fields: [concertId], references: [id])
+
   fullName    String
   email       String?
   phone       String?
   sponsorName String?
-  qrPayload   String?
+
+  qrTokenHash String?
+  qrSignature String?
+
   checkedInAt DateTime?
 
-  concert     Concert @relation(fields: [concertId], references: [id])
+  sourceFile String?
 
-  // Không dùng unique trực tiếp trên email nullable.
-  // Duplicate sẽ được validate trong quá trình import CSV để xử lý linh hoạt hơn.
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
   @@index([concertId])
   @@index([email])
+  @@index([phone])
 }
 
 model UploadedFile {
-  id           String   @id @default(uuid())
-  concertId    String?
+  id        String  @id @default(uuid())
+  concertId String?
+  concert   Concert? @relation(fields: [concertId], references: [id])
+
   objectKey    String
   fileName     String
   mimeType     String
   purpose      String
   status       String
   errorMessage String?
-  createdAt    DateTime @default(now())
 
-  concert      Concert? @relation(fields: [concertId], references: [id])
+  createdAt DateTime @default(now())
 
   @@index([concertId])
   @@index([purpose])
@@ -441,12 +637,12 @@ Hệ thống sử dụng mô hình **Hybrid RBAC + Resource Ownership Check**.
 
 ### Nhóm người dùng
 
-| Role      | Quyền chính                                                              |
-| --------- | ------------------------------------------------------------------------ |
-| CUSTOMER  | Xem concert, mua vé, xem e-ticket của chính mình                         |
-| ORGANIZER | Tạo/sửa/hủy concert của mình, cấu hình vé, xem doanh thu, upload PDF/CSV |
-| STAFF     | Truy cập Check-in PWA, quét QR, đồng bộ check-in                         |
-| ADMIN     | Quản trị toàn hệ thống                                                   |
+| Role          | Quyền chính                                                              |
+| ------------- | ------------------------------------------------------------------------ |
+| CUSTOMER      | Xem concert, mua vé, xem e-ticket của chính mình                         |
+| ORGANIZER     | Tạo/sửa/hủy concert của mình, cấu hình vé, xem doanh thu, upload PDF/CSV |
+| CHECKIN_STAFF | Truy cập Check-in PWA, quét QR, đồng bộ check-in                         |
+| ADMIN         | Quản trị toàn hệ thống                                                   |
 
 ### Cách kiểm tra quyền
 
