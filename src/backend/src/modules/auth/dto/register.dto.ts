@@ -21,8 +21,4 @@ export class RegisterDto {
   @IsString()
   @IsOptional()
   fullName?: string;
-
-  @IsEnum(Role)
-  @IsOptional()
-  role?: Role;
 }

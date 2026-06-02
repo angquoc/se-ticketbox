@@ -250,7 +250,7 @@ Thông báo:
 
 ```json
 {
-  "message": "Email already exists"
+  "message": "Email này đã được sử dụng"
 }
 ```
 
@@ -291,7 +291,7 @@ Thông báo:
 
 ```json
 {
-  "message": "Invalid email or password"
+  "message": "Sai email hoặc mật khẩu"
 }
 ```
 
