@@ -16,7 +16,7 @@ export class AuthService {
     private jwtService: JwtService,
   ) {}
 
- async register(data: RegisterDto) {
+  async register(data: RegisterDto) {
     const existingUser = await this.prisma.user.findUnique({
       where: { email: data.email },
     });
@@ -39,17 +39,16 @@ export class AuthService {
 
     // Tự động cấp token sau khi đăng ký
     const payload = { sub: user.id, email: user.email, role: user.role };
-    const access_token = await this.jwtService.signAsync(payload);
+    const accessToken = await this.jwtService.signAsync(payload);
 
-    return { 
-      message: 'Đăng ký thành công', 
-      access_token,
+    return {
+      accessToken,
       user: {
         id: user.id,
         email: user.email,
         fullName: user.fullName,
-        role: user.role
-      }
+        role: user.role,
+      },
     };
   }
 
@@ -68,15 +67,15 @@ export class AuthService {
     }
 
     const payload = { sub: user.id, email: user.email, role: user.role };
+    const accessToken = await this.jwtService.signAsync(payload);
     return {
-      message: 'Đăng nhập thành công',
-      access_token: await this.jwtService.signAsync(payload),
+      accessToken,
       user: {
         id: user.id,
         email: user.email,
         fullName: user.fullName,
-        role: user.role
-      }
+        role: user.role,
+      },
     };
   }
 }

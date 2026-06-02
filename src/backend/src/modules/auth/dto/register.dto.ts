@@ -4,9 +4,7 @@ import {
   IsString,
   MinLength,
   IsOptional,
-  IsEnum,
 } from 'class-validator';
-import { Role } from '@prisma/client';
 
 export class RegisterDto {
   @IsEmail({}, { message: 'Email không hợp lệ' })
