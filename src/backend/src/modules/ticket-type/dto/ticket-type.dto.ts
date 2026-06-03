@@ -6,7 +6,6 @@ import {
   IsEnum,
   IsInt,
   Min,
-  ValidateIf,
   ValidatorConstraint,
   ValidatorConstraintInterface,
   ValidationArguments,
@@ -20,15 +19,16 @@ import { TicketTypeStatus } from '@prisma/client';
  */
 @ValidatorConstraint({ name: 'saleWindowValid', async: false })
 export class SaleWindowValidConstraint implements ValidatorConstraintInterface {
-  validate(_: any, args: ValidationArguments): boolean {
-    const obj = args.object as any;
-    const startsAt = obj.saleStartsAt;
-    const endsAt = obj.saleEndsAt;
+  validate(_: unknown, args: ValidationArguments): boolean {
+    const obj = args.object as Record<string, unknown>;
+    const startsAt = obj['saleStartsAt'] as string | undefined;
+    const endsAt = obj['saleEndsAt'] as string | undefined;
 
-    if (!startsAt) return true;
-    if (!endsAt) return true;
+    if (!startsAt || !endsAt) {
+      return true;
+    }
 
-    return new Date(endsAt) > new Date(startsAt);
+    return new Date(endsAt).getTime() > new Date(startsAt).getTime();
   }
 
   defaultMessage(): string {
@@ -37,7 +37,7 @@ export class SaleWindowValidConstraint implements ValidatorConstraintInterface {
 }
 
 export function SaleWindowValid(validationOptions?: ValidationOptions) {
-  return function (object: Object, propertyName: string) {
+  return function (object: object, propertyName: string) {
     registerDecorator({
       target: object.constructor,
       propertyName,
