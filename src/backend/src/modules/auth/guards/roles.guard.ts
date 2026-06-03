@@ -9,13 +9,14 @@ import { Role } from '@prisma/client';
 import { ROLES_KEY } from '../decorators/roles.decorator';
 import { Request } from 'express';
 
-// Định nghĩa cấu trúc user từ token
+interface AuthPayload {
+  sub: string;
+  email: string;
+  role: Role;
+}
+
 interface RequestWithUser extends Request {
-  user?: {
-    sub: string;
-    email: string;
-    role: Role;
-  };
+  user?: AuthPayload;
 }
 
 @Injectable()
