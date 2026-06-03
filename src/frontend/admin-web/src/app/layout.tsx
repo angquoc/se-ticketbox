@@ -1,7 +1,8 @@
 import type { Metadata } from 'next';
 import { Inter } from 'next/font/google';
 import '@/styles/globals.css';
-import {AdminSidebar, AdminHeader} from '@/components/layout';
+import AdminSidebar from '@/components/layout/AdminSidebar';
+import AdminHeader from '@/components/layout/AdminHeader';
 
 const inter = Inter({ subsets: ['latin'] });
 
