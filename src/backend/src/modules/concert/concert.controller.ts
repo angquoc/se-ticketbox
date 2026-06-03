@@ -16,6 +16,7 @@ import { CreateConcertDto, UpdateConcertDto, ConcertQueryDto } from './dto';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { Role } from '@prisma/client';
+import { AuthGuard } from '../auth/guards/auth.guard';
 
 @Controller()
 export class ConcertController {
@@ -57,7 +58,7 @@ export class ConcertController {
    * Requires ADMIN or ORGANIZER role.
    */
   @Post('admin/concerts')
-  @UseGuards(RolesGuard)
+  @UseGuards(AuthGuard, RolesGuard)
   @Roles(Role.ADMIN, Role.ORGANIZER)
   @HttpCode(HttpStatus.CREATED)
   async create(@Body() dto: CreateConcertDto) {
@@ -70,7 +71,7 @@ export class ConcertController {
    * Requires ADMIN or ORGANIZER role.
    */
   @Patch('admin/concerts/:id')
-  @UseGuards(RolesGuard)
+  @UseGuards(AuthGuard, RolesGuard)
   @Roles(Role.ADMIN, Role.ORGANIZER)
   async update(@Param('id') id: string, @Body() dto: UpdateConcertDto) {
     return this.concertService.update(id, dto);
@@ -83,7 +84,7 @@ export class ConcertController {
    * Note: Will fail if concert has active orders.
    */
   @Delete('admin/concerts/:id')
-  @UseGuards(RolesGuard)
+  @UseGuards(AuthGuard, RolesGuard)
   @Roles(Role.ADMIN)
   @HttpCode(HttpStatus.OK)
   async remove(@Param('id') id: string) {

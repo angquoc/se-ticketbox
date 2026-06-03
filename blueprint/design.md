@@ -183,11 +183,10 @@ model User {
   phone        String?
   passwordHash String
   fullName     String?
-  role         UserRole @default(CUSTOMER)
+  role         Role @default(CUSTOMER)
 
   orders             Order[]
   tickets            Ticket[]
-  reservations       TicketReservation[]
   idempotencyKeys    IdempotencyKey[]
   ticketCounters     UserTicketCounter[]
   organizedConcerts  Concert[] @relation("OrganizerConcerts")
@@ -251,7 +250,6 @@ model TicketType {
 
   orderItems   OrderItem[]
   tickets      Ticket[]
-  reservations TicketReservation[]
   userCounters UserTicketCounter[]
 
   createdAt DateTime @default(now())
@@ -284,7 +282,6 @@ model Order {
   payments       PaymentTransaction[]
   tickets        Ticket[]
   idempotencyKey IdempotencyKey?
-  reservation    TicketReservation?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -314,27 +311,6 @@ model OrderItem {
   @@index([ticketTypeId])
 }
 
-model TicketReservation {
-  id           String @id @default(uuid())
-  orderId      String @unique
-  userId       String
-  ticketTypeId String
-
-  order      Order      @relation(fields: [orderId], references: [id])
-  user       User       @relation(fields: [userId], references: [id])
-  ticketType TicketType @relation(fields: [ticketTypeId], references: [id])
-
-  quantity Int
-  status   ReservationStatus @default(ACTIVE)
-
-  expiresAt DateTime
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@index([status, expiresAt])
-  @@index([userId, ticketTypeId, status])
-}
 
 model PaymentTransaction {
   id      String @id @default(uuid())

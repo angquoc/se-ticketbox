@@ -5,12 +5,18 @@ import {
   BadRequestException,
 } from '@nestjs/common';
 import { PrismaService } from '../../database/prisma.service';
-import { ConcertStatus } from '@prisma/client';
+import { ConcertStatus, Concert, TicketType, Prisma } from '@prisma/client';
 import { CreateConcertDto, UpdateConcertDto, ConcertQueryDto } from './dto';
 import {
   ConcertResponseDto,
   ConcertListResponseDto,
 } from './dto/concert-response.dto';
+
+// Định nghĩa payload
+type ConcertPayload = Concert & {
+  organizer?: { fullName: string | null } | null;
+  ticketTypes?: TicketType[];
+};
 
 @Injectable()
 export class ConcertService {
@@ -20,7 +26,7 @@ export class ConcertService {
    * Transform raw concert data from Prisma into a structured response DTO.
    * Includes organizer name for convenience.
    */
-  private toResponse(concert: any): ConcertResponseDto {
+  private toResponse(concert: ConcertPayload): ConcertResponseDto {
     return {
       id: concert.id,
       title: concert.title,
@@ -39,7 +45,7 @@ export class ConcertService {
       createdAt: concert.createdAt,
       updatedAt: concert.updatedAt,
       ticketTypes: concert.ticketTypes
-        ? concert.ticketTypes.map((tt: any) => ({
+        ? concert.ticketTypes.map((tt: TicketType) => ({
             id: tt.id,
             name: tt.name,
             price: tt.price,
@@ -65,7 +71,7 @@ export class ConcertService {
     // For public listing, we show PUBLISHED and SALE_OPEN concerts by default
     const statusFilter = status || ConcertStatus.PUBLISHED;
 
-    const where: any = {
+const where: Prisma.ConcertWhereInput = {
       status: statusFilter,
     };
 
