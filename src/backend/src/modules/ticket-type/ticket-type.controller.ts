@@ -16,7 +16,10 @@ import { CreateTicketTypeDto, UpdateTicketTypeDto } from './dto';
 import { AuthGuard } from '../auth/guards/auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
-import { CurrentUser, AuthUser } from '../auth/decorators/current-user.decorator';
+import {
+  CurrentUser,
+  AuthUser,
+} from '../auth/decorators/current-user.decorator';
 import { Role, TicketTypeStatus } from '@prisma/client';
 
 /**
@@ -40,7 +43,12 @@ export class TicketTypeController {
     @Query('status') status: TicketTypeStatus | undefined,
     @CurrentUser() user: AuthUser,
   ) {
-    return this.ticketTypeService.findAll(concertId, user.sub, user.role, status);
+    return this.ticketTypeService.findAll(
+      concertId,
+      user.sub,
+      user.role,
+      status,
+    );
   }
 
   /**
@@ -48,10 +56,7 @@ export class TicketTypeController {
    * Returns a single ticket type by ID.
    */
   @Get(':id')
-  async findOne(
-    @Param('id') id: string,
-    @CurrentUser() user: AuthUser,
-  ) {
+  async findOne(@Param('id') id: string, @CurrentUser() user: AuthUser) {
     return this.ticketTypeService.findOne(id, user.sub, user.role);
   }
 
@@ -90,10 +95,7 @@ export class TicketTypeController {
    */
   @Delete(':id')
   @HttpCode(HttpStatus.OK)
-  async remove(
-    @Param('id') id: string,
-    @CurrentUser() user: AuthUser,
-  ) {
+  async remove(@Param('id') id: string, @CurrentUser() user: AuthUser) {
     return this.ticketTypeService.remove(id, user.sub, user.role);
   }
 }
