@@ -105,7 +105,7 @@ Schema entity chính:
 enum Role {
   CUSTOMER
   ORGANIZER
-  CHECKIN_STAFF
+  STAFF
   ADMIN
 }
 
