@@ -102,7 +102,7 @@ Schema entity chính:
 
 ```prisma
 // Role represents the access level of a user in the system.
-enum UserRole {
+enum Role {
   CUSTOMER
   ORGANIZER
   CHECKIN_STAFF
