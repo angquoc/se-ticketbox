@@ -6,6 +6,8 @@ datasource db {
   provider = "postgresql"
 }
 
+// Enums
+
 enum Role {
   CUSTOMER
   ORGANIZER
@@ -13,12 +15,393 @@ enum Role {
   ADMIN
 }
 
+enum ConcertStatus {
+  DRAFT
+  PUBLISHED
+  SALE_OPEN
+  SALE_CLOSED
+  CANCELLED
+  COMPLETED
+}
+
+enum TicketTypeStatus {
+  ACTIVE
+  INACTIVE
+  SOLD_OUT
+}
+
+enum OrderStatus {
+  PENDING_PAYMENT
+  PAID
+  EXPIRED
+  CANCELLED
+  PAYMENT_FAILED
+  REFUNDED
+}
+
+enum PaymentProvider {
+  MOCK
+  MOMO
+  VNPAY
+}
+
+enum PaymentStatus {
+  INITIATED
+  SUCCESS
+  FAILED
+  TIMEOUT
+  CANCELLED
+}
+
+enum TicketStatus {
+  ISSUED
+  CHECKED_IN
+  CANCELLED
+  REFUNDED
+}
+
+enum IdempotencyStatus {
+  PROCESSING
+  COMPLETED
+  FAILED
+}
+
+enum CheckinStatus {
+  SUCCESS
+  INVALID_TICKET
+  ALREADY_CHECKED_IN
+  OFFLINE_PENDING
+  REJECTED_CONFLICT
+}
+
+// Models
+
 model User {
-  id           String   @id @default(uuid())
-  email        String   @unique
+  id           String @id @default(uuid())
+  email        String @unique
+  phone        String?
   passwordHash String
   fullName     String?
-  role         Role     @default(CUSTOMER)
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  role         Role   @default(CUSTOMER)
+
+  orders             Order[]
+  tickets            Ticket[]
+  idempotencyKeys    IdempotencyKey[]
+  ticketCounters     UserTicketCounter[]
+  organizedConcerts  Concert[] @relation("OrganizerConcerts")
+  checkinLogs        CheckinLog[] @relation("StaffCheckins")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Concert {
+  id           String @id @default(uuid())
+  organizerId  String
+
+  title        String
+  slug         String @unique
+  description  String?
+  artistBio    String?
+  venue        String
+
+  startsAt     DateTime
+  saleStartsAt DateTime?
+  saleEndsAt   DateTime?
+
+  status        ConcertStatus @default(DRAFT)
+  seatMapUrl    String?
+  coverImageUrl String?
+
+  organizer        User @relation("OrganizerConcerts", fields: [organizerId], references: [id])
+  ticketTypes      TicketType[]
+  orders           Order[]
+  tickets          Ticket[]
+  checkinLogs      CheckinLog[]
+  guestListEntries GuestListEntry[]
+  uploadedFiles    UploadedFile[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([status, startsAt])
+  @@index([saleStartsAt, saleEndsAt])
+}
+
+model TicketType {
+  id        String  @id @default(uuid())
+  concertId String
+  concert   Concert @relation(fields: [concertId], references: [id])
+
+  name  String
+  price Int
+
+  totalQty    Int
+  soldQty     Int @default(0)
+  reservedQty Int @default(0)
+
+  maxPerUser Int
+
+  saleStartsAt DateTime
+  saleEndsAt   DateTime?
+
+  status TicketTypeStatus @default(ACTIVE)
+
+  orderItems   OrderItem[]
+  tickets      Ticket[]
+  userCounters UserTicketCounter[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([concertId, name])
+  @@index([concertId, status])
+}
+
+model Order {
+  id     String @id @default(uuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id])
+
+  concertId String
+  concert   Concert @relation(fields: [concertId], references: [id])
+
+  status OrderStatus @default(PENDING_PAYMENT)
+
+  totalAmountInVnd Int
+  currency         String @default("VND")
+
+  /*
+    expiresAt: when the order's ticket hold expires.
+
+    inventoryReleasedAt: ensures the expire job does not release inventory multiple times.
+    When there is no separate Reservation table, this field is critical.
+  */
+  expiresAt           DateTime?
+  paidAt              DateTime?
+  cancelledAt         DateTime?
+  inventoryReleasedAt DateTime?
+  releaseReason       String?
+
+  items          OrderItem[]
+  payments       PaymentTransaction[]
+  tickets        Ticket[]
+  idempotencyKey IdempotencyKey?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId, status])
+  @@index([concertId, status])
+  @@index([status, expiresAt])
+}
+
+model OrderItem {
+  id           String @id @default(uuid())
+  orderId      String
+  ticketTypeId String
+
+  order      Order      @relation(fields: [orderId], references: [id])
+  ticketType TicketType @relation(fields: [ticketTypeId], references: [id])
+
+  quantity     Int
+  unitPrice    Int
+  subtotal     Int
+
+  tickets Ticket[]
+
+  createdAt DateTime @default(now())
+
+  @@index([orderId])
+  @@index([ticketTypeId])
+}
+
+model PaymentTransaction {
+  id      String @id @default(uuid())
+  orderId String
+  order   Order  @relation(fields: [orderId], references: [id])
+
+  provider PaymentProvider
+  status   PaymentStatus @default(INITIATED)
+
+  amount Int
+
+  /*
+    Transaction ID from MoMo/VNPAY/mock gateway.
+    Can be null when payment request is first created.
+  */
+  providerTransactionId String?
+
+  paymentUrl String?
+  rawWebhook Json?
+
+  receivedAt DateTime?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@unique([provider, providerTransactionId])
+  @@index([orderId, status])
+}
+
+model Ticket {
+  id           String @id @default(uuid())
+  orderId      String
+  orderItemId  String
+  concertId    String
+  ticketTypeId String
+  userId       String
+
+  order      Order      @relation(fields: [orderId], references: [id])
+  orderItem  OrderItem  @relation(fields: [orderItemId], references: [id])
+  concert    Concert    @relation(fields: [concertId], references: [id])
+  ticketType TicketType @relation(fields: [ticketTypeId], references: [id])
+  user       User       @relation(fields: [userId], references: [id])
+
+  /*
+    Do not store raw QR payload.
+    Backend hashes the token from QR and compares with qrTokenHash.
+  */
+  qrTokenHash String @unique
+  qrSignature String?
+
+  status      TicketStatus @default(ISSUED)
+  checkedInAt DateTime?
+
+  checkinLogs CheckinLog[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([orderId])
+  @@index([concertId, status])
+  @@index([ticketTypeId, status])
+  @@index([userId, status])
+}
+
+model IdempotencyKey {
+  id     String @id @default(uuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id])
+
+  key         String
+  requestHash String
+
+  status IdempotencyStatus @default(PROCESSING)
+
+  /*
+    For reserve orders:
+    resourceType = "ORDER"
+    orderId      = Order.id
+  */
+  resourceType String?
+  orderId      String? @unique
+  order        Order?  @relation(fields: [orderId], references: [id])
+
+  responseBody Json?
+
+  expiresAt DateTime
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, key])
+  @@index([expiresAt])
+}
+
+model UserTicketCounter {
+  userId       String
+  ticketTypeId String
+
+  user       User       @relation(fields: [userId], references: [id])
+  ticketType TicketType @relation(fields: [ticketTypeId], references: [id])
+
+  /*
+    Used to enforce maxPerUser in PostgreSQL.
+    Redis Lua still handles high-speed atomic operations.
+  */
+  paidQty     Int @default(0)
+  reservedQty Int @default(0)
+
+  updatedAt DateTime @updatedAt
+
+  @@id([userId, ticketTypeId])
+}
+
+model CheckinLog {
+  id        String @id @default(uuid())
+  ticketId  String?
+  staffId   String
+  concertId String?
+
+  ticket  Ticket?  @relation(fields: [ticketId], references: [id])
+  staff   User     @relation("StaffCheckins", fields: [staffId], references: [id])
+  concert Concert? @relation(fields: [concertId], references: [id])
+
+  deviceId String
+  gate     String?
+
+  /*
+    Used when mobile app performs offline check-in.
+    When syncing back, the app sends offlineEventId to prevent duplicate processing.
+  */
+  offlineEventId String?
+
+  status    CheckinStatus
+  reason    String?
+  isOffline Boolean @default(false)
+  conflict  Boolean @default(false)
+
+  scannedAt DateTime
+  syncedAt  DateTime?
+
+  createdAt DateTime @default(now())
+
+  @@unique([deviceId, offlineEventId])
+  @@index([ticketId])
+  @@index([staffId])
+  @@index([concertId])
+  @@index([scannedAt])
+}
+
+model GuestListEntry {
+  id        String @id @default(uuid())
+  concertId String
+  concert   Concert @relation(fields: [concertId], references: [id])
+
+  fullName    String
+  email       String?
+  phone       String?
+  sponsorName String?
+
+  qrTokenHash String?
+  qrSignature String?
+
+  checkedInAt DateTime?
+
+  sourceFile String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([concertId])
+  @@index([email])
+  @@index([phone])
+}
+
+model UploadedFile {
+  id        String  @id @default(uuid())
+  concertId String?
+  concert   Concert? @relation(fields: [concertId], references: [id])
+
+  objectKey    String
+  fileName     String
+  mimeType     String
+  purpose      String
+  status       String
+  errorMessage String?
+
+  createdAt DateTime @default(now())
+
+  @@index([concertId])
+  @@index([purpose])
 }
