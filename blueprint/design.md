@@ -101,7 +101,7 @@ Với cơ chế giữ chỗ, TicketBox **không tạo bảng Reservation riêng*
 Schema entity chính:
 
 ```prisma
-// UserRole represents the access level of a user in the system.
+// Role represents the access level of a user in the system.
 enum UserRole {
   CUSTOMER
   ORGANIZER
