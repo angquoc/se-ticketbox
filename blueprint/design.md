@@ -176,13 +176,6 @@ enum CheckinStatus {
   REJECTED_CONFLICT
 }
 
-// ReservationStatus indicates the state of a ticket reservation hold.
-enum ReservationStatus {
-  ACTIVE
-  RELEASED
-  CONVERTED
-  EXPIRED
-}
 
 model User {
   id           String @id @default(uuid())
