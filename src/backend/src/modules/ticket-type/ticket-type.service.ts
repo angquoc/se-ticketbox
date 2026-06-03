@@ -11,7 +11,6 @@ import {
   TicketTypeStatus,
   Role,
   TicketType,
-  Concert,
   Prisma,
 } from '@prisma/client';
 import { CreateTicketTypeDto, UpdateTicketTypeDto } from './dto';
@@ -56,7 +55,7 @@ export class TicketTypeService {
     concertId: string,
     userId: string,
     userRole: Role,
-  ): Promise<Concert> {
+  ): Promise<{ id: string; organizerId: string }> {
     const concert = await this.prisma.concert.findUnique({
       where: { id: concertId },
       select: { id: true, organizerId: true },

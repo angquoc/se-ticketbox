@@ -16,11 +16,10 @@ import { CreateTicketTypeDto, UpdateTicketTypeDto } from './dto';
 import { AuthGuard } from '../auth/guards/auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
-import {
-  CurrentUser,
-  AuthUser,
-} from '../auth/decorators/current-user.decorator';
-import { Role, TicketTypeStatus } from '@prisma/client';
+import { CurrentUser } from '../auth/decorators/current-user.decorator';
+import type { AuthUser } from '../auth/decorators/current-user.decorator';
+import { Role } from '@prisma/client';
+import type { TicketTypeStatus } from '@prisma/client';
 
 /**
  * Admin / Organizer endpoints for managing ticket types.
