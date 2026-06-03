@@ -17,9 +17,6 @@ import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { Role } from '@prisma/client';
 import { AuthGuard } from '../auth/guards/auth.guard';
-import { AuthGuard } from '../auth/guards/auth.guard';
-import { AuthGuard } from '../auth/guards/auth.guard';
-import { AuthGuard } from '../auth/guards/auth.guard';
 
 @Controller()
 export class ConcertController {
