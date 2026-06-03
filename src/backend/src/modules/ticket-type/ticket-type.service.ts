@@ -6,18 +6,29 @@ import {
   ForbiddenException,
 } from '@nestjs/common';
 import { PrismaService } from '../../database/prisma.service';
-import { ConcertStatus, TicketTypeStatus, Role } from '@prisma/client';
+import {
+  ConcertStatus,
+  TicketTypeStatus,
+  Role,
+  TicketType,
+  Concert,
+  Prisma,
+} from '@prisma/client';
 import { CreateTicketTypeDto, UpdateTicketTypeDto } from './dto';
 import {
   TicketTypeResponseDto,
   TicketTypeListResponseDto,
 } from './dto/ticket-type-response.dto';
 
+type TicketTypeWithAvailability = TicketType & {
+  availableQty?: number;
+};
+
 @Injectable()
 export class TicketTypeService {
   constructor(private prisma: PrismaService) {}
 
-  private toResponse(tt: any): TicketTypeResponseDto {
+  private toResponse(tt: TicketTypeWithAvailability): TicketTypeResponseDto {
     return {
       id: tt.id,
       concertId: tt.concertId,
@@ -26,7 +37,8 @@ export class TicketTypeService {
       totalQty: tt.totalQty,
       soldQty: tt.soldQty,
       reservedQty: tt.reservedQty,
-      availableQty: tt.totalQty - tt.soldQty - tt.reservedQty,
+      availableQty:
+        tt.availableQty ?? tt.totalQty - tt.soldQty - tt.reservedQty,
       maxPerUser: tt.maxPerUser,
       saleStartsAt: tt.saleStartsAt,
       saleEndsAt: tt.saleEndsAt,
@@ -44,7 +56,7 @@ export class TicketTypeService {
     concertId: string,
     userId: string,
     userRole: Role,
-  ) {
+  ): Promise<Concert> {
     const concert = await this.prisma.concert.findUnique({
       where: { id: concertId },
       select: { id: true, organizerId: true },
@@ -54,11 +66,7 @@ export class TicketTypeService {
       throw new NotFoundException(`Concert with ID "${concertId}" not found`);
     }
 
-    if (userRole === Role.ADMIN) {
-      return concert;
-    }
-
-    if (concert.organizerId !== userId) {
+    if (userRole !== Role.ADMIN && concert.organizerId !== userId) {
       throw new ForbiddenException(
         'You do not have permission to manage ticket types for this concert',
       );
@@ -79,7 +87,7 @@ export class TicketTypeService {
   ): Promise<TicketTypeListResponseDto> {
     await this.checkConcertOwnership(concertId, userId, userRole);
 
-    const where: any = { concertId };
+    const where: Prisma.TicketTypeWhereInput = { concertId };
     if (status) {
       where.status = status;
     }
@@ -112,11 +120,7 @@ export class TicketTypeService {
       throw new NotFoundException(`Ticket type with ID "${id}" not found`);
     }
 
-    await this.checkConcertOwnership(
-      ticketType.concertId,
-      userId,
-      userRole,
-    );
+    await this.checkConcertOwnership(ticketType.concertId, userId, userRole);
 
     return this.toResponse(ticketType);
   }
@@ -131,11 +135,7 @@ export class TicketTypeService {
     userId: string,
     userRole: Role,
   ): Promise<TicketTypeResponseDto> {
-    const concert = await this.checkConcertOwnership(
-      concertId,
-      userId,
-      userRole,
-    );
+    await this.checkConcertOwnership(concertId, userId, userRole);
 
     // Check for duplicate name within the same concert
     const existing = await this.prisma.ticketType.findUnique({
@@ -180,7 +180,7 @@ export class TicketTypeService {
         maxPerUser: dto.maxPerUser,
         saleStartsAt: new Date(dto.saleStartsAt),
         saleEndsAt: dto.saleEndsAt ? new Date(dto.saleEndsAt) : null,
-        status: dto.status || TicketTypeStatus.ACTIVE,
+        status: dto.status ?? TicketTypeStatus.ACTIVE,
       },
     });
 
@@ -206,14 +206,10 @@ export class TicketTypeService {
       throw new NotFoundException(`Ticket type with ID "${id}" not found`);
     }
 
-    await this.checkConcertOwnership(
-      existing.concertId,
-      userId,
-      userRole,
-    );
+    await this.checkConcertOwnership(existing.concertId, userId, userRole);
 
     // If renaming, check for duplicate name
-    if (dto.name && dto.name !== existing.name) {
+    if (dto.name !== undefined && dto.name !== existing.name) {
       const duplicate = await this.prisma.ticketType.findUnique({
         where: {
           concertId_name: {
@@ -243,7 +239,6 @@ export class TicketTypeService {
     }
 
     // soldQty/reservedQty can only be updated by ADMIN (internal operations)
-    // ORGANIZER should not manually adjust these — they are managed by order flow
     if (
       (dto.soldQty !== undefined || dto.reservedQty !== undefined) &&
       userRole !== Role.ADMIN
@@ -253,14 +248,12 @@ export class TicketTypeService {
       );
     }
 
-    const updateData: any = {
+    const updateData: Prisma.TicketTypeUpdateInput = {
       ...(dto.name !== undefined && { name: dto.name }),
       ...(dto.price !== undefined && { price: dto.price }),
       ...(dto.totalQty !== undefined && { totalQty: dto.totalQty }),
       ...(dto.soldQty !== undefined && { soldQty: dto.soldQty }),
-      ...(dto.reservedQty !== undefined && {
-        reservedQty: dto.reservedQty,
-      }),
+      ...(dto.reservedQty !== undefined && { reservedQty: dto.reservedQty }),
       ...(dto.maxPerUser !== undefined && { maxPerUser: dto.maxPerUser }),
       ...(dto.saleStartsAt !== undefined && {
         saleStartsAt: new Date(dto.saleStartsAt),
@@ -278,18 +271,14 @@ export class TicketTypeService {
 
     // Auto-set SOLD_OUT status if available qty reaches 0
     if (
-      ticketType.totalQty -
-        ticketType.soldQty -
-        ticketType.reservedQty ===
-        0 &&
+      ticketType.totalQty - ticketType.soldQty - ticketType.reservedQty === 0 &&
       ticketType.status !== TicketTypeStatus.SOLD_OUT
     ) {
-      return this.prisma.ticketType
-        .update({
-          where: { id },
-          data: { status: TicketTypeStatus.SOLD_OUT },
-        })
-        .then((tt) => this.toResponse(tt));
+      const updated = await this.prisma.ticketType.update({
+        where: { id },
+        data: { status: TicketTypeStatus.SOLD_OUT },
+      });
+      return this.toResponse(updated);
     }
 
     return this.toResponse(ticketType);
@@ -315,11 +304,7 @@ export class TicketTypeService {
       throw new NotFoundException(`Ticket type with ID "${id}" not found`);
     }
 
-    await this.checkConcertOwnership(
-      ticketType.concertId,
-      userId,
-      userRole,
-    );
+    await this.checkConcertOwnership(ticketType.concertId, userId, userRole);
 
     if (ticketType.soldQty > 0 || ticketType.reservedQty > 0) {
       throw new BadRequestException(
@@ -348,6 +333,7 @@ export class TicketTypeService {
   async findAvailable(concertId: string): Promise<TicketTypeListResponseDto> {
     const concert = await this.prisma.concert.findUnique({
       where: { id: concertId },
+      select: { status: true },
     });
 
     if (!concert) {
@@ -368,7 +354,6 @@ export class TicketTypeService {
       where: {
         concertId,
         status: TicketTypeStatus.ACTIVE,
-        // Only show ticket types where sale has started and not ended
         saleStartsAt: { lte: now },
         OR: [{ saleEndsAt: null }, { saleEndsAt: { gt: now } }],
       },
