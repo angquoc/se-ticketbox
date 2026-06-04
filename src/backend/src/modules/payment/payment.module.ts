@@ -7,6 +7,7 @@ import { QueueModule } from '../queue/queue.module';
 import { IdempotencyModule } from '../idempotency/idempotency.module';
 import { PaymentCircuitBreakerService } from './services/payment-circuit-breaker.service';
 import { MockGatewayService } from './services/mock-gateway.service';
+import { PaymentCronService } from './services/payment-cron.service';
 
 @Module({
   imports: [
@@ -20,6 +21,7 @@ import { MockGatewayService } from './services/mock-gateway.service';
     PaymentService,
     PaymentCircuitBreakerService,
     MockGatewayService,
+    PaymentCronService,
   ],
   exports: [PaymentService],
 })

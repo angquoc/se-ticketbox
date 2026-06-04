@@ -37,6 +37,35 @@ export class PaymentService {
       .digest('hex');
   }
 
+  private async recordLateWebhook(dto: MockWebhookDto) {
+    await this.prisma.paymentTransaction.upsert({
+      where: {
+        provider_providerTransactionId: {
+          provider: PaymentProvider.MOCK,
+          providerTransactionId: dto.providerTransactionId,
+        },
+      },
+      create: {
+        orderId: dto.orderId,
+        provider: PaymentProvider.MOCK,
+        providerTransactionId: dto.providerTransactionId,
+        status:
+          dto.result === MockPaymentResult.SUCCESS
+            ? PaymentStatus.SUCCESS
+            : dto.result === MockPaymentResult.FAILED
+              ? PaymentStatus.FAILED
+              : PaymentStatus.TIMEOUT,
+        amount: dto.amount,
+        rawWebhook: dto as any,
+        receivedAt: new Date(),
+      },
+      update: {
+        rawWebhook: dto as any,
+        receivedAt: new Date(),
+      },
+    });
+  }
+
   async createPayment(params: {
     userId: string;
     idempotencyKey: string;
@@ -159,8 +188,11 @@ export class PaymentService {
     }
 
     if (order.status === OrderStatus.PAID) {
+      await this.recordLateWebhook(dto);
+
       return {
-        message: 'Webhook đã được xử lý trước đó',
+        message:
+          'Webhook đến sau khi đơn hàng đã hết hạn. Không phát hành vé, cần xử lý hoàn tiền/mock refund.',
         orderId: order.id,
         status: order.status,
       };
@@ -204,13 +236,24 @@ export class PaymentService {
 
   private async markPaymentFailed(dto: MockWebhookDto) {
     await this.prisma.$transaction(async (tx) => {
-      await tx.paymentTransaction.create({
-        data: {
+      await tx.paymentTransaction.upsert({
+        where: {
+          provider_providerTransactionId: {
+            provider: PaymentProvider.MOCK,
+            providerTransactionId: dto.providerTransactionId,
+          },
+        },
+        create: {
           orderId: dto.orderId,
           provider: PaymentProvider.MOCK,
           providerTransactionId: dto.providerTransactionId,
           status: PaymentStatus.FAILED,
           amount: dto.amount,
+          rawWebhook: dto as any,
+          receivedAt: new Date(),
+        },
+        update: {
+          status: PaymentStatus.FAILED,
           rawWebhook: dto as any,
           receivedAt: new Date(),
         },
@@ -226,8 +269,14 @@ export class PaymentService {
   }
 
   private async markPaymentTimeout(dto: MockWebhookDto) {
-    await this.prisma.paymentTransaction.create({
-      data: {
+    await this.prisma.paymentTransaction.upsert({
+      where: {
+        provider_providerTransactionId: {
+          provider: PaymentProvider.MOCK,
+          providerTransactionId: dto.providerTransactionId,
+        },
+      },
+      create: {
         orderId: dto.orderId,
         provider: PaymentProvider.MOCK,
         providerTransactionId: dto.providerTransactionId,
@@ -236,18 +285,34 @@ export class PaymentService {
         rawWebhook: dto as any,
         receivedAt: new Date(),
       },
+      update: {
+        status: PaymentStatus.TIMEOUT,
+        rawWebhook: dto as any,
+        receivedAt: new Date(),
+      },
     });
   }
 
   private async markPaymentSuccessAndQueueTicketIssue(dto: MockWebhookDto) {
     await this.prisma.$transaction(async (tx) => {
-      await tx.paymentTransaction.create({
-        data: {
+      await tx.paymentTransaction.upsert({
+        where: {
+          provider_providerTransactionId: {
+            provider: PaymentProvider.MOCK,
+            providerTransactionId: dto.providerTransactionId,
+          },
+        },
+        create: {
           orderId: dto.orderId,
           provider: PaymentProvider.MOCK,
           providerTransactionId: dto.providerTransactionId,
           status: PaymentStatus.SUCCESS,
           amount: dto.amount,
+          rawWebhook: dto as any,
+          receivedAt: new Date(),
+        },
+        update: {
+          status: PaymentStatus.SUCCESS,
           rawWebhook: dto as any,
           receivedAt: new Date(),
         },

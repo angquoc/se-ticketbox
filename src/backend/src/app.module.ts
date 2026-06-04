@@ -8,6 +8,7 @@ import { ConcertModule } from './modules/concert/concert.module';
 import { PaymentModule } from './modules/payment/payment.module';
 import { QueueModule } from './modules/queue/queue.module';
 import { IdempotencyModule } from './modules/idempotency/idempotency.module';
+import { ScheduleModule } from '@nestjs/schedule';
 
 @Module({
   imports: [
@@ -18,6 +19,7 @@ import { IdempotencyModule } from './modules/idempotency/idempotency.module';
     ConcertModule,
     IdempotencyModule,
     PaymentModule,
+    ScheduleModule.forRoot(),
   ],
   controllers: [AppController],
   providers: [AppService],

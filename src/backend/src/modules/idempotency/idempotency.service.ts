@@ -77,7 +77,9 @@ export class IdempotencyService {
       };
     }
 
-    throw new ConflictException('Request trước đó thất bại, vui lòng tạo key mới');
+    throw new ConflictException(
+      'Giao dịch trước đó với Idempotency-Key này đã thất bại. Vui lòng bấm lại để tạo thao tác mới với Idempotency-Key mới.',
+    );
   }
 
   async complete(params: {
