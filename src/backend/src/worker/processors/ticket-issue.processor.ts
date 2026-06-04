@@ -4,7 +4,7 @@ import { TICKET_ISSUE_QUEUE, NOTIFICATION_QUEUE } from '../../modules/queue/queu
 import { PrismaService } from '../../database/prisma.service';
 import { InjectQueue } from '@nestjs/bullmq';
 import { Queue } from 'bullmq';
-import { OrderStatus } from '@prisma/client';
+import { OrderStatus, Ticket } from '@prisma/client';
 import { createHash, randomUUID } from 'crypto';
 
 @Processor(TICKET_ISSUE_QUEUE)
@@ -48,7 +48,7 @@ export class TicketIssueProcessor extends WorkerHost {
       };
     }
 
-    const createdTickets = [];
+    const createdTickets: Ticket[] = [];
 
     await this.prisma.$transaction(async (tx) => {
       for (const item of order.items) {

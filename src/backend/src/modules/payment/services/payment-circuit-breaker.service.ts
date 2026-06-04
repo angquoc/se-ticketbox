@@ -1,5 +1,5 @@
 import { Injectable, ServiceUnavailableException } from '@nestjs/common';
-import * as CircuitBreaker from 'opossum';
+import CircuitBreaker from 'opossum';
 
 @Injectable()
 export class PaymentCircuitBreakerService {

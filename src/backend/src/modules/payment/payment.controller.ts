@@ -9,12 +9,24 @@ import {
   Query,
   Req,
   Res,
+  UseGuards,
 } from '@nestjs/common';
-import { Response } from 'express';
+import type { Response, Request } from 'express';
+import { AuthGuard } from '../auth/guards/auth.guard';
 import { PaymentService } from './payment.service';
 import { CreatePaymentDto } from './dto/create-payment.dto';
 import { MockPaymentResult, MockWebhookDto } from './dto/mock-webhook.dto';
 import { MockGatewayService } from './services/mock-gateway.service';
+
+interface JwtPayload {
+  sub: string;
+  email: string;
+  role: string;
+}
+
+type AuthenticatedRequest = Request & {
+  user: JwtPayload;
+};
 
 @Controller('payments')
 export class PaymentController {
@@ -24,23 +36,18 @@ export class PaymentController {
   ) {}
 
   @Post('create')
+  @UseGuards(AuthGuard)
   createPayment(
     @Body() dto: CreatePaymentDto,
     @Headers('idempotency-key') idempotencyKey: string,
-    @Req() req: any,
+    @Req() req: AuthenticatedRequest,
   ) {
     if (!idempotencyKey) {
       throw new BadRequestException('Thiếu header Idempotency-Key');
     }
 
-    /**
-     * Nếu AuthGuard đã có, userId nên lấy từ req.user.sub.
-     * Tạm thời nếu chưa gắn guard, em thay bằng userId test.
-     */
-    const userId = req.user?.sub || req.user?.id || 'dev-user-id';
-
     return this.paymentService.createPayment({
-      userId,
+      userId: req.user.sub,
       idempotencyKey,
       orderId: dto.orderId,
     });
@@ -49,11 +56,6 @@ export class PaymentController {
   @Post('webhook/mock')
   handleMockWebhook(@Body() dto: MockWebhookDto) {
     return this.paymentService.handleMockWebhook(dto);
-  }
-
-  @Get(':orderId/status')
-  getStatus(@Param('orderId') orderId: string) {
-    return this.paymentService.getPaymentStatus(orderId);
   }
 
   @Get('system/circuit-breaker')
@@ -80,15 +82,7 @@ export class PaymentController {
 
     res.send(`
       <html>
-        <head>
-          <title>Mock Payment</title>
-          <style>
-            body { font-family: Arial; padding: 40px; }
-            button { padding: 12px 16px; margin-right: 8px; cursor: pointer; }
-            pre { background: #f3f3f3; padding: 16px; margin-top: 20px; }
-          </style>
-        </head>
-        <body>
+        <body style="font-family: Arial; padding: 40px;">
           <h1>Mock Payment Gateway</h1>
           <p><b>Order:</b> ${orderId}</p>
           <p><b>Amount:</b> ${amount} VND</p>
@@ -111,9 +105,7 @@ export class PaymentController {
             async function sendWebhook(result, signature) {
               const response = await fetch('/payments/webhook/mock', {
                 method: 'POST',
-                headers: {
-                  'Content-Type': 'application/json'
-                },
+                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                   orderId: '${orderId}',
                   providerTransactionId: '${providerTransactionId}',
@@ -130,5 +122,14 @@ export class PaymentController {
         </body>
       </html>
     `);
+  }
+
+  @Get(':orderId/status')
+  @UseGuards(AuthGuard)
+  getStatus(
+    @Param('orderId') orderId: string,
+    @Req() req: AuthenticatedRequest,
+  ) {
+    return this.paymentService.getPaymentStatus(orderId, req.user.sub);
   }
 }
