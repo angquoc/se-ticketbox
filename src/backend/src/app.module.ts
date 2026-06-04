@@ -6,13 +6,17 @@ import { PrismaModule } from './database/prisma.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { ConcertModule } from './modules/concert/concert.module';
 import { PaymentModule } from './modules/payment/payment.module';
+import { QueueModule } from './modules/queue/queue.module';
+import { IdempotencyModule } from './modules/idempotency/idempotency.module';
 
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
+    QueueModule,
     PrismaModule,
     AuthModule,
     ConcertModule,
+    IdempotencyModule,
     PaymentModule,
   ],
   controllers: [AppController],
