@@ -279,24 +279,28 @@ export class PaymentService {
     );
   }
 
-  async getPaymentStatus(orderId: string) {
+  async getPaymentStatus(orderId: string, userId: string) {
     const order = await this.prisma.order.findUnique({
-      where: { id: orderId },
-      include: {
+        where: { id: orderId },
+        include: {
         payments: true,
         tickets: true,
-      },
+        },
     });
 
     if (!order) {
-      throw new NotFoundException('Không tìm thấy đơn hàng');
+        throw new NotFoundException('Không tìm thấy đơn hàng');
+    }
+
+    if (order.userId !== userId) {
+        throw new BadRequestException('Đơn hàng không thuộc về người dùng hiện tại');
     }
 
     return {
-      orderId: order.id,
-      status: order.status,
-      payments: order.payments,
-      ticketCount: order.tickets.length,
+        orderId: order.id,
+        status: order.status,
+        payments: order.payments,
+        ticketCount: order.tickets.length,
     };
   }
 
