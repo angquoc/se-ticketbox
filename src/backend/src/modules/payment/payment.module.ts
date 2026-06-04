@@ -4,7 +4,7 @@ import { PaymentController } from './payment.controller';
 import { PaymentService } from './payment.service';
 import { MockPaymentService } from './mock-payment.service';
 import { CircuitBreakerService } from './circuit-breaker.service';
-import { PrismaModule } from '../../database/prisma.service';
+import { PrismaModule } from '../../database/prisma.module';
 
 @Module({
   imports: [ConfigModule, PrismaModule],

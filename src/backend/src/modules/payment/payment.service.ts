@@ -3,99 +3,149 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
+import { createHash } from 'crypto';
+import { InjectQueue } from '@nestjs/bullmq';
+import { Queue } from 'bullmq';
+import {
+  OrderStatus,
+  PaymentProvider,
+  PaymentStatus,
+} from '@prisma/client';
+
 import { PrismaService } from '../../database/prisma.service';
-import { CircuitBreakerService } from './circuit-breaker.service';
-import { MockPaymentService } from './mock-payment.service';
+import { IdempotencyService } from '../idempotency/idempotency.service';
+import { TICKET_ISSUE_QUEUE } from '../queue/queue.constants';
+import { PaymentCircuitBreakerService } from './services/payment-circuit-breaker.service';
+import { MockGatewayService } from './services/mock-gateway.service';
 import { MockPaymentResult, MockWebhookDto } from './dto/mock-webhook.dto';
-import { PaymentProvider, PaymentStatus, OrderStatus } from '@prisma/client';
 
 @Injectable()
 export class PaymentService {
   constructor(
     private readonly prisma: PrismaService,
-    private readonly circuitBreaker: CircuitBreakerService,
-    private readonly mockPaymentService: MockPaymentService,
+    private readonly idempotencyService: IdempotencyService,
+    private readonly circuitBreaker: PaymentCircuitBreakerService,
+    private readonly mockGateway: MockGatewayService,
+
+    @InjectQueue(TICKET_ISSUE_QUEUE)
+    private readonly ticketIssueQueue: Queue,
   ) {}
 
-  async createPayment(orderId: string) {
-    this.circuitBreaker.beforeRequest();
+  private hashRequest(payload: unknown) {
+    return createHash('sha256')
+      .update(JSON.stringify(payload))
+      .digest('hex');
+  }
+
+  async createPayment(params: {
+    userId: string;
+    idempotencyKey: string;
+    orderId: string;
+  }) {
+    const requestHash = this.hashRequest({
+      orderId: params.orderId,
+    });
+
+    const idem = await this.idempotencyService.start({
+      userId: params.userId,
+      idempotencyKey: params.idempotencyKey,
+      requestHash,
+    });
+
+    if (!idem.shouldProcess) {
+      return idem.cachedResponse;
+    }
 
     try {
-      const order = await this.prisma.order.findUnique({
-        where: { id: orderId },
-        include: { payments: true },
+      const response = await this.circuitBreaker.execute(async () => {
+        return this.createPaymentInternal(params.orderId, params.userId);
       });
 
-      if (!order) {
-        throw new NotFoundException('Không tìm thấy đơn hàng');
-      }
-
-      if (order.status !== OrderStatus.PENDING_PAYMENT) {
-        throw new BadRequestException(
-          'Chỉ có thể thanh toán đơn hàng đang chờ thanh toán',
-        );
-      }
-
-      const existingPayment = order.payments.find(
-        (payment) => payment.status === PaymentStatus.INITIATED,
-      );
-
-      if (existingPayment?.paymentUrl) {
-        return {
-          orderId: order.id,
-          paymentUrl: existingPayment.paymentUrl,
-          reused: true,
-        };
-      }
-
-      const paymentUrl = this.mockPaymentService.createPaymentUrl(
-        order.id,
-        order.totalAmountInVnd,
-      );
-
-      await this.prisma.paymentTransaction.create({
-        data: {
-          orderId: order.id,
-          provider: PaymentProvider.MOCK,
-          status: PaymentStatus.INITIATED,
-          amount: order.totalAmountInVnd,
-          paymentUrl,
-        },
+      await this.idempotencyService.complete({
+        userId: params.userId,
+        idempotencyKey: params.idempotencyKey,
+        requestHash,
+        responseBody: response,
       });
 
-      this.circuitBreaker.recordSuccess();
-
-      return {
-        orderId: order.id,
-        paymentUrl,
-        reused: false,
-      };
+      return response;
     } catch (error) {
-      this.circuitBreaker.recordFailure();
+      await this.idempotencyService.fail({
+        userId: params.userId,
+        idempotencyKey: params.idempotencyKey,
+        requestHash,
+      });
+
       throw error;
     }
+  }
+
+  private async createPaymentInternal(orderId: string, userId: string) {
+    const order = await this.prisma.order.findUnique({
+      where: { id: orderId },
+      include: { payments: true },
+    });
+
+    if (!order) {
+      throw new NotFoundException('Không tìm thấy đơn hàng');
+    }
+
+    if (order.userId !== userId) {
+      throw new BadRequestException('Đơn hàng không thuộc về người dùng hiện tại');
+    }
+
+    if (order.status !== OrderStatus.PENDING_PAYMENT) {
+      throw new BadRequestException(
+        'Chỉ có thể thanh toán đơn hàng đang chờ thanh toán',
+      );
+    }
+
+    const existingPayment = order.payments.find(
+      (payment) => payment.status === PaymentStatus.INITIATED,
+    );
+
+    if (existingPayment?.paymentUrl) {
+      return {
+        orderId: order.id,
+        paymentUrl: existingPayment.paymentUrl,
+        reused: true,
+      };
+    }
+
+    const paymentUrl = await this.mockGateway.createPaymentUrl(
+      order.id,
+      order.totalAmountInVnd,
+    );
+
+    await this.prisma.paymentTransaction.create({
+      data: {
+        orderId: order.id,
+        provider: PaymentProvider.MOCK,
+        status: PaymentStatus.INITIATED,
+        amount: order.totalAmountInVnd,
+        paymentUrl,
+      },
+    });
+
+    return {
+      orderId: order.id,
+      paymentUrl,
+      reused: false,
+    };
   }
 
   async handleMockWebhook(dto: MockWebhookDto) {
     const payload = `${dto.orderId}:${dto.providerTransactionId}:${dto.result}:${dto.amount}`;
 
-    if (!dto.signature) {
-      throw new BadRequestException('Thiếu chữ ký webhook');
-    }
+    const isValid = this.mockGateway.verifySignature(payload, dto.signature);
 
-    const validSignature = this.mockPaymentService.verifySignature(
-      payload,
-      dto.signature,
-    );
-
-    if (!validSignature) {
+    if (!isValid) {
       throw new BadRequestException('Webhook signature không hợp lệ');
     }
 
     const order = await this.prisma.order.findUnique({
       where: { id: dto.orderId },
       include: {
-        items: true,
         payments: true,
       },
     });
@@ -117,32 +167,15 @@ export class PaymentService {
     }
 
     if (order.status !== OrderStatus.PENDING_PAYMENT) {
-      throw new BadRequestException(
-        `Không thể xử lý webhook cho order status ${order.status}`,
-      );
+      return {
+        message: `Bỏ qua webhook vì order đang ở trạng thái ${order.status}`,
+        orderId: order.id,
+        status: order.status,
+      };
     }
 
     if (dto.result === MockPaymentResult.FAILED) {
-      await this.prisma.$transaction(async (tx) => {
-        await tx.paymentTransaction.create({
-          data: {
-            orderId: order.id,
-            provider: PaymentProvider.MOCK,
-            providerTransactionId: dto.providerTransactionId,
-            status: PaymentStatus.FAILED,
-            amount: dto.amount,
-            rawWebhook: dto as any,
-            receivedAt: new Date(),
-          },
-        });
-
-        await tx.order.update({
-          where: { id: order.id },
-          data: {
-            status: OrderStatus.PAYMENT_FAILED,
-          },
-        });
-      });
+      await this.markPaymentFailed(dto);
 
       return {
         message: 'Thanh toán thất bại',
@@ -152,17 +185,7 @@ export class PaymentService {
     }
 
     if (dto.result === MockPaymentResult.TIMEOUT) {
-      await this.prisma.paymentTransaction.create({
-        data: {
-          orderId: order.id,
-          provider: PaymentProvider.MOCK,
-          providerTransactionId: dto.providerTransactionId,
-          status: PaymentStatus.TIMEOUT,
-          amount: dto.amount,
-          rawWebhook: dto as any,
-          receivedAt: new Date(),
-        },
-      });
+      await this.markPaymentTimeout(dto);
 
       return {
         message: 'Thanh toán timeout, chờ cronjob verify',
@@ -170,10 +193,57 @@ export class PaymentService {
       };
     }
 
+    await this.markPaymentSuccessAndQueueTicketIssue(dto);
+
+    return {
+      message: 'Thanh toán thành công, đã đưa job phát hành vé vào queue',
+      orderId: order.id,
+      status: OrderStatus.PAID,
+    };
+  }
+
+  private async markPaymentFailed(dto: MockWebhookDto) {
     await this.prisma.$transaction(async (tx) => {
       await tx.paymentTransaction.create({
         data: {
-          orderId: order.id,
+          orderId: dto.orderId,
+          provider: PaymentProvider.MOCK,
+          providerTransactionId: dto.providerTransactionId,
+          status: PaymentStatus.FAILED,
+          amount: dto.amount,
+          rawWebhook: dto as any,
+          receivedAt: new Date(),
+        },
+      });
+
+      await tx.order.update({
+        where: { id: dto.orderId },
+        data: {
+          status: OrderStatus.PAYMENT_FAILED,
+        },
+      });
+    });
+  }
+
+  private async markPaymentTimeout(dto: MockWebhookDto) {
+    await this.prisma.paymentTransaction.create({
+      data: {
+        orderId: dto.orderId,
+        provider: PaymentProvider.MOCK,
+        providerTransactionId: dto.providerTransactionId,
+        status: PaymentStatus.TIMEOUT,
+        amount: dto.amount,
+        rawWebhook: dto as any,
+        receivedAt: new Date(),
+      },
+    });
+  }
+
+  private async markPaymentSuccessAndQueueTicketIssue(dto: MockWebhookDto) {
+    await this.prisma.$transaction(async (tx) => {
+      await tx.paymentTransaction.create({
+        data: {
+          orderId: dto.orderId,
           provider: PaymentProvider.MOCK,
           providerTransactionId: dto.providerTransactionId,
           status: PaymentStatus.SUCCESS,
@@ -184,70 +254,29 @@ export class PaymentService {
       });
 
       await tx.order.update({
-        where: { id: order.id },
+        where: { id: dto.orderId },
         data: {
           status: OrderStatus.PAID,
           paidAt: new Date(),
         },
       });
-
-      for (const item of order.items) {
-        await tx.ticketType.update({
-          where: { id: item.ticketTypeId },
-          data: {
-            soldQty: {
-              increment: item.quantity,
-            },
-            reservedQty: {
-              decrement: item.quantity,
-            },
-          },
-        });
-
-        await tx.userTicketCounter.upsert({
-          where: {
-            userId_ticketTypeId: {
-              userId: order.userId,
-              ticketTypeId: item.ticketTypeId,
-            },
-          },
-          create: {
-            userId: order.userId,
-            ticketTypeId: item.ticketTypeId,
-            paidQty: item.quantity,
-            reservedQty: 0,
-          },
-          update: {
-            paidQty: {
-              increment: item.quantity,
-            },
-            reservedQty: {
-              decrement: item.quantity,
-            },
-          },
-        });
-
-        for (let i = 0; i < item.quantity; i++) {
-          await tx.ticket.create({
-            data: {
-              orderId: order.id,
-              orderItemId: item.id,
-              concertId: order.concertId,
-              ticketTypeId: item.ticketTypeId,
-              userId: order.userId,
-              qrTokenHash: `mock_qr_hash_${order.id}_${item.id}_${i}`,
-              qrSignature: `mock_signature_${order.id}_${item.id}_${i}`,
-            },
-          });
-        }
-      }
     });
 
-    return {
-      message: 'Thanh toán thành công, order đã chuyển PAID',
-      orderId: order.id,
-      status: OrderStatus.PAID,
-    };
+    await this.ticketIssueQueue.add(
+      'issue-ticket-for-paid-order',
+      {
+        orderId: dto.orderId,
+      },
+      {
+        attempts: 3,
+        backoff: {
+          type: 'exponential',
+          delay: 3000,
+        },
+        removeOnComplete: true,
+        removeOnFail: false,
+      },
+    );
   }
 
   async getPaymentStatus(orderId: string) {
@@ -272,6 +301,6 @@ export class PaymentService {
   }
 
   getCircuitBreakerStatus() {
-    return this.circuitBreaker.getState();
+    return this.circuitBreaker.getStatus();
   }
 }

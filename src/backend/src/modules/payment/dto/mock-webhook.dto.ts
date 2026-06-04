@@ -1,4 +1,9 @@
-import { IsEnum, IsInt, IsOptional, IsString } from 'class-validator';
+import {
+  IsEnum,
+  IsNotEmpty,
+  IsNumber,
+  IsString,
+} from 'class-validator';
 
 export enum MockPaymentResult {
   SUCCESS = 'SUCCESS',
@@ -8,18 +13,20 @@ export enum MockPaymentResult {
 
 export class MockWebhookDto {
   @IsString()
-  orderId: string;
+  @IsNotEmpty()
+  orderId!: string;
 
   @IsString()
-  providerTransactionId: string;
+  @IsNotEmpty()
+  providerTransactionId!: string;
 
   @IsEnum(MockPaymentResult)
-  result: MockPaymentResult;
+  result!: MockPaymentResult;
 
-  @IsInt()
-  amount: number;
+  @IsNumber()
+  amount!: number;
 
-  @IsOptional()
   @IsString()
-  signature?: string;
+  @IsNotEmpty()
+  signature!: string;
 }
