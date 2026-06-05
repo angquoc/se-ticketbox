@@ -27,10 +27,14 @@ export class MockGatewayService {
   verifySignature(payload: string, signature: string) {
     const expected = this.createSignature(payload);
 
-    return crypto.timingSafeEqual(
-      Buffer.from(expected),
-      Buffer.from(signature),
-    );
+    const expectedBuffer = Buffer.from(expected);
+    const signatureBuffer = Buffer.from(signature);
+
+    if (expectedBuffer.length !== signatureBuffer.length) {
+      return false;
+    }
+
+    return crypto.timingSafeEqual(expectedBuffer, signatureBuffer);
   }
 
   generateProviderTransactionId(orderId: string) {

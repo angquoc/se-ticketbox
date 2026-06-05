@@ -188,6 +188,14 @@ export class PaymentService {
     }
 
     if (order.status === OrderStatus.PAID) {
+      return {
+        message: 'Webhook trùng lặp, order đã PAID trước đó. Không xử lý lại.',
+        orderId: order.id,
+        status: order.status,
+      };
+    }
+
+    if (order.status === OrderStatus.EXPIRED) {
       await this.recordLateWebhook(dto);
 
       return {
@@ -235,7 +243,26 @@ export class PaymentService {
   }
 
   private async markPaymentFailed(dto: MockWebhookDto) {
+    const order = await this.prisma.order.findUnique({
+      where: { id: dto.orderId },
+      include: {
+        items: true,
+      },
+    });
+
+    if (!order) {
+      throw new NotFoundException('Không tìm thấy đơn hàng');
+    }
+
     await this.prisma.$transaction(async (tx) => {
+      const latestOrder = await tx.order.findUnique({
+        where: { id: dto.orderId },
+      });
+
+      if (!latestOrder || latestOrder.status !== OrderStatus.PENDING_PAYMENT) {
+        return;
+      }
+
       await tx.paymentTransaction.upsert({
         where: {
           provider_providerTransactionId: {
@@ -263,8 +290,33 @@ export class PaymentService {
         where: { id: dto.orderId },
         data: {
           status: OrderStatus.PAYMENT_FAILED,
+          inventoryReleasedAt: new Date(),
+          releaseReason: 'PAYMENT_FAILED',
         },
       });
+
+      for (const item of order.items) {
+        await tx.ticketType.update({
+          where: { id: item.ticketTypeId },
+          data: {
+            reservedQty: {
+              decrement: item.quantity,
+            },
+          },
+        });
+
+        await tx.userTicketCounter.updateMany({
+          where: {
+            userId: order.userId,
+            ticketTypeId: item.ticketTypeId,
+          },
+          data: {
+            reservedQty: {
+              decrement: item.quantity,
+            },
+          },
+        });
+      }
     });
   }
 

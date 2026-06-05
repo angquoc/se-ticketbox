@@ -1,5 +1,4 @@
 import {
-  BadRequestException,
   ConflictException,
   Injectable,
 } from '@nestjs/common';
@@ -61,7 +60,7 @@ export class IdempotencyService {
     const parsed = JSON.parse(existing) as IdempotencyRecord;
 
     if (parsed.requestHash !== params.requestHash) {
-      throw new BadRequestException(
+      throw new ConflictException(
         'Idempotency-Key đã được dùng cho request khác',
       );
     }
