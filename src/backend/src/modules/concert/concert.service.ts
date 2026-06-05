@@ -71,7 +71,7 @@ export class ConcertService {
     // For public listing, we show PUBLISHED and SALE_OPEN concerts by default
     const statusFilter = status || ConcertStatus.PUBLISHED;
 
-const where: Prisma.ConcertWhereInput = {
+    const where: Prisma.ConcertWhereInput = {
       status: statusFilter,
     };
 
@@ -173,7 +173,9 @@ const where: Prisma.ConcertWhereInput = {
     });
 
     if (existing) {
-      throw new ConflictException(`Concert with slug "${dto.slug}" already exists`);
+      throw new ConflictException(
+        `Concert with slug "${dto.slug}" already exists`,
+      );
     }
 
     const concert = await this.prisma.concert.create({
@@ -221,7 +223,9 @@ const where: Prisma.ConcertWhereInput = {
       });
 
       if (slugConflict) {
-        throw new ConflictException(`Concert with slug "${dto.slug}" already exists`);
+        throw new ConflictException(
+          `Concert with slug "${dto.slug}" already exists`,
+        );
       }
     }
 
@@ -242,7 +246,9 @@ const where: Prisma.ConcertWhereInput = {
         }),
         ...(dto.status !== undefined && { status: dto.status }),
         ...(dto.seatMapUrl !== undefined && { seatMapUrl: dto.seatMapUrl }),
-        ...(dto.coverImageUrl !== undefined && { coverImageUrl: dto.coverImageUrl }),
+        ...(dto.coverImageUrl !== undefined && {
+          coverImageUrl: dto.coverImageUrl,
+        }),
       },
       include: {
         organizer: {

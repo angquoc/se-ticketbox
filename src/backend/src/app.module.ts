@@ -5,6 +5,7 @@ import { AppService } from './app.service';
 import { PrismaModule } from './database/prisma.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { ConcertModule } from './modules/concert/concert.module';
+import { TicketTypeModule } from './modules/ticket-type/ticket-type.module';
 
 @Module({
   imports: [
@@ -12,6 +13,7 @@ import { ConcertModule } from './modules/concert/concert.module';
     PrismaModule,
     AuthModule,
     ConcertModule,
+    TicketTypeModule,
   ],
   controllers: [AppController],
   providers: [AppService],
