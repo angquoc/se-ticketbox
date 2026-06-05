@@ -7,6 +7,7 @@ import { AuthModule } from './modules/auth/auth.module';
 import { ConcertModule } from './modules/concert/concert.module';
 import { TicketTypeModule } from './modules/ticket-type/ticket-type.module';
 import { RedisModule } from './modules/redis/redis.module';
+import { HealthModule } from './modules/health/health.module';
 
 @Module({
   imports: [
@@ -16,6 +17,7 @@ import { RedisModule } from './modules/redis/redis.module';
     ConcertModule,
     TicketTypeModule,
     RedisModule,
+    HealthModule,
   ],
   controllers: [AppController],
   providers: [AppService],
