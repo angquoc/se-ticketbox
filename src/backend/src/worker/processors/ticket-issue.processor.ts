@@ -40,6 +40,16 @@ export class TicketIssueProcessor extends WorkerHost {
       };
     }
 
+    if (order.items.length === 0) {
+      console.log('[TicketIssue] Order has no items', {
+        orderId: order.id,
+        userId: order.userId,
+        status: order.status,
+      });
+
+      throw new Error(`Order ${order.id} has no order items`);
+    }
+
     if (order.tickets.length > 0) {
       return {
         skipped: true,
