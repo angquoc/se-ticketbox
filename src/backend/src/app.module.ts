@@ -6,6 +6,7 @@ import { PrismaModule } from './database/prisma.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { ConcertModule } from './modules/concert/concert.module';
 import { TicketTypeModule } from './modules/ticket-type/ticket-type.module';
+import { RedisModule } from './modules/redis/redis.module';
 
 @Module({
   imports: [
@@ -14,6 +15,7 @@ import { TicketTypeModule } from './modules/ticket-type/ticket-type.module';
     AuthModule,
     ConcertModule,
     TicketTypeModule,
+    RedisModule,
   ],
   controllers: [AppController],
   providers: [AppService],
