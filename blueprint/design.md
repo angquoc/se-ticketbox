@@ -4,40 +4,75 @@
 
 1. [Kiến trúc tổng thể](#1-kiến-trúc-tổng-thể)
 2. [C4 Diagram](#2-c4-diagram)
+
    2.1. [Level 1 — System Context](#21-level-1--system-context)
+
    2.2. [Level 2 — Container](#22-level-2--container)
+
 3. [High-Level Architecture Diagram](#3-high-level-architecture-diagram)
+
    3.1. [Luồng dữ liệu chính](#31-luồng-dữ-liệu-chính)
+
 4. [Thiết kế cơ sở dữ liệu](#4-thiết-kế-cơ-sở-dữ-liệu)
+
    4.1. [PostgreSQL](#41-postgresql)
+
    4.2. [Redis](#42-redis)
+   
    4.3. [Object Storage](#43-object-storage)
+
    4.4. [AI Artist Bio Flow](#44-ai-artist-bio-flow)
+
    4.5. [CSV Guest List Import Flow](#45-csv-guest-list-import-flow)
+
    4.6. [Notification Module](#46-notification-module)
+
 5. [Mô tả luồng nghiệp vụ](#5-mô-tả-luồng-nghiệp-vụ)
+
    5.1. [Luồng mua vé từ lúc bấm "Mua vé" đến khi nhận e-ticket](#51-luồng-mua-vé-từ-lúc-bấm-mua-vé-đến-khi-nhận-e-ticket)
+
    5.2. [Luồng soát vé khi mất mạng và đồng bộ lại](#52-luồng-soát-vé-khi-mất-mạng-và-đồng-bộ-lại)
+
    5.3. [Luồng nhập danh sách khách mời từ CSV](#53-luồng-nhập-danh-sách-khách-mời-từ-csv)
+
 6. [Thiết kế kiểm soát truy cập](#6-thiết-kế-kiểm-soát-truy-cập)
+
    6.1. [Nhóm người dùng](#61-nhóm-người-dùng)
+
    6.2. [Cách kiểm tra quyền](#62-cách-kiểm-tra-quyền)
+
 7. [Thiết kế các cơ chế bảo vệ hệ thống](#7-thiết-kế-các-cơ-chế-bảo-vệ-hệ-thống)
+
    7.1. [Kiểm soát tải đột biến](#71-kiểm-soát-tải-đột-biến)
+
    7.2. [Xử lý cổng thanh toán không ổn định](#72-xử-lý-cổng-thanh-toán-không-ổn-định)
+
    7.3. [Chống trừ tiền hai lần](#73-chống-trừ-tiền-hai-lần)
+
    7.4. [Caching](#74-caching)
+
 8. [Các quyết định kỹ thuật quan trọng (ADR)](#8-các-quyết-định-kỹ-thuật-quan-trọng-adr)
+
    8.1. [ADR 1 — Modular Monolith + Async Worker](#81-adr-1)
+   
    8.2. [ADR 2 — PostgreSQL + Redis + Object Storage](#82-adr-2)
+
    8.3. [ADR 3 — Hybrid RBAC + Resource Ownership Check](#83-adr-3)
+
    8.4. [ADR 4 — Redis Lua Script cho tranh chấp vé và giới hạn per-user](#84-adr-4)
+
    8.5. [ADR 5 — Token Bucket + Virtual Waiting Room + Bot Protection cho tải đột biến](#85-adr-5)
+
    8.6. [ADR 6 — Circuit Breaker cho Payment Gateway](#86-adr-6)
+
    8.7. [ADR 7 — Idempotency Key cho chống trừ tiền hai lần](#87-adr-7)
+
    8.8. [ADR 8 — QR Signed Payload + Online Status Check](#88-adr-8)
+
    8.9. [ADR 9 — BullMQ + Redis cho Message Queue](#89-adr-9)
+
    8.10. [ADR 10 — Hybrid Reservation: Redis TTL + SQL Pending Order + Delayed Job](#810-adr-10)
+   
    8.11. [ADR 11 — Asynchronous Background Jobs cho AI Bio, CSV Import và Notification](#811-adr-11)
 
 ---
