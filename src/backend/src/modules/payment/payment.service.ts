@@ -86,9 +86,7 @@ export class PaymentService {
     }
 
     try {
-      const response = await this.circuitBreaker.execute(async () => {
-        return this.createPaymentInternal(params.orderId, params.userId);
-      });
+      const response = await this.createPaymentInternal(params.orderId, params.userId);
 
       await this.idempotencyService.complete({
         userId: params.userId,
@@ -141,10 +139,12 @@ export class PaymentService {
       };
     }
 
-    const paymentUrl = await this.mockGateway.createPaymentUrl(
-      order.id,
-      order.totalAmountInVnd,
-    );
+    const paymentUrl = await this.circuitBreaker.execute(async () => {
+      return this.mockGateway.createPaymentUrl(
+        order.id,
+        order.totalAmountInVnd,
+      );
+    });
 
     await this.prisma.paymentTransaction.create({
       data: {

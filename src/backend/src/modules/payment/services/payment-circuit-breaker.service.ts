@@ -1,4 +1,4 @@
-import { Injectable, ServiceUnavailableException } from '@nestjs/common';
+import { HttpException, Injectable, ServiceUnavailableException } from '@nestjs/common';
 import CircuitBreaker from 'opossum';
 
 @Injectable()
@@ -19,7 +19,13 @@ export class PaymentCircuitBreakerService {
       },
     );
 
-    this.breaker.fallback(() => {
+    this.breaker.fallback((err) => {
+      // Nếu là lỗi nghiệp vụ (400, 404, 409) do mình chủ động throw, hãy ném nó ra ngoài
+      if (err instanceof HttpException) {
+        throw err;
+      }
+      
+      // Nếu là lỗi hệ thống (timeout, crash gateway), mới báo 503
       throw new ServiceUnavailableException(
         'Cổng thanh toán đang tạm gián đoạn, vui lòng thử lại sau',
       );
