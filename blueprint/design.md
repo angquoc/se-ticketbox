@@ -952,7 +952,7 @@ Hệ thống sử dụng mô hình **Hybrid RBAC + Resource Ownership Check**.
 | ------------- | ------------------------------------------------------------------------ |
 | CUSTOMER      | Xem concert, mua vé, xem e-ticket của chính mình                         |
 | ORGANIZER     | Tạo/sửa/hủy concert của mình, cấu hình vé, xem doanh thu, upload PDF/CSV |
-| CHECKIN_STAFF | Truy cập Check-in PWA, quét QR, đồng bộ check-in                         |
+| STAFF | Truy cập Check-in PWA, quét QR, đồng bộ check-in                         |
 | ADMIN         | Quản trị toàn hệ thống                                                   |
 
 ### Cách kiểm tra quyền
