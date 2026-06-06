@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
-import { ConfigModule } from '@nestjs/config';
+import { ConfigModule, ConfigService } from '@nestjs/config';
+import { BullModule } from '@nestjs/bullmq';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import {
@@ -15,6 +16,7 @@ import { ConcertModule } from './modules/concert/concert.module';
 import { TicketTypeModule } from './modules/ticket-type/ticket-type.module';
 import { RedisModule } from './modules/redis/redis.module';
 import { HealthModule } from './modules/health/health.module';
+import { OrderModule } from './modules/order/order.module';
 
 @Module({
   imports: [
@@ -29,6 +31,16 @@ import { HealthModule } from './modules/health/health.module';
     TicketTypeModule,
     RedisModule,
     HealthModule,
+    OrderModule,
+    BullModule.forRootAsync({
+      imports: [ConfigModule],
+      inject: [ConfigService],
+      useFactory: (configService: ConfigService) => ({
+        connection: {
+          url: configService.get<string>('redis.url', 'redis://localhost:6379'),
+        },
+      }),
+    }),
   ],
   controllers: [AppController],
   providers: [AppService],
