@@ -13,6 +13,10 @@ import {
 import { PrismaModule } from './database/prisma.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { ConcertModule } from './modules/concert/concert.module';
+import { PaymentModule } from './modules/payment/payment.module';
+import { QueueModule } from './modules/queue/queue.module';
+import { IdempotencyModule } from './modules/idempotency/idempotency.module';
+import { ScheduleModule } from '@nestjs/schedule';
 import { TicketTypeModule } from './modules/ticket-type/ticket-type.module';
 import { RedisModule } from './modules/redis/redis.module';
 import { HealthModule } from './modules/health/health.module';
@@ -25,9 +29,13 @@ import { OrderModule } from './modules/order/order.module';
       load: [appConfig, authConfig, databaseConfig, redisConfig],
       validationSchema: envValidationSchema,
     }),
+    QueueModule,
     PrismaModule,
     AuthModule,
     ConcertModule,
+    IdempotencyModule,
+    PaymentModule,
+    ScheduleModule.forRoot(),
     TicketTypeModule,
     RedisModule,
     HealthModule,
