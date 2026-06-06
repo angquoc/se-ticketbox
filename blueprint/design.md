@@ -599,6 +599,348 @@ Các event chính:
 Email là notification channel mặc định. Trong tương lai có thể bổ sung SMS, Zalo OA hoặc push notification bằng cách triển khai thêm Notification Provider mới mà không cần thay đổi lớn trong logic nghiệp vụ.
 
 ---
+## Mô tả luồng nghiệp vụ
+
+### 1. Luồng mua vé từ lúc bấm “Mua vé” đến khi nhận e-ticket
+
+#### Mục tiêu
+
+Luồng này đảm bảo người dùng mua vé an toàn trong điều kiện tải cao, tránh oversell, tránh tạo order trùng, đồng thời vẫn phát hành e-ticket và gửi email bất đồng bộ để không làm chậm request chính.
+
+#### Thành phần tham gia
+
+* **Customer Web App**: giao diện để người dùng chọn vé, nhập thông tin và bấm mua.
+* **Edge Middleware / API Gateway**: lớp bảo vệ đầu vào, kiểm tra bot protection, rate limit và waiting room token.
+* **Backend API**: xử lý validate nghiệp vụ, tạo order, tạo payment transaction và nhận webhook thanh toán.
+* **Redis**: lưu rate limit, waiting room token, idempotency key, stock theo ticket type, per-user counter và reservation TTL.
+* **Redis Lua Script**: xử lý nguyên tử bước giữ vé để tránh race condition.
+* **PostgreSQL**: lưu order, order item, payment transaction, ticket và audit trail.
+* **Mock Payment Gateway / VNPAY / MoMo**: xử lý bước thanh toán ngoài hệ thống.
+* **BullMQ + Worker**: xử lý expire order, phát hành e-ticket, gửi email và notification.
+* **Email/Notification Service**: gửi email xác nhận và e-ticket cho người mua.
+* **Object Storage**: có thể lưu ảnh, template hoặc asset liên quan đến e-ticket nếu cần.
+
+#### Các bước xử lý chính
+
+1. **Người dùng chọn concert, chọn loại vé và bấm “Mua vé”.**
+   * Customer Web gửi request tạo order đến Backend API.
+   * Request kèm JWT nếu user đã đăng nhập và kèm `Idempotency-Key` để chống double-click hoặc retry ngoài ý muốn.
+
+2. **Lớp bảo vệ đầu vào kiểm tra tính hợp lệ của request.**
+   * Edge Middleware hoặc Backend kiểm tra rate limit theo IP/user/route.
+   * Nếu concert đang mở bán đông, hệ thống kiểm tra waiting room token.
+   * Nếu request vi phạm ngưỡng hoặc token không hợp lệ, request bị chặn trước khi vào logic giữ vé.
+
+3. **Backend kiểm tra idempotency key.**
+   * Backend tra Redis với key dạng `idem:{userId}:{idempotencyKey}`.
+   * Nếu key chưa tồn tại, backend ghi trạng thái `PROCESSING` và tiếp tục.
+   * Nếu key đã tồn tại và request trước đã hoàn tất, backend trả lại kết quả cũ thay vì tạo order mới.
+   * Nếu key đang ở trạng thái xử lý, backend trả thông báo request đang được xử lý để tránh tạo giao dịch trùng.
+
+4. **Backend validate dữ liệu nghiệp vụ trước khi giữ vé.**
+   * Kiểm tra concert có tồn tại không.
+   * Kiểm tra concert đã mở bán chưa, đã đóng bán chưa, có bị hủy không.
+   * Kiểm tra ticket type có thuộc concert đó không, có đang `ACTIVE` không.
+   * Kiểm tra số lượng user yêu cầu có hợp lệ không.
+
+5. **Backend gọi Redis Lua Script để giữ vé nguyên tử.**
+   * Lua Script đọc stock hiện tại của từng `ticketTypeId`.
+   * Kiểm tra số lượng còn lại.
+   * Kiểm tra giới hạn mua vé theo user.
+   * Nếu hợp lệ, script trừ stock Redis, tăng counter per-user và tạo `reservation:{orderId}` với TTL.
+   * Bước này chạy nguyên tử trong Redis nên tránh được oversell và race condition khi nhiều người mua cùng lúc.
+
+6. **Backend tạo order `PENDING_PAYMENT` trong PostgreSQL.**
+   * Backend ghi `Order` với `expiresAt` là thời điểm hết hạn giữ chỗ.
+   * Backend ghi các `OrderItem` tương ứng với từng loại vé và số lượng.
+   * Backend ghi `PaymentTransaction` ở trạng thái `INITIATED`.
+   * Backend liên kết order với idempotency key để có thể trả kết quả cũ nếu client retry.
+
+7. **Backend tạo payment URL và trả về frontend.**
+   * Backend gọi Mock Payment Gateway hoặc provider tương ứng.
+   * Provider trả payment URL.
+   * Backend cập nhật payment transaction và lưu response cần thiết.
+   * Customer Web chuyển người dùng sang trang thanh toán.
+
+8. **Người dùng thanh toán trên cổng thanh toán.**
+   * Trong thời gian này, Redis reservation TTL và `Order.expiresAt` vẫn đang giữ chỗ vé.
+   * Nếu user hoàn tất thanh toán trong thời gian giữ chỗ, gateway sẽ gửi webhook về Backend.
+
+9. **Backend nhận webhook và xác minh thanh toán.**
+   * Backend verify chữ ký webhook.
+   * Tìm payment transaction theo `providerTransactionId` hoặc `orderId`.
+   * Nếu webhook hợp lệ và order còn `PENDING_PAYMENT`, backend cập nhật payment sang `SUCCESS` và order sang `PAID`.
+   * Nếu webhook bị gửi lặp, hệ thống dùng unique constraint và trạng thái order để bỏ qua xử lý trùng.
+
+10. **Backend phát hành vé điện tử.**
+    * Sau khi order chuyển `PAID`, hệ thống tạo các bản ghi `Ticket` tương ứng với từng vé đã mua.
+    * Mỗi ticket có `qrTokenHash`, `qrSignature`, trạng thái `ISSUED`.
+    * Backend đồng thời cập nhật các số liệu tồn kho bền vững trong PostgreSQL như `soldQty`, `reservedQty` và các counter cần thiết.
+
+11. **Backend đẩy job gửi e-ticket và thông báo sang Worker.**
+    * Worker dựng nội dung email xác nhận.
+    * Worker đính kèm hoặc nhúng e-ticket QR.
+    * Worker gửi email qua Notification Service.
+    * Khi gửi thành công, người dùng nhận e-ticket trong email và có thể xem lại trong Customer Web.
+
+12. **Worker hoặc cron xử lý order hết hạn nếu thanh toán không hoàn tất.**
+    * BullMQ delayed job kiểm tra các order `PENDING_PAYMENT` quá hạn.
+    * Nếu order hết hạn mà chưa thanh toán, backend chuyển order sang `EXPIRED`.
+    * Hệ thống hoàn lại stock Redis, giảm counter tạm và cập nhật trạng thái release trong PostgreSQL.
+
+#### Hệ thống phản ứng khi có lỗi giữa chừng
+
+* **Lỗi rate limit / waiting room / bot protection**:
+  * Request bị chặn ngay từ đầu.
+  * Không tạo order, không giữ vé, không phát sinh giao dịch thanh toán.
+  * Frontend hiển thị thông báo chờ, thử lại hoặc quay lại hàng đợi.
+
+* **Lỗi idempotency key trùng**:
+  * Backend trả lại kết quả cũ hoặc trạng thái đang xử lý.
+  * Không tạo order hoặc payment transaction mới.
+
+* **Lỗi validate nghiệp vụ**:
+  * Ví dụ concert chưa mở bán, ticket type không hợp lệ, vượt giới hạn mua vé.
+  * Backend trả lỗi nghiệp vụ rõ ràng và dừng flow trước bước giữ vé.
+
+* **Lỗi giữ vé trong Redis Lua Script**:
+  * Nếu hết vé hoặc vượt giới hạn per-user, script trả lỗi cụ thể.
+  * Không tạo order trong PostgreSQL.
+  * Người dùng có thể chọn lại số lượng hoặc loại vé khác.
+
+* **Lỗi sau khi Redis đã giữ vé nhưng trước khi lưu order vào PostgreSQL**:
+  * Đây là lỗi cần rollback hoặc auto-recovery.
+  * Backend phải xóa reservation Redis hoặc để TTL tự hết hạn nếu không thể rollback ngay.
+  * Vì PostgreSQL là nguồn dữ liệu chính, order không được xem là hợp lệ nếu chưa ghi thành công vào database.
+
+* **Lỗi tạo payment URL**:
+  * Nếu payment gateway timeout hoặc bị Circuit Breaker chặn, backend có thể giữ order ở trạng thái `PENDING_PAYMENT` trong thời gian ngắn hoặc hủy luôn tùy chính sách triển khai.
+  * Nếu không thể tiếp tục thanh toán, hệ thống cho order tự hết hạn và trả tồn kho sau TTL.
+  * Frontend hiển thị thông báo cổng thanh toán đang gián đoạn.
+
+* **User thoát giữa chừng hoặc không thanh toán**:
+  * Order giữ trạng thái `PENDING_PAYMENT` đến khi hết hạn.
+  * Delayed job hoặc cron sẽ expire order và trả vé về kho.
+
+* **Webhook thanh toán đến chậm hoặc bị gửi lặp**:
+  * Nếu thanh toán đến khi order chưa expire, backend vẫn có thể xử lý thành `PAID`.
+  * Nếu webhook lặp, hệ thống bỏ qua nhờ unique constraint và kiểm tra trạng thái order.
+  * Nếu webhook không đến, cronjob verify có thể kiểm tra lại trạng thái thanh toán.
+
+* **Lỗi khi phát hành ticket hoặc gửi email**:
+  * Phần phát hành ticket và gửi email nên được xử lý theo job có retry.
+  * Nếu email lỗi, order vẫn là `PAID` và ticket vẫn tồn tại; worker retry gửi lại.
+  * Người dùng vẫn có thể xem e-ticket trong Customer Web dù email chưa đến.
+
+---
+
+### 2. Luồng soát vé khi mất mạng và đồng bộ lại
+
+#### Mục tiêu
+
+Luồng này cho phép nhân sự soát vé tiếp tục làm việc khi mất kết nối mạng, vẫn xác thực được QR ở mức cơ bản, lưu được log cục bộ và đồng bộ lại khi thiết bị có mạng trở lại.
+
+#### Thành phần tham gia
+
+* **Check-in PWA**: ứng dụng mobile-first chạy trên thiết bị của staff.
+* **Camera / QR Scanner**: đọc mã QR từ e-ticket.
+* **Local Storage / IndexedDB**: lưu log quét vé offline trên thiết bị.
+* **Signed QR Payload**: dữ liệu QR có chữ ký để xác minh offline.
+* **Backend API**: nhận request check-in online và request sync offline log.
+* **PostgreSQL**: lưu trạng thái ticket và check-in log chính thức.
+* **Auth Module**: xác thực staff bằng JWT.
+* **Conflict Detection Logic**: phát hiện vé đã check-in ở nơi khác hoặc bị trùng khi sync.
+
+#### Các bước xử lý chính
+
+1. **Staff đăng nhập vào Check-in PWA trước ca làm việc.**
+   * Thiết bị nhận JWT hợp lệ.
+   * PWA có thể đồng bộ trước một số metadata cần thiết như thông tin concert, cổng soát vé và khóa xác minh chữ ký nếu kiến trúc cho phép.
+
+2. **Staff quét QR của người tham dự.**
+   * Ứng dụng dùng camera đọc payload từ mã QR.
+   * QR chứa thông tin nhận diện vé và chữ ký số hoặc token đã được backend ký trước đó.
+
+3. **Nếu thiết bị có mạng, PWA ưu tiên check-in online.**
+   * PWA gửi request `POST /checkin/scan` đến Backend.
+   * Backend kiểm tra JWT staff, tra ticket trong PostgreSQL, kiểm tra ticket có hợp lệ không, đã `CHECKED_IN` chưa, có thuộc đúng concert không.
+   * Nếu hợp lệ, backend ghi `CheckinLog` trạng thái `SUCCESS`, cập nhật `Ticket.status = CHECKED_IN`, lưu `checkedInAt` và trả kết quả cho PWA.
+
+4. **Nếu thiết bị mất mạng, PWA chuyển sang chế độ offline.**
+   * PWA không gọi được Backend API.
+   * Ứng dụng xác minh chữ ký của QR payload bằng khóa public hoặc cơ chế verify đã chuẩn bị trước.
+   * Nếu QR có chữ ký hợp lệ và payload đúng format, PWA coi vé là tạm hợp lệ ở mức offline.
+
+5. **PWA ghi nhận check-in offline vào bộ nhớ cục bộ.**
+   * Ứng dụng tạo một bản ghi offline gồm các trường như `offlineEventId`, `ticketId` hoặc mã vé, `deviceId`, `staffId`, `gate`, `scannedAt`, `isOffline = true`.
+   * Bản ghi được lưu vào IndexedDB để không mất dữ liệu khi reload ứng dụng hoặc đóng tab.
+   * PWA đánh dấu vé vừa quét là đã xử lý cục bộ để hạn chế quét lặp trên cùng thiết bị.
+
+6. **Staff tiếp tục quét các vé khác khi không có mạng.**
+   * Mỗi lượt quét hợp lệ được thêm vào hàng chờ đồng bộ.
+   * Nếu cùng một QR bị quét lại trên cùng thiết bị, PWA có thể cảnh báo local duplicate ngay ở client.
+
+7. **Khi có mạng trở lại, PWA bắt đầu đồng bộ các check-in offline.**
+   * PWA gửi batch hoặc từng bản ghi đến endpoint `POST /checkin/sync`.
+   * Mỗi record giữ nguyên `offlineEventId` và `deviceId` để backend deduplicate.
+
+8. **Backend xử lý từng record offline khi sync.**
+   * Xác thực JWT staff.
+   * Kiểm tra `offlineEventId` + `deviceId` đã từng được sync chưa.
+   * Verify ticket có tồn tại không, có đúng concert không, trạng thái hiện tại là gì.
+   * Nếu ticket chưa từng được check-in, backend ghi `CheckinLog` với `SUCCESS`, cập nhật ticket sang `CHECKED_IN`.
+   * Nếu ticket đã được check-in trước đó ở nơi khác, backend vẫn ghi log nhưng đánh dấu `conflict = true` hoặc `status = REJECTED_CONFLICT` tùy rule nghiệp vụ.
+
+9. **PWA nhận kết quả sync và cập nhật trạng thái local.**
+   * Record sync thành công được đánh dấu đã đồng bộ.
+   * Record conflict được hiển thị cho staff hoặc supervisor để xử lý.
+   * Record lỗi tạm thời có thể tiếp tục retry ở lần sync sau.
+
+#### Hệ thống phản ứng khi có lỗi giữa chừng
+
+* **Không có mạng ngay lúc scan**:
+  * PWA tự chuyển sang offline mode.
+  * Không dừng quy trình soát vé hoàn toàn.
+  * Chỉ giảm mức đảm bảo từ kiểm tra trạng thái online sang xác minh chữ ký offline.
+
+* **QR sai chữ ký hoặc payload hỏng**:
+  * PWA từ chối check-in ngay cả khi offline.
+  * Không lưu log hợp lệ cho vé đó.
+  * Staff được cảnh báo vé không hợp lệ.
+
+* **Quét trùng trên cùng thiết bị khi đang offline**:
+  * PWA kiểm tra local cache/IndexedDB và cảnh báo đã quét trước đó.
+  * Không cần tạo thêm nhiều offline log giống nhau nếu rule nghiệp vụ chọn chặn duplicate local.
+
+* **Hai cổng khác nhau đều offline và cùng quét một vé**:
+  * Hệ thống không thể phát hiện ngay tại thời điểm quét nếu không có mạng.
+  * Khi sync lại, backend phát hiện ticket đã được check-in trước đó và đánh dấu conflict.
+  * Ban tổ chức cần có quy trình xử lý xung đột sau đó.
+
+* **Mất dữ liệu local trên thiết bị**:
+  * Nếu staff xóa dữ liệu trình duyệt hoặc thiết bị lỗi trước khi sync, các log offline chưa đồng bộ có thể mất.
+  * Đây là rủi ro vận hành cần giảm bằng cách đồng bộ lại sớm khi có mạng.
+
+* **Sync thất bại giữa chừng**:
+  * PWA giữ lại các record chưa sync thành công trong IndexedDB.
+  * Khi có mạng lại, ứng dụng retry.
+  * Backend dùng `deviceId + offlineEventId` để tránh ghi trùng nếu cùng record được gửi lại nhiều lần.
+
+* **Backend lỗi khi sync một phần batch**:
+  * Các record thành công vẫn được ghi nhận.
+  * Các record lỗi được trả kết quả riêng để client retry chọn lọc.
+  * Không nên rollback cả batch nếu một vài record lỗi riêng lẻ.
+
+---
+
+### 3. Luồng nhập danh sách khách mời từ CSV
+
+#### Mục tiêu
+
+Luồng này cho phép Organizer hoặc Admin nhập danh sách khách mời số lượng lớn từ file CSV theo cơ chế bất đồng bộ, có thể chịu lỗi từng dòng, không làm treo request upload và vẫn tạo được báo cáo kết quả import.
+
+#### Thành phần tham gia
+
+* **Admin Web App**: giao diện để organizer/admin upload file CSV.
+* **Backend API**: nhận file upload, kiểm tra quyền, lưu metadata và tạo job import.
+* **Object Storage**: lưu file CSV gốc.
+* **PostgreSQL**: lưu metadata file upload, guest list entries và trạng thái xử lý.
+* **BullMQ**: xếp hàng job import.
+* **Background Worker**: đọc CSV, validate dữ liệu, insert/update từng dòng.
+* **Notification Service**: gửi thông báo hoàn tất import.
+* **Import Report**: báo cáo số dòng thành công, lỗi, duplicate và lý do lỗi.
+
+#### Các bước xử lý chính
+
+1. **Organizer hoặc Admin chọn file CSV và bấm upload.**
+   * Frontend gửi file cùng `concertId` hoặc ngữ cảnh concert đến Backend.
+   * Request phải qua xác thực JWT và kiểm tra role phù hợp.
+
+2. **Backend kiểm tra quyền và validate file đầu vào.**
+   * Kiểm tra user có quyền upload guest list cho concert đó không.
+   * Kiểm tra định dạng file, kích thước file và MIME type cơ bản.
+   * Nếu file không đạt điều kiện tối thiểu, backend trả lỗi ngay và không tạo job.
+
+3. **Backend lưu file CSV vào Object Storage.**
+   * File được gắn `objectKey` duy nhất.
+   * Backend tạo bản ghi `UploadedFile` trong PostgreSQL với `purpose = "GUEST_LIST_CSV"`, `status = "PENDING"`, lưu tên file, mime type và concert liên quan.
+
+4. **Backend đẩy job import vào BullMQ và trả phản hồi sớm cho frontend.**
+   * Frontend nhận thông báo upload thành công và biết rằng import đang được xử lý nền.
+   * Người dùng không cần chờ toàn bộ file được xử lý ngay trong request HTTP.
+
+5. **Worker lấy job import CSV từ queue.**
+   * Worker đọc file từ Object Storage.
+   * Nếu file không đọc được hoặc object không tồn tại, job bị đánh dấu lỗi và `UploadedFile.status` chuyển `FAILED`.
+
+6. **Worker parse CSV theo batch hoặc stream.**
+   * Mỗi dòng được chuẩn hóa dữ liệu như trim khoảng trắng, normalize email/số điện thoại nếu cần.
+   * Worker không đọc toàn bộ file cực lớn vào RAM nếu có thể stream hoặc chunk.
+
+7. **Worker validate từng dòng.**
+   * Kiểm tra họ tên có tồn tại không.
+   * Kiểm tra email có đúng định dạng không nếu được cung cấp.
+   * Kiểm tra số điện thoại có đúng định dạng không nếu được cung cấp.
+   * Kiểm tra duplicate trong chính file hoặc duplicate với dữ liệu đã tồn tại theo rule nghiệp vụ.
+   * Dòng không hợp lệ được ghi vào import report cùng lý do lỗi.
+
+8. **Worker insert hoặc update dữ liệu hợp lệ vào `GuestListEntry`.**
+   * Các dòng hợp lệ được lưu vào PostgreSQL.
+   * Tùy rule, hệ thống có thể upsert theo email/phone hoặc thêm mới hoàn toàn.
+   * Nếu có hỗ trợ guest QR trước, worker cũng có thể chuẩn bị dữ liệu QR cho khách mời.
+
+9. **Worker tổng hợp kết quả import.**
+   * Đếm tổng số dòng.
+   * Đếm số dòng thành công.
+   * Đếm số dòng lỗi.
+   * Đếm số dòng duplicate hoặc bị bỏ qua.
+   * Tạo báo cáo import để organizer/admin theo dõi.
+
+10. **Worker cập nhật trạng thái cuối cùng và gửi thông báo.**
+    * Nếu tất cả dòng thành công: `UploadedFile.status = COMPLETED`.
+    * Nếu có cả dòng thành công và lỗi: `UploadedFile.status = COMPLETED_WITH_ERRORS`.
+    * Nếu toàn bộ job thất bại: `UploadedFile.status = FAILED`.
+    * Worker đẩy event `CSVImportCompleted` sang Notification Module để gửi email hoặc thông báo trong hệ thống.
+
+#### Hệ thống phản ứng khi có lỗi giữa chừng
+
+* **Sai quyền truy cập**:
+  * Backend trả `403 Forbidden`.
+  * Không lưu file, không tạo job.
+
+* **File sai định dạng hoặc rỗng**:
+  * Backend có thể chặn ngay từ đầu nếu nhận biết được lỗi cơ bản.
+  * Nếu lỗi chỉ phát hiện khi worker parse, job bị đánh dấu `FAILED` và có error message rõ ràng.
+
+* **Lưu file vào Object Storage thất bại**:
+  * Backend trả lỗi upload thất bại.
+  * Không tạo `UploadedFile` hợp lệ hoặc không enqueue job nếu file chưa được lưu thành công.
+
+* **Enqueue job thất bại sau khi file đã lưu**:
+  * Backend cần đánh dấu `UploadedFile` ở trạng thái lỗi hoặc retry enqueue.
+  * File gốc vẫn còn trong Object Storage để có thể reprocess sau.
+
+* **Worker chết giữa chừng**:
+  * BullMQ có thể retry job theo cấu hình backoff.
+  * Nếu retry vẫn thất bại, job vào trạng thái failed và `UploadedFile.status` phản ánh lỗi.
+
+* **Một số dòng dữ liệu lỗi**:
+  * Không làm hỏng toàn bộ job import.
+  * Các dòng hợp lệ vẫn được insert/update bình thường.
+  * Các dòng lỗi được ghi vào report để người dùng sửa file và import lại.
+
+* **Lỗi database khi ghi một phần dữ liệu**:
+  * Worker nên xử lý theo batch nhỏ để khoanh vùng lỗi.
+  * Batch lỗi có thể retry hoặc ghi nhận thất bại cục bộ.
+  * Không nhất thiết rollback toàn bộ file nếu rule cho phép partial success.
+
+* **Duplicate dữ liệu**:
+  * Worker xác định theo rule nghiệp vụ và quyết định bỏ qua, cập nhật hoặc đánh dấu lỗi.
+  * Kết quả duplicate phải xuất hiện rõ trong báo cáo import.
+
+* **Thông báo hoàn tất import gửi lỗi**:
+  * Import vẫn được xem là hoàn thành nếu dữ liệu đã ghi xong.
+  * Notification job có thể retry riêng, không ảnh hưởng trạng thái import chính.
 
 ## Thiết kế kiểm soát truy cập
 

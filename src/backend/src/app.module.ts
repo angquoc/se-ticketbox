@@ -5,10 +5,14 @@ import { AppService } from './app.service';
 import { PrismaModule } from './database/prisma.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { ConcertModule } from './modules/concert/concert.module';
+<<<<<<< HEAD
 import { PaymentModule } from './modules/payment/payment.module';
 import { QueueModule } from './modules/queue/queue.module';
 import { IdempotencyModule } from './modules/idempotency/idempotency.module';
 import { ScheduleModule } from '@nestjs/schedule';
+=======
+import { TicketTypeModule } from './modules/ticket-type/ticket-type.module';
+>>>>>>> main
 
 @Module({
   imports: [
@@ -17,9 +21,13 @@ import { ScheduleModule } from '@nestjs/schedule';
     PrismaModule,
     AuthModule,
     ConcertModule,
+<<<<<<< HEAD
     IdempotencyModule,
     PaymentModule,
     ScheduleModule.forRoot(),
+=======
+    TicketTypeModule,
+>>>>>>> main
   ],
   controllers: [AppController],
   providers: [AppService],
