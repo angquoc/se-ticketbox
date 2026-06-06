@@ -10,6 +10,7 @@ import {
   OrderStatus,
   PaymentProvider,
   PaymentStatus,
+  Prisma,
 } from '@prisma/client';
 
 import { PrismaService } from '../../database/prisma.service';
@@ -56,11 +57,11 @@ export class PaymentService {
               ? PaymentStatus.FAILED
               : PaymentStatus.TIMEOUT,
         amount: dto.amount,
-        rawWebhook: dto as any,
+        rawWebhook: dto as unknown as Prisma.InputJsonValue,
         receivedAt: new Date(),
       },
       update: {
-        rawWebhook: dto as any,
+        rawWebhook: dto as unknown as Prisma.InputJsonValue,
         receivedAt: new Date(),
       },
     });
@@ -276,12 +277,12 @@ export class PaymentService {
           providerTransactionId: dto.providerTransactionId,
           status: PaymentStatus.FAILED,
           amount: dto.amount,
-          rawWebhook: dto as any,
+          rawWebhook: dto as unknown as Prisma.InputJsonValue,
           receivedAt: new Date(),
         },
         update: {
           status: PaymentStatus.FAILED,
-          rawWebhook: dto as any,
+          rawWebhook: dto as unknown as Prisma.InputJsonValue,
           receivedAt: new Date(),
         },
       });
@@ -342,12 +343,12 @@ export class PaymentService {
         providerTransactionId: dto.providerTransactionId,
         status: PaymentStatus.TIMEOUT,
         amount: dto.amount,
-        rawWebhook: dto as any,
+        rawWebhook: dto as unknown as Prisma.InputJsonValue,
         receivedAt: new Date(),
       },
       update: {
         status: PaymentStatus.TIMEOUT,
-        rawWebhook: dto as any,
+        rawWebhook: dto as unknown as Prisma.InputJsonValue,
         receivedAt: new Date(),
       },
     });
@@ -368,12 +369,12 @@ export class PaymentService {
           providerTransactionId: dto.providerTransactionId,
           status: PaymentStatus.SUCCESS,
           amount: dto.amount,
-          rawWebhook: dto as any,
+          rawWebhook: dto as unknown as Prisma.InputJsonValue,
           receivedAt: new Date(),
         },
         update: {
           status: PaymentStatus.SUCCESS,
-          rawWebhook: dto as any,
+          rawWebhook: dto as unknown as Prisma.InputJsonValue,
           receivedAt: new Date(),
         },
       });

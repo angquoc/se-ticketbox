@@ -8,16 +8,18 @@ export type MockVerifyResult = 'SUCCESS' | 'FAILED' | 'PENDING';
 export class MockGatewayService {
   constructor(private readonly config: ConfigService) {}
 
-  async createPaymentUrl(orderId: string, amount: number) {
+  createPaymentUrl(orderId: string, amount: number): Promise<string> {
     const baseUrl = this.config.get<string>(
       'BACKEND_BASE_URL',
       'http://localhost:3001',
     );
 
-    return `${baseUrl}/payments/mock-page?orderId=${orderId}&amount=${amount}`;
+    return Promise.resolve(
+      `${baseUrl}/payments/mock-page?orderId=${orderId}&amount=${amount}`,
+    );
   }
 
-  async verifyTransaction(orderId: string): Promise<MockVerifyResult> {
+  verifyTransaction(_orderId: string): Promise<MockVerifyResult> {
     /**
      * Mock logic cho đồ án:
      * - Nếu đã có webhook SUCCESS/FAILED trong DB thì PaymentService đã xử lý rồi.
@@ -27,7 +29,9 @@ export class MockGatewayService {
      * Có thể đổi bằng env để demo:
      * MOCK_VERIFY_RESULT=SUCCESS / FAILED / PENDING
      */
-    return this.config.get<MockVerifyResult>('MOCK_VERIFY_RESULT') || 'PENDING';
+    return Promise.resolve(
+      this.config.get<MockVerifyResult>('MOCK_VERIFY_RESULT') || 'PENDING',
+    );
   }
 
   createSignature(payload: string) {
