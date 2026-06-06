@@ -22,29 +22,55 @@ export interface LuaScriptResult {
   [key: string]: unknown;
 }
 
+/**
+ * Exposed for unit-testing: the RedisService constructor accepts an optional
+ * pre-configured client so tests can inject a mock/stub without needing a real
+ * Redis server.
+ */
+export interface RedisClient {
+  script(cmd: 'LOAD', body: string): Promise<string>;
+  evalsha(sha: string, numKeys: number, ...args: (string | number)[]): Promise<unknown>;
+  eval(body: string, numKeys: number, ...args: (string | number)[]): Promise<unknown>;
+  get(key: string): Promise<string | null>;
+  set(key: string, value: string, ...args: (string | number)[]): Promise<unknown>;
+  del(key: string): Promise<number>;
+  exists(key: string): Promise<number>;
+  ping(): Promise<string>;
+  quit(): Promise<string>;
+  on(event: 'connect' | 'error', cb: (arg?: unknown) => void): void;
+}
+
 @Injectable()
 export class RedisService implements OnModuleDestroy, OnModuleInit {
   private readonly logger = new Logger(RedisService.name);
-  private readonly client: Redis;
+  private readonly client: RedisClient;
 
-  constructor(private readonly configService: ConfigService) {
-    const redisUrl = this.configService.get<string>(
-      'redis.url',
-      'redis://localhost:6379',
-    );
+  /**
+   * @param configService NestJS config service
+   * @param client Optional Redis client (for testing). If omitted, a real ioredis
+   *               client is created from REDIS_URL environment variable.
+   */
+  constructor(
+    private readonly configService: ConfigService,
+    client?: RedisClient,
+  ) {
+    if (client) {
+      this.client = client;
+    } else {
+      const redisUrl = this.configService.get<string>(
+        'redis.url',
+        'redis://localhost:6379',
+      );
+      const redis = new Redis(redisUrl, {
+        maxRetriesPerRequest: 1,
+        enableReadyCheck: true,
+      });
 
-    this.client = new Redis(redisUrl, {
-      maxRetriesPerRequest: 1,
-      enableReadyCheck: true,
-    });
+      redis.on('connect', () => this.logger.log('Connected to Redis'));
+      redis.on('error', (error) => this.logger.error('Redis connection error', error));
 
-    this.client.on('connect', () => {
-      this.logger.log('Connected to Redis');
-    });
-
-    this.client.on('error', (error) => {
-      this.logger.error('Redis connection error', error);
-    });
+      this.client = redis as unknown as RedisClient;
+    }
   }
 
   async onModuleInit(): Promise<void> {
@@ -66,13 +92,13 @@ export class RedisService implements OnModuleDestroy, OnModuleInit {
       try {
         const scriptPath = join(__dirname, 'scripts', filename);
         const scriptBody = readFileSync(scriptPath, 'utf8');
-        const sha = await this.client.script('LOAD', scriptBody) as string;
+        const sha = (await this.client.script('LOAD', scriptBody)) as string;
         this.scriptCache.set(filename, sha);
         this.logger.log(`Loaded Lua script: ${filename} (SHA: ${sha})`);
       } catch (err) {
         this.logger.warn(
           `Could not load Lua script ${filename}. ` +
-          'Scripts will fall back to EVAL instead of EVALSHA.',
+            'Scripts will fall back to EVAL instead of EVALSHA.',
           err instanceof Error ? err.message : String(err),
         );
       }
@@ -84,13 +110,25 @@ export class RedisService implements OnModuleDestroy, OnModuleInit {
     keys: string[],
     args: (string | number)[],
   ): Promise<LuaScriptResult> {
-    const sha = this.scriptCache.get(filename);
+      const sha = this.scriptCache.get(filename);
 
     let raw: unknown;
 
     if (sha) {
-      // EVALSHA: use cached SHA (faster, avoids re-sending script body)
-      raw = await this.client.evalsha(sha, keys.length, ...keys, ...args);
+      try {
+        // EVALSHA: use cached SHA (faster, avoids re-sending script body)
+        raw = await this.client.evalsha(sha, keys.length, ...keys, ...args);
+      } catch (err) {
+        // NOSCRIPT: Redis restarted and script cache was flushed → fall back to EVAL
+        if (err instanceof Error && err.message.includes('NOSCRIPT')) {
+          this.logger.warn(`EVALSHA NOSCRIPT for "${filename}", falling back to EVAL`);
+          const scriptPath = join(__dirname, 'scripts', filename);
+          const scriptBody = readFileSync(scriptPath, 'utf8');
+          raw = await this.client.eval(scriptBody, keys.length, ...keys, ...args);
+        } else {
+          throw err;
+        }
+      }
     } else {
       // EVAL: fallback to sending script body directly
       const scriptPath = join(__dirname, 'scripts', filename);
@@ -107,7 +145,7 @@ export class RedisService implements OnModuleDestroy, OnModuleInit {
     return JSON.parse(raw) as LuaScriptResult;
   }
 
-  getClient(): Redis {
+  getClient(): RedisClient {
     return this.client;
   }
 
@@ -125,10 +163,10 @@ export class RedisService implements OnModuleDestroy, OnModuleInit {
     ttlSeconds?: number,
   ): Promise<'OK' | null> {
     if (ttlSeconds) {
-      return this.client.set(key, value, 'EX', ttlSeconds);
+      return this.client.set(key, value, 'EX', ttlSeconds) as Promise<'OK' | null>;
     }
 
-    return this.client.set(key, value);
+    return this.client.set(key, value) as Promise<'OK' | null>;
   }
 
   async del(key: string): Promise<number> {
@@ -165,17 +203,24 @@ export class RedisService implements OnModuleDestroy, OnModuleInit {
     ttlSeconds: number;
   }): Promise<LuaScriptResult> {
     const stockKey = REDIS_KEY_STOCK(params.ticketTypeId);
-    const userLimitKey = REDIS_KEY_USER_LIMIT(params.userId, params.ticketTypeId);
-    const reservationKey = REDIS_KEY_RESERVATION(params.orderId);
-
-    return this.runScript('reserve-ticket.lua', [stockKey, userLimitKey, reservationKey], [
-      params.quantity,
-      params.maxPerUser,
-      params.ttlSeconds,
-      params.orderId,
+    const userLimitKey = REDIS_KEY_USER_LIMIT(
       params.userId,
       params.ticketTypeId,
-    ]);
+    );
+    const reservationKey = REDIS_KEY_RESERVATION(params.orderId);
+
+    return this.runScript(
+      'reserve-ticket.lua',
+      [stockKey, userLimitKey, reservationKey],
+      [
+        params.quantity,
+        params.maxPerUser,
+        params.ttlSeconds,
+        params.orderId,
+        params.userId,
+        params.ticketTypeId,
+      ],
+    );
   }
 
   /**
@@ -197,19 +242,20 @@ export class RedisService implements OnModuleDestroy, OnModuleInit {
     quantity: number;
   }): Promise<LuaScriptResult> {
     const stockKey = REDIS_KEY_STOCK(params.ticketTypeId);
-    const userLimitKey = REDIS_KEY_USER_LIMIT(params.userId, params.ticketTypeId);
-    const reservationKey = REDIS_KEY_RESERVATION(params.orderId);
-
-    return this.runScript('release-reservation.lua', [stockKey, userLimitKey, reservationKey], [
-      params.quantity,
-      params.orderId,
+    const userLimitKey = REDIS_KEY_USER_LIMIT(
       params.userId,
       params.ticketTypeId,
-    ]);
+    );
+    const reservationKey = REDIS_KEY_RESERVATION(params.orderId);
+
+    return this.runScript(
+      'release-reservation.lua',
+      [stockKey, userLimitKey, reservationKey],
+      [params.quantity, params.orderId, params.userId, params.ticketTypeId],
+    );
   }
 
   async onModuleDestroy(): Promise<void> {
     await this.client.quit();
   }
 }
-
