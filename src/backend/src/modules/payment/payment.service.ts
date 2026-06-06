@@ -296,8 +296,13 @@ export class PaymentService {
       });
 
       for (const item of order.items) {
-        await tx.ticketType.update({
-          where: { id: item.ticketTypeId },
+        await tx.ticketType.updateMany({
+          where: { 
+            id: item.ticketTypeId,
+            reservedQty: {
+              gte: item.quantity,
+            },
+          },
           data: {
             reservedQty: {
               decrement: item.quantity,
@@ -309,6 +314,9 @@ export class PaymentService {
           where: {
             userId: order.userId,
             ticketTypeId: item.ticketTypeId,
+            reservedQty: {
+              gte: item.quantity,
+            },
           },
           data: {
             reservedQty: {
