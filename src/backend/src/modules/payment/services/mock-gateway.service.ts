@@ -19,7 +19,8 @@ export class MockGatewayService {
     );
   }
 
-  verifyTransaction(_orderId: string): Promise<MockVerifyResult> {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  verifyTransaction(orderId: string): Promise<MockVerifyResult> {
     /**
      * Mock logic cho đồ án:
      * - Nếu đã có webhook SUCCESS/FAILED trong DB thì PaymentService đã xử lý rồi.
