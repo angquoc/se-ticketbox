@@ -1134,16 +1134,50 @@ Các cơ chế này không đảm bảo loại bỏ bot tuyệt đối, nhưng g
 
 Khi request mua vé đi qua được rate limit, waiting room và bot protection, Redis Lua Script thực hiện nguyên tử:
 
-1. Kiểm tra số vé còn lại của ticket type.
-2. Kiểm tra số vé user đã giữ/mua cho ticket type đó.
-3. Nếu hợp lệ, trừ tồn kho Redis.
-4. Tăng counter per-user.
-5. Tạo reservation TTL.
-6. Trả kết quả thành công hoặc lỗi cụ thể.
+1. READ số vé còn lại trong kho (`stock:{ticketTypeId}`).
+2. READ số vé user đã giữ cho loại vé đó (`user_limit:{userId}:{ticketTypeId}`).
+3. CHECKPOINT — Số vé còn lại >= số vé yêu cầu? Nếu không → trả lỗi `OUT_OF_STOCK`.
+4. CHECKPOINT — (số vé đã giữ + số vé yêu cầu) <= max_per_user? Nếu không → trả lỗi `EXCEED_USER_LIMIT`.
+5. CHECKPOINT — Reservation chưa tồn tại (chống duplicate idempotency)? Nếu đã tồn tại → trả lỗi `RESERVATION_ALREADY_EXISTS`.
+6. DECRBY stock → trừ tồn kho Redis.
+7. INCRBY user_limit → tăng counter per-user.
+8. SET reservation với TTL → tạo bản ghi `reservation:{orderId}` chứa JSON `{order_id, user_id, ticket_type_id, quantity, created_at}`.
 
-Lua Script đảm bảo không có race condition vì toàn bộ logic chạy nguyên tử trong Redis.
+Lua Script đảm bảo không có race condition vì toàn bộ logic chạy nguyên tử trong Redis (single-threaded).
 
-Sau khi Redis giữ vé thành công, Backend tạo `Order PENDING` trong PostgreSQL với `expiresAt`. Đây là bản ghi reservation chính thức trong database. Nếu user thanh toán thành công, order chuyển sang `PAID` và vé được phát hành. Nếu hết hạn hoặc thanh toán thất bại, BullMQ Delayed Job sẽ expire order và hoàn lại tồn kho.
+Redis key cho reservation:
+
+```txt
+stock:{ticketTypeId}
+  # Ví dụ: stock:ticket_vip_001 → "847"
+  # DECRBY khi reserve thành công, INCRBY khi release
+
+user_limit:{userId}:{ticketTypeId}
+  # Ví dụ: user_limit:usr_abc123:ticket_vip_001 → "2"
+  # INCRBY khi reserve, DECRBY khi release
+
+reservation:{orderId}
+  # Ví dụ: reservation:ord_xyz789 → '{"order_id":"ord_xyz789","user_id":"usr_abc123","ticket_type_id":"ticket_vip_001","quantity":2,"created_at":1719123456}'
+  # TTL = thời gian giữ chỗ (ví dụ: 900 giây = 15 phút)
+```
+
+#### Redis Lua Script cho release (hoàn vé khi order EXPIRED hoặc PAYMENT FAILED):
+
+1. GET reservation record theo `reservation:{orderId}`.
+2. CHECKPOINT — Reservation có tồn tại không? Nếu không → trả lỗi `RESERVATION_NOT_FOUND`.
+3. Parse JSON và verify order_id, user_id, ticket_type_id, quantity khớp với request.
+4. CHECKPOINT — Quantity khớp với ARGV? Nếu không → trả lỗi `QUANTITY_MISMATCH`.
+5. INCRBY stock → hoàn vé về kho.
+6. DECRBY user_limit → giảm counter per-user. Nếu < 0 thì reset về 0 (phòng data inconsistency).
+7. DEL reservation → xóa key.
+
+Lua Script release đảm bảo atomic rollback, không thể xảy ra trường hợp stock tăng mà user_limit chưa giảm, hoặc ngược lại.
+
+**Lưu ý:** Key `reservation:{orderId}` tồn tại song song với `Order` trạng thái `PENDING` trong PostgreSQL. Redis key là lớp giữ chỗ hiệu năng cao; PostgreSQL là nguồn dữ liệu chính thức (source of truth) phục vụ audit, phục hồi và xử lý khi Redis gặp sự cố.
+
+Sau khi Redis giữ vé thành công, Backend tạo `Order PENDING` trong PostgreSQL với `expiresAt`. 
+- Nếu user thanh toán thành công, order chuyển sang `PAID` và vé được phát hành. 
+- Nếu hết hạn hoặc thanh toán thất bại, BullMQ Delayed Job sẽ expire order và gọi Lua Script release để hoàn lại tồn kho.
 
 ### 7.2. Xử lý cổng thanh toán không ổn định
 
