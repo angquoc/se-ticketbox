@@ -2,6 +2,8 @@ import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import * as crypto from 'crypto';
 
+export type MockVerifyResult = 'SUCCESS' | 'FAILED' | 'PENDING';
+
 @Injectable()
 export class MockGatewayService {
   constructor(private readonly config: ConfigService) {}
@@ -13,6 +15,19 @@ export class MockGatewayService {
     );
 
     return `${baseUrl}/payments/mock-page?orderId=${orderId}&amount=${amount}`;
+  }
+
+  async verifyTransaction(orderId: string): Promise<MockVerifyResult> {
+    /**
+     * Mock logic cho đồ án:
+     * - Nếu đã có webhook SUCCESS/FAILED trong DB thì PaymentService đã xử lý rồi.
+     * - Cron chỉ mô phỏng verify gateway khi webhook bị mất.
+     * - Mặc định trả PENDING để order quá hạn bị EXPIRED.
+     *
+     * Có thể đổi bằng env để demo:
+     * MOCK_VERIFY_RESULT=SUCCESS / FAILED / PENDING
+     */
+    return this.config.get<MockVerifyResult>('MOCK_VERIFY_RESULT') || 'PENDING';
   }
 
   createSignature(payload: string) {
