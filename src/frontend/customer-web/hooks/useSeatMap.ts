@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { cacheConcertName } from '@/lib/concert-names';
 import type {
   Seat,
   SeatMapData,
@@ -17,10 +18,22 @@ interface UseSeatMapOptions {
   concertId: string;
 }
 
+interface SeatMapApiResponse {
+  success: boolean;
+  data?: SeatMapData;
+  source?: 'backend' | 'mock';
+  backendError?: string;
+  warning?: string;
+  message?: string;
+}
+
 export function useSeatMap({ concertId }: UseSeatMapOptions) {
   const [data, setData] = useState<SeatMapData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [source, setSource] = useState<'backend' | 'mock' | null>(null);
+  const [backendError, setBackendError] = useState<string | null>(null);
+  const [warning, setWarning] = useState<string | null>(null);
   const [selectedSeats, setSelectedSeats] = useState<SelectedSeat[]>([]);
   const [activeTicketTypeId, setActiveTicketTypeId] = useState<string>(ALL_TICKET_TYPES);
   const [regionFilter, setRegionFilter] = useState<string>('all');
@@ -35,12 +48,22 @@ export function useSeatMap({ concertId }: UseSeatMapOptions) {
     async function load() {
       setLoading(true);
       setError(null);
+      setBackendError(null);
+      setWarning(null);
       try {
         const res = await fetch(`/api/concerts/${concertId}/seatmap`);
-        if (!res.ok) throw new Error('Không tải được sơ đồ ghế');
-        const json = await res.json();
+        const json = (await res.json()) as SeatMapApiResponse;
+
+        if (!res.ok || !json.success || !json.data) {
+          throw new Error(json.message ?? 'Không tải được sơ đồ ghế');
+        }
+
         if (!cancelled) {
           setData(json.data);
+          setSource(json.source ?? null);
+          setBackendError(json.backendError ?? null);
+          setWarning(json.warning ?? null);
+          cacheConcertName(json.data.concertId, json.data.concertName);
           setActiveTicketTypeId(ALL_TICKET_TYPES);
         }
       } catch (e) {
@@ -175,6 +198,9 @@ export function useSeatMap({ concertId }: UseSeatMapOptions) {
     data,
     loading,
     error,
+    source,
+    backendError,
+    warning,
     selection,
     activeTicketTypeId,
     setActiveTicketTypeId,

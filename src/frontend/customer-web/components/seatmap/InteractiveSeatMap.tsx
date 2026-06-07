@@ -4,11 +4,38 @@ import { useCallback, useRef, useState } from 'react';
 import clsx from 'clsx';
 import type { Seat, SeatMapData } from '@/types/seatmap';
 import { getSeatFillColor } from '@/lib/seat-colors';
-import { getZoneBackgrounds } from '@/lib/mock-seatmap';
 import SeatTooltip from './SeatTooltip';
 
+const ZONE_COLORS = ['#FEF3C7', '#DBEAFE', '#E0E7FF', '#DCFCE7', '#FCE7F3', '#FEE2E2'];
 const SEAT_SIZE = 20;
 const VIEWBOX = { width: 800, height: 580 };
+
+function buildZoneBackgrounds(seats: Seat[], ticketTypes: SeatMapData['ticketTypes']) {
+  return ticketTypes.map((ticketType, index) => {
+    const regionId = ticketType.seatRegions[0]?.regionId;
+    const regionSeats = seats.filter((seat) => seat.regionId === regionId);
+    if (regionSeats.length === 0) {
+      return null;
+    }
+
+    const xs = regionSeats.map((seat) => seat.coords.x);
+    const ys = regionSeats.map((seat) => seat.coords.y);
+    const minX = Math.min(...xs) - 30;
+    const minY = Math.min(...ys) - 22;
+    const maxX = Math.max(...xs) + SEAT_SIZE + 10;
+    const maxY = Math.max(...ys) + SEAT_SIZE + 10;
+
+    return {
+      id: regionId ?? ticketType.id,
+      label: ticketType.name,
+      x: minX,
+      y: minY,
+      width: maxX - minX,
+      height: maxY - minY,
+      color: ZONE_COLORS[index % ZONE_COLORS.length],
+    };
+  }).filter((zone): zone is NonNullable<typeof zone> => zone !== null);
+}
 
 interface InteractiveSeatMapProps {
   data: SeatMapData;
@@ -42,7 +69,7 @@ export default function InteractiveSeatMap({
   }
 
   const priceMap = new Map(data.ticketTypes.map((tt) => [tt.id, tt.price]));
-  const zones = getZoneBackgrounds();
+  const zones = buildZoneBackgrounds(seats, data.ticketTypes);
 
   const handleSeatMouseEnter = useCallback(
     (seat: Seat, event: React.MouseEvent<SVGRectElement>) => {

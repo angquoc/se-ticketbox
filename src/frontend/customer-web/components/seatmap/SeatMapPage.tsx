@@ -5,11 +5,13 @@ import { useRouter } from 'next/navigation';
 import { ALL_TICKET_TYPES, useSeatMap } from '@/hooks/useSeatMap';
 import { readAdmittedToken } from '@/lib/waiting-room-storage';
 import CustomerHeader from '@/components/layout/CustomerHeader';
+import BackendNotice from '@/components/ui/BackendNotice';
 import SeatFilters from './SeatFilters';
 import InteractiveSeatMap from './InteractiveSeatMap';
 import TextSeatFallback from './TextSeatFallback';
 import SeatLegend from './SeatLegend';
 import SeatSummaryBar from './SeatSummaryBar';
+import { saveSeatSelection } from '@/lib/checkout-storage';
 import { formatVnd } from '@/lib/format';
 
 interface SeatMapPageProps {
@@ -33,6 +35,9 @@ export default function SeatMapPage({ concertId }: SeatMapPageProps) {
     data,
     loading,
     error,
+    source,
+    backendError,
+    warning,
     selection,
     activeTicketTypeId,
     setActiveTicketTypeId,
@@ -68,13 +73,8 @@ export default function SeatMapPage({ concertId }: SeatMapPageProps) {
 
   const handleProceed = () => {
     if (selection.selectedSeats.length === 0) return;
-    sessionStorage.setItem(
-      `seat-selection:${concertId}`,
-      JSON.stringify(selection.selectedSeats),
-    );
-    alert(
-      `Đã lưu ${selection.selectedSeats.length} ghế vào phiên.\n(Tích hợp checkout sẽ được thêm sau)`,
-    );
+    saveSeatSelection(concertId, selection.selectedSeats);
+    router.push(`/concerts/${concertId}/checkout`);
   };
 
   if (!accessChecked) {
@@ -135,10 +135,13 @@ export default function SeatMapPage({ concertId }: SeatMapPageProps) {
         <div className="mb-6">
           <h1 className="text-2xl font-bold text-slate-900">Chọn ghế</h1>
           <p className="mt-1 text-slate-600">{data.concertName}</p>
+          <div className="mt-3">
+            <BackendNotice backendError={backendError} warning={warning} source={source} />
+          </div>
           <p className="mt-2 text-sm text-slate-500">
             Còn {availableTotal} ghế trống
             {isAllTicketTypes ? (
-              <> · Hiển thị VIP, Standard, Economy</>
+              <> · {data.ticketTypes.map((tt) => tt.name).join(', ')}</>
             ) : (
               activeTicketType && (
                 <>
