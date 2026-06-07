@@ -7,6 +7,7 @@ import {
   appConfig,
   authConfig,
   databaseConfig,
+  emailConfig,
   envValidationSchema,
   redisConfig,
 } from './config';
@@ -21,12 +22,13 @@ import { TicketTypeModule } from './modules/ticket-type/ticket-type.module';
 import { RedisModule } from './modules/redis/redis.module';
 import { HealthModule } from './modules/health/health.module';
 import { OrderModule } from './modules/order/order.module';
+import { TicketModule } from './modules/ticket/ticket.module';
 
 @Module({
   imports: [
     ConfigModule.forRoot({
       isGlobal: true,
-      load: [appConfig, authConfig, databaseConfig, redisConfig],
+      load: [appConfig, authConfig, databaseConfig, redisConfig, emailConfig],
       validationSchema: envValidationSchema,
     }),
     QueueModule,
@@ -40,6 +42,7 @@ import { OrderModule } from './modules/order/order.module';
     RedisModule,
     HealthModule,
     OrderModule,
+    TicketModule,
     BullModule.forRootAsync({
       imports: [ConfigModule],
       inject: [ConfigService],

@@ -16,7 +16,7 @@ import {
 
 import { PrismaService } from '../../database/prisma.service';
 import { IdempotencyService } from '../idempotency/idempotency.service';
-import { TICKET_ISSUE_QUEUE } from '../queue/queue.constants';
+import { NOTIFICATION_QUEUE } from '../queue/queue.constants';
 import { PaymentCircuitBreakerService } from './services/payment-circuit-breaker.service';
 import { MockGatewayService } from './services/mock-gateway.service';
 import { MockPaymentResult, MockWebhookDto } from './dto/mock-webhook.dto';
@@ -28,15 +28,13 @@ export class PaymentService {
     private readonly idempotencyService: IdempotencyService,
     private readonly circuitBreaker: PaymentCircuitBreakerService,
     private readonly mockGateway: MockGatewayService,
-
-    @InjectQueue(TICKET_ISSUE_QUEUE)
-    private readonly ticketIssueQueue: Queue,
+    private readonly redisService: import('../redis/redis.service').RedisService,
+    @InjectQueue(NOTIFICATION_QUEUE)
+    private readonly notificationQueue: Queue,
   ) {}
 
   private hashRequest(payload: unknown) {
-    return createHash('sha256')
-      .update(JSON.stringify(payload))
-      .digest('hex');
+    return createHash('sha256').update(JSON.stringify(payload)).digest('hex');
   }
 
   private async recordLateWebhook(dto: MockWebhookDto) {
@@ -88,7 +86,10 @@ export class PaymentService {
     }
 
     try {
-      const response = await this.createPaymentInternal(params.orderId, params.userId);
+      const response = await this.createPaymentInternal(
+        params.orderId,
+        params.userId,
+      );
 
       await this.idempotencyService.complete({
         userId: params.userId,
@@ -120,7 +121,9 @@ export class PaymentService {
     }
 
     if (order.userId !== userId) {
-      throw new BadRequestException('Đơn hàng không thuộc về người dùng hiện tại');
+      throw new BadRequestException(
+        'Đơn hàng không thuộc về người dùng hiện tại',
+      );
     }
 
     if (order.status !== OrderStatus.PENDING_PAYMENT) {
@@ -176,9 +179,7 @@ export class PaymentService {
 
     const order = await this.prisma.order.findUnique({
       where: { id: dto.orderId },
-      include: {
-        payments: true,
-      },
+      include: { items: true },
     });
 
     if (!order) {
@@ -217,7 +218,7 @@ export class PaymentService {
     }
 
     if (dto.result === MockPaymentResult.FAILED) {
-      await this.markPaymentFailed(dto);
+      await this.handlePaymentFailed(dto.orderId, order);
 
       return {
         message: 'Thanh toán thất bại',
@@ -227,7 +228,7 @@ export class PaymentService {
     }
 
     if (dto.result === MockPaymentResult.TIMEOUT) {
-      await this.markPaymentTimeout(dto);
+      await this.handlePaymentTimeout(dto);
 
       return {
         message: 'Thanh toán timeout, chờ cronjob verify',
@@ -235,61 +236,43 @@ export class PaymentService {
       };
     }
 
-    await this.markPaymentSuccessAndQueueTicketIssue(dto);
+    await this.handlePaymentSuccess(dto, order);
 
     return {
-      message: 'Thanh toán thành công, đã đưa job phát hành vé vào queue',
+      message: 'Thanh toán thành công, vé đã được phát hành',
       orderId: order.id,
       status: OrderStatus.PAID,
     };
   }
 
-  private async markPaymentFailed(dto: MockWebhookDto) {
-    const order = await this.prisma.order.findUnique({
-      where: { id: dto.orderId },
-      include: {
-        items: true,
-      },
-    });
-
-    if (!order) {
-      throw new NotFoundException('Không tìm thấy đơn hàng');
-    }
-
+  /**
+   * Handle payment FAILED webhook.
+   * Releases inventory back to Redis and PostgreSQL.
+   */
+  private async handlePaymentFailed(
+    orderId: string,
+    order: {
+      id: string;
+      userId: string;
+      items: { ticketTypeId: string; quantity: number }[];
+    },
+  ) {
     await this.prisma.$transaction(async (tx) => {
       const latestOrder = await tx.order.findUnique({
-        where: { id: dto.orderId },
+        where: { id: orderId },
       });
 
       if (!latestOrder || latestOrder.status !== OrderStatus.PENDING_PAYMENT) {
         return;
       }
 
-      await tx.paymentTransaction.upsert({
-        where: {
-          provider_providerTransactionId: {
-            provider: PaymentProvider.MOCK,
-            providerTransactionId: dto.providerTransactionId,
-          },
-        },
-        create: {
-          orderId: dto.orderId,
-          provider: PaymentProvider.MOCK,
-          providerTransactionId: dto.providerTransactionId,
-          status: PaymentStatus.FAILED,
-          amount: dto.amount,
-          rawWebhook: dto as unknown as Prisma.InputJsonValue,
-          receivedAt: new Date(),
-        },
-        update: {
-          status: PaymentStatus.FAILED,
-          rawWebhook: dto as unknown as Prisma.InputJsonValue,
-          receivedAt: new Date(),
-        },
+      await tx.paymentTransaction.updateMany({
+        where: { orderId, status: 'INITIATED' },
+        data: { status: PaymentStatus.FAILED },
       });
 
       await tx.order.update({
-        where: { id: dto.orderId },
+        where: { id: orderId },
         data: {
           status: OrderStatus.PAYMENT_FAILED,
           inventoryReleasedAt: new Date(),
@@ -299,38 +282,41 @@ export class PaymentService {
 
       for (const item of order.items) {
         await tx.ticketType.updateMany({
-          where: { 
+          where: {
             id: item.ticketTypeId,
-            reservedQty: {
-              gte: item.quantity,
-            },
+            reservedQty: { gte: item.quantity },
           },
-          data: {
-            reservedQty: {
-              decrement: item.quantity,
-            },
-          },
+          data: { reservedQty: { decrement: item.quantity } },
         });
 
         await tx.userTicketCounter.updateMany({
           where: {
             userId: order.userId,
             ticketTypeId: item.ticketTypeId,
-            reservedQty: {
-              gte: item.quantity,
-            },
+            reservedQty: { gte: item.quantity },
           },
-          data: {
-            reservedQty: {
-              decrement: item.quantity,
-            },
-          },
+          data: { reservedQty: { decrement: item.quantity } },
         });
       }
     });
+
+    await Promise.all(
+      order.items.map((item) =>
+        this.redisService.releaseReservation({
+          ticketTypeId: item.ticketTypeId,
+          userId: order.userId,
+          orderId: order.id,
+          quantity: item.quantity,
+        }),
+      ),
+    );
   }
 
-  private async markPaymentTimeout(dto: MockWebhookDto) {
+  /**
+   * Handle payment TIMEOUT webhook.
+   * Only records the timeout status; order will be expired by cronjob.
+   */
+  private async handlePaymentTimeout(dto: MockWebhookDto) {
     await this.prisma.paymentTransaction.upsert({
       where: {
         provider_providerTransactionId: {
@@ -355,7 +341,23 @@ export class PaymentService {
     });
   }
 
-  private async markPaymentSuccessAndQueueTicketIssue(dto: MockWebhookDto) {
+  /**
+   * Handle payment SUCCESS webhook.
+   * 1. Updates order → PAID
+   * 2. Creates Ticket records
+   * 3. Updates soldQty / reservedQty in PostgreSQL
+   * 4. Cleans up Redis reservation + user_limit
+   * 5. Queues notification email
+   */
+  private async handlePaymentSuccess(
+    dto: MockWebhookDto,
+    order: {
+      id: string;
+      userId: string;
+      concertId: string;
+      items: { id: string; ticketTypeId: string; quantity: number }[];
+    },
+  ) {
     await this.prisma.$transaction(async (tx) => {
       await tx.paymentTransaction.upsert({
         where: {
@@ -382,24 +384,79 @@ export class PaymentService {
 
       await tx.order.update({
         where: { id: dto.orderId },
-        data: {
-          status: OrderStatus.PAID,
-          paidAt: new Date(),
-        },
+        data: { status: OrderStatus.PAID, paidAt: new Date() },
       });
+
+      // Create Ticket records
+      for (const item of order.items) {
+        for (let i = 0; i < item.quantity; i++) {
+          await tx.ticket.create({
+            data: {
+              orderId: order.id,
+              orderItemId: item.id,
+              concertId: order.concertId,
+              ticketTypeId: item.ticketTypeId,
+              userId: order.userId,
+              qrTokenHash: crypto.randomUUID(),
+              status: 'ISSUED',
+            },
+          });
+        }
+      }
+
+      // Update soldQty / reservedQty in PostgreSQL
+      for (const item of order.items) {
+        await tx.ticketType.update({
+          where: { id: item.ticketTypeId },
+          data: {
+            soldQty: { increment: item.quantity },
+            reservedQty: { decrement: item.quantity },
+          },
+        });
+      }
+
+      // Update per-user counters
+      for (const item of order.items) {
+        await tx.userTicketCounter.upsert({
+          where: {
+            userId_ticketTypeId: {
+              userId: order.userId,
+              ticketTypeId: item.ticketTypeId,
+            },
+          },
+          create: {
+            userId: order.userId,
+            ticketTypeId: item.ticketTypeId,
+            paidQty: item.quantity,
+            reservedQty: 0,
+          },
+          update: {
+            paidQty: { increment: item.quantity },
+            reservedQty: { decrement: item.quantity },
+          },
+        });
+      }
     });
 
-    await this.ticketIssueQueue.add(
-      'issue-ticket-for-paid-order',
-      {
-        orderId: dto.orderId,
-      },
+    // Clean up Redis: delete reservation + decrement user_limit
+    await this.redisService.del(`reservation:${dto.orderId}`);
+    await Promise.all(
+      order.items.map((item) =>
+        this.redisService.decrementUserLimit({
+          ticketTypeId: item.ticketTypeId,
+          userId: order.userId,
+          quantity: item.quantity,
+        }),
+      ),
+    );
+
+    // Queue notification email
+    await this.notificationQueue.add(
+      'send-order-paid-email',
+      { orderId: dto.orderId, userId: order.userId },
       {
         attempts: 3,
-        backoff: {
-          type: 'exponential',
-          delay: 3000,
-        },
+        backoff: { type: 'exponential', delay: 3000 },
         removeOnComplete: true,
         removeOnFail: false,
       },
@@ -408,26 +465,25 @@ export class PaymentService {
 
   async getPaymentStatus(orderId: string, userId: string) {
     const order = await this.prisma.order.findUnique({
-        where: { id: orderId },
-        include: {
-        payments: true,
-        tickets: true,
-        },
+      where: { id: orderId },
+      include: { payments: true, tickets: true },
     });
 
     if (!order) {
-        throw new NotFoundException('Không tìm thấy đơn hàng');
+      throw new NotFoundException('Không tìm thấy đơn hàng');
     }
 
     if (order.userId !== userId) {
-        throw new BadRequestException('Đơn hàng không thuộc về người dùng hiện tại');
+      throw new BadRequestException(
+        'Đơn hàng không thuộc về người dùng hiện tại',
+      );
     }
 
     return {
-        orderId: order.id,
-        status: order.status,
-        payments: order.payments,
-        ticketCount: order.tickets.length,
+      orderId: order.id,
+      status: order.status,
+      payments: order.payments,
+      ticketCount: order.tickets.length,
     };
   }
 

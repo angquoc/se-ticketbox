@@ -21,26 +21,6 @@ import {
   type AuthUser,
 } from '../auth/decorators/current-user.decorator';
 import { Role } from '@prisma/client';
-import { IsString, IsOptional } from 'class-validator';
-
-class PaymentWebhookDto {
-  @IsString()
-  providerTransactionId!: string;
-
-  @IsString()
-  orderId!: string;
-
-  @IsOptional()
-  @IsString()
-  amount?: number;
-
-  @IsString()
-  status!: 'SUCCESS' | 'FAILED' | 'CANCELLED';
-
-  @IsOptional()
-  @IsString()
-  signature?: string;
-}
 
 @Controller()
 export class OrderController {
@@ -128,27 +108,5 @@ export class OrderController {
   @Roles(Role.ADMIN, Role.ORGANIZER)
   async getOrderAdmin(@Param('id') orderId: string) {
     return this.orderService.getOrderAdmin(orderId);
-  }
-
-  // ─── Webhook endpoint ─────────────────────────────────────────────────────
-
-  /**
-   * POST /webhooks/payment/:provider
-   * Payment gateway calls this after user completes payment.
-   * No auth — verified by signature check.
-   */
-  @Post('webhooks/payment/:provider')
-  @HttpCode(HttpStatus.OK)
-  async paymentWebhook(
-    @Param('provider') provider: string,
-    @Body() payload: PaymentWebhookDto,
-  ) {
-    return this.orderService.handlePaymentWebhook(provider, {
-      providerTransactionId: payload.providerTransactionId,
-      orderId: payload.orderId,
-      amount: payload.amount ?? 0,
-      status: payload.status,
-      signature: payload.signature,
-    });
   }
 }

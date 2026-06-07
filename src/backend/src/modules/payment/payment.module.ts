@@ -10,12 +10,7 @@ import { MockGatewayService } from './services/mock-gateway.service';
 import { PaymentCronService } from './services/payment-cron.service';
 
 @Module({
-  imports: [
-    ConfigModule,
-    PrismaModule,
-    QueueModule,
-    IdempotencyModule,
-  ],
+  imports: [ConfigModule, PrismaModule, QueueModule, IdempotencyModule],
   controllers: [PaymentController],
   providers: [
     PaymentService,

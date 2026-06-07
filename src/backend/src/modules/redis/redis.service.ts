@@ -255,6 +255,28 @@ export class RedisService implements OnModuleDestroy, OnModuleInit {
     );
   }
 
+  /**
+   * Decrement the per-user reserved-ticket counter in Redis.
+   * Called when a reservation converts to a confirmed purchase (payment SUCCESS),
+   * so the paid tickets no longer count toward the user's "in-flight" limit.
+   */
+  async decrementUserLimit(params: {
+    ticketTypeId: string;
+    userId: string;
+    quantity: number;
+  }): Promise<void> {
+    const userLimitKey = REDIS_KEY_USER_LIMIT(
+      params.userId,
+      params.ticketTypeId,
+    );
+    const raw = await this.client.get(userLimitKey);
+    if (raw === null) return;
+
+    const current = parseInt(raw, 10);
+    const newVal = Math.max(0, current - params.quantity);
+    await this.client.set(userLimitKey, String(newVal));
+  }
+
   async onModuleDestroy(): Promise<void> {
     await this.client.quit();
   }
