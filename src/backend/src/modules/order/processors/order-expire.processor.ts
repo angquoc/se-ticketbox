@@ -2,8 +2,7 @@ import { Processor, WorkerHost, OnWorkerEvent } from '@nestjs/bullmq';
 import { Logger } from '@nestjs/common';
 import { Job } from 'bullmq';
 import { OrderService } from '../order.service';
-
-export const ORDER_EXPIRE_QUEUE = 'order-expire';
+import { ORDER_EXPIRE_QUEUE } from '../order.queue';
 
 @Processor(ORDER_EXPIRE_QUEUE)
 export class OrderExpireProcessor extends WorkerHost {

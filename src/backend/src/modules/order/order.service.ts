@@ -16,8 +16,6 @@ import {
   Order,
   OrderItem,
   TicketType,
-  PaymentTransaction,
-  Ticket,
   Prisma,
 } from '@prisma/client';
 import { CreateOrderDto } from './dto/create-order.dto';
@@ -27,20 +25,20 @@ import {
   OrderItemResponseDto,
   CreateOrderResponseDto,
 } from './dto/order-response.dto';
-import { ORDER_EXPIRE_QUEUE } from './processors/order-expire.processor';
+import { ORDER_EXPIRE_QUEUE } from './order.queue';
 
 const DEFAULT_RESERVATION_TTL_SECONDS = 15 * 60; // 15 minutes
 
 // ─────────────────────────────────────────────────────────────────────────────
 type OrderItemWithType = OrderItem & {
   ticketType: Pick<TicketType, 'name'>;
-  tickets: Pick<Ticket, 'id'>[];
+  tickets: { id: string }[];
 };
 
 type OrderWithRelations = Order & {
   items: OrderItemWithType[];
   concert: { title: string };
-  payments: PaymentTransaction[];
+  payments: { status: string; paymentUrl: string | null }[];
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -96,19 +94,6 @@ export class OrderService {
         0,
       ),
     };
-  }
-
-  private buildOrderInclude() {
-    return {
-      items: {
-        include: {
-          ticketType: { select: { name: true } },
-          tickets: { select: { id: true } },
-        },
-      },
-      concert: { select: { title: true } },
-      payments: { orderBy: { createdAt: 'desc' } as never },
-    } as const;
   }
 
   // ─────────────────────────────────────────────────────────────────────────────
@@ -614,222 +599,6 @@ export class OrderService {
 
     const paymentUrl = (order.payments ?? [])[0]?.paymentUrl ?? null;
     return this.toOrderResponse(order, paymentUrl);
-  }
-
-  // ─────────────────────────────────────────────────────────────────────────────
-  // Payment Webhook Handler
-  // ─────────────────────────────────────────────────────────────────────────────
-
-  async handlePaymentWebhook(
-    provider: string,
-    payload: {
-      providerTransactionId: string;
-      orderId: string;
-      amount: number;
-      status: 'SUCCESS' | 'FAILED' | 'CANCELLED';
-      signature?: string;
-    },
-  ): Promise<{ received: boolean; orderId: string; status: string }> {
-    this.logger.log(
-      `Payment webhook from ${provider}: order=${payload.orderId}, tx=${payload.providerTransactionId}, status=${payload.status}`,
-    );
-
-    const order = await this.prisma.order.findUnique({
-      where: { id: payload.orderId },
-      include: {
-        items: {
-          include: {
-            ticketType: { select: { id: true, name: true } },
-            tickets: { select: { id: true } },
-          },
-        },
-        payments: { orderBy: { createdAt: 'desc' } as never },
-      },
-    });
-
-    if (!order) {
-      throw new NotFoundException(`Order "${payload.orderId}" not found`);
-    }
-
-    if (order.status === 'PAID') {
-      this.logger.log(
-        `Order ${payload.orderId} already PAID — idempotent skip`,
-      );
-      return { received: true, orderId: payload.orderId, status: 'PAID' };
-    }
-
-    if (order.status === 'EXPIRED' || order.status === 'CANCELLED') {
-      this.logger.warn(
-        `Order ${payload.orderId} already ${order.status} — idempotent skip`,
-      );
-      return { received: true, orderId: payload.orderId, status: order.status };
-    }
-
-    if (payload.status === 'SUCCESS') {
-      return this.finalizePayment(order, payload);
-    }
-    if (payload.status === 'FAILED') {
-      return this.handlePaymentFailed(order);
-    }
-    if (payload.status === 'CANCELLED') {
-      return this.handlePaymentCancelled(order);
-    }
-
-    throw new BadRequestException(
-      `Unknown payment status: ${String(payload.status)}`,
-    );
-  }
-
-  private async finalizePayment(
-    order: Order & {
-      items: Array<
-        OrderItem & {
-          ticketType: Pick<TicketType, 'id' | 'name'>;
-          tickets: Pick<Ticket, 'id'>[];
-        }
-      >;
-      payments: PaymentTransaction[];
-    },
-    payload: { providerTransactionId: string; amount: number },
-  ): Promise<{ received: boolean; orderId: string; status: string }> {
-    await this.prisma.$transaction(async (tx) => {
-      await tx.order.update({
-        where: { id: order.id },
-        data: { status: 'PAID', paidAt: new Date() },
-      });
-
-      await tx.paymentTransaction.updateMany({
-        where: { orderId: order.id, status: 'INITIATED' },
-        data: {
-          status: 'SUCCESS',
-          providerTransactionId: payload.providerTransactionId,
-          receivedAt: new Date(),
-          rawWebhook: payload,
-        },
-      });
-
-      for (const item of order.items) {
-        for (let i = 0; i < item.quantity; i++) {
-          await tx.ticket.create({
-            data: {
-              orderId: order.id,
-              orderItemId: item.id,
-              concertId: order.concertId,
-              ticketTypeId: item.ticketTypeId,
-              userId: order.userId,
-              qrTokenHash: crypto.randomUUID(),
-              status: 'ISSUED',
-            },
-          });
-        }
-      }
-
-      for (const item of order.items) {
-        await tx.ticketType.update({
-          where: { id: item.ticketTypeId },
-          data: { soldQty: { increment: item.quantity } },
-        });
-      }
-
-      for (const item of order.items) {
-        await tx.userTicketCounter.upsert({
-          where: {
-            userId_ticketTypeId: {
-              userId: order.userId,
-              ticketTypeId: item.ticketTypeId,
-            },
-          },
-          create: {
-            userId: order.userId,
-            ticketTypeId: item.ticketTypeId,
-            paidQty: item.quantity,
-            reservedQty: 0,
-          },
-          update: { paidQty: { increment: item.quantity } },
-        });
-      }
-    });
-
-    await this.redis.del(`reservation:${order.id}`);
-    this.logger.log(`Order ${order.id} finalized — PAID, tickets issued`);
-    return { received: true, orderId: order.id, status: 'PAID' };
-  }
-
-  private async handlePaymentFailed(
-    order: Order & {
-      items: Array<OrderItem & { ticketType: Pick<TicketType, 'id'> }>;
-      payments: PaymentTransaction[];
-    },
-  ): Promise<{ received: boolean; orderId: string; status: string }> {
-    await this.prisma.$transaction(async (tx) => {
-      await tx.order.update({
-        where: { id: order.id },
-        data: {
-          status: 'PAYMENT_FAILED',
-          inventoryReleasedAt: new Date(),
-          releaseReason: 'Payment failed',
-        },
-      });
-      await tx.paymentTransaction.updateMany({
-        where: { orderId: order.id, status: 'INITIATED' },
-        data: { status: 'FAILED' },
-      });
-    });
-
-    await Promise.all(
-      order.items.map((item) =>
-        this.redis.releaseReservation({
-          ticketTypeId: item.ticketTypeId,
-          userId: order.userId,
-          orderId: order.id,
-          quantity: item.quantity,
-        }),
-      ),
-    );
-
-    this.logger.log(
-      `Order ${order.id} marked PAYMENT_FAILED — inventory released`,
-    );
-    return { received: true, orderId: order.id, status: 'PAYMENT_FAILED' };
-  }
-
-  private async handlePaymentCancelled(
-    order: Order & {
-      items: Array<OrderItem & { ticketType: Pick<TicketType, 'id'> }>;
-      payments: PaymentTransaction[];
-    },
-  ): Promise<{ received: boolean; orderId: string; status: string }> {
-    await this.prisma.$transaction(async (tx) => {
-      await tx.order.update({
-        where: { id: order.id },
-        data: {
-          status: 'CANCELLED',
-          cancelledAt: new Date(),
-          inventoryReleasedAt: new Date(),
-          releaseReason: 'Payment cancelled by user',
-        },
-      });
-      await tx.paymentTransaction.updateMany({
-        where: { orderId: order.id, status: 'INITIATED' },
-        data: { status: 'CANCELLED' },
-      });
-    });
-
-    await Promise.all(
-      order.items.map((item) =>
-        this.redis.releaseReservation({
-          ticketTypeId: item.ticketTypeId,
-          userId: order.userId,
-          orderId: order.id,
-          quantity: item.quantity,
-        }),
-      ),
-    );
-
-    this.logger.log(
-      `Order ${order.id} marked CANCELLED after payment cancellation`,
-    );
-    return { received: true, orderId: order.id, status: 'CANCELLED' };
   }
 
   // ─────────────────────────────────────────────────────────────────────────────

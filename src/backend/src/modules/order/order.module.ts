@@ -2,10 +2,8 @@ import { Module } from '@nestjs/common';
 import { BullModule } from '@nestjs/bullmq';
 import { OrderController } from './order.controller';
 import { OrderService } from './order.service';
-import {
-  OrderExpireProcessor,
-  ORDER_EXPIRE_QUEUE,
-} from './processors/order-expire.processor';
+import { OrderExpireProcessor } from './processors/order-expire.processor';
+import { ORDER_EXPIRE_QUEUE } from './order.queue';
 import { RedisModule } from '../redis/redis.module';
 
 @Module({
