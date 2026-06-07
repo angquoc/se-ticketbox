@@ -17,7 +17,6 @@ import { ConcertModule } from './modules/concert/concert.module';
 import { PaymentModule } from './modules/payment/payment.module';
 import { QueueModule } from './modules/queue/queue.module';
 import { IdempotencyModule } from './modules/idempotency/idempotency.module';
-import { ScheduleModule } from '@nestjs/schedule';
 import { TicketTypeModule } from './modules/ticket-type/ticket-type.module';
 import { RedisModule } from './modules/redis/redis.module';
 import { HealthModule } from './modules/health/health.module';
@@ -39,7 +38,6 @@ import { WorkerModule } from './worker/worker.module';
     ConcertModule,
     IdempotencyModule,
     PaymentModule,
-    // ScheduleModule, // TODO: re-enable once @nestjs/schedule is fixed
     TicketTypeModule,
     RedisModule,
     HealthModule,
