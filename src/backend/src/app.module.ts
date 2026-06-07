@@ -35,7 +35,7 @@ import { OrderModule } from './modules/order/order.module';
     ConcertModule,
     IdempotencyModule,
     PaymentModule,
-    ScheduleModule.forRoot(),
+    ScheduleModule,
     TicketTypeModule,
     RedisModule,
     HealthModule,
