@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
-import { getConcertName } from '@/lib/concert-names';
+import { fetchConcertByIdFromBackend, getBackendErrorMessage } from '@/lib/fetch-concerts';
+import { getMockConcertName } from '@/lib/mock-concerts';
 import { joinWaitingRoom, pollWaitingRoom } from '@/lib/mock-waiting-room';
 
 export async function POST(
@@ -16,13 +17,28 @@ export async function POST(
     existingSessionId = undefined;
   }
 
+  let concertName = getMockConcertName(concertId);
+  let backendError: string | undefined;
+
+  try {
+    const concert = await fetchConcertByIdFromBackend(concertId);
+    if (concert) {
+      concertName = concert.title;
+    } else {
+      backendError = `Không tìm thấy concert "${concertId}" trên backend`;
+    }
+  } catch (error) {
+    backendError = getBackendErrorMessage(error);
+  }
+
   const { sessionId, response } = joinWaitingRoom(concertId, existingSessionId);
 
   return NextResponse.json({
     success: true,
     data: {
       sessionId,
-      concertName: getConcertName(concertId),
+      concertName,
+      backendError,
       ...response,
     },
   });

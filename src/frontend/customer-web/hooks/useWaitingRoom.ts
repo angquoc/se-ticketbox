@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { cacheConcertName } from '@/lib/concert-names';
 import {
   readWaitingSession,
   storeAdmittedToken,
@@ -20,6 +21,7 @@ export function useWaitingRoom({ concertId, onAdmitted }: UseWaitingRoomOptions)
   const [concertName, setConcertName] = useState<string>('');
   const [status, setStatus] = useState<'loading' | 'waiting' | 'admitted' | 'error'>('loading');
   const [error, setError] = useState<string | null>(null);
+  const [backendError, setBackendError] = useState<string | null>(null);
   const [messageTick, setMessageTick] = useState(0);
   const [startedAt, setStartedAt] = useState<number | null>(null);
   const sessionIdRef = useRef<string | null>(null);
@@ -42,6 +44,7 @@ export function useWaitingRoom({ concertId, onAdmitted }: UseWaitingRoomOptions)
       current === 'waiting' || current === 'admitted' ? current : 'loading',
     );
     setError(null);
+    setBackendError(null);
 
     const existing = readWaitingSession(concertId);
     sessionIdRef.current = existing?.sessionId ?? null;
@@ -65,6 +68,8 @@ export function useWaitingRoom({ concertId, onAdmitted }: UseWaitingRoomOptions)
         concertId,
       });
       setConcertName(data.concertName);
+      cacheConcertName(concertId, data.concertName);
+      setBackendError(data.backendError ?? null);
       setStartedAt(Date.now());
 
       if (data.status === 'admitted' && data.token) {
@@ -158,6 +163,7 @@ export function useWaitingRoom({ concertId, onAdmitted }: UseWaitingRoomOptions)
     concertName,
     status,
     error,
+    backendError,
     messageTick,
     startedAt,
     retry,

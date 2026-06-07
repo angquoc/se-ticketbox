@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import CustomerHeader from '@/components/layout/CustomerHeader';
+import BackendNotice from '@/components/ui/BackendNotice';
 import { useWaitingRoom } from '@/hooks/useWaitingRoom';
 import { getWaitingMessage, getWaitingTip } from '@/lib/waiting-room-messages';
 
@@ -20,7 +21,7 @@ export default function WaitingRoomScreen({ concertId }: WaitingRoomScreenProps)
     }, 900);
   }, [concertId, router]);
 
-  const { concertName, status, error, messageTick, startedAt, retry } = useWaitingRoom({
+  const { concertName, status, error, backendError, messageTick, startedAt, retry } = useWaitingRoom({
     concertId,
     onAdmitted: handleAdmitted,
   });
@@ -111,6 +112,11 @@ export default function WaitingRoomScreen({ concertId }: WaitingRoomScreenProps)
       <CustomerHeader concertName={concertName} />
 
       <main className="relative mx-auto flex w-full max-w-2xl flex-1 flex-col items-center justify-center px-4 py-12 sm:px-6">
+        {backendError && (
+          <div className="mb-4 w-full">
+            <BackendNotice backendError={backendError} source="mock" />
+          </div>
+        )}
         <div className="w-full rounded-2xl border border-slate-200/80 bg-white/90 p-8 shadow-sm backdrop-blur sm:p-10">
           <div className="flex flex-col items-center text-center">
             <BreathingOrb />

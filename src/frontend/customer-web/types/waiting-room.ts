@@ -4,6 +4,7 @@ export interface WaitingRoomJoinResponse {
   sessionId: string;
   status: WaitingRoomStatus;
   concertName: string;
+  backendError?: string;
   token?: string;
   tokenExpiresAt?: number;
 }
