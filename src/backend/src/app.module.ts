@@ -23,6 +23,8 @@ import { RedisModule } from './modules/redis/redis.module';
 import { HealthModule } from './modules/health/health.module';
 import { OrderModule } from './modules/order/order.module';
 import { TicketModule } from './modules/ticket/ticket.module';
+import { NotificationModule } from './modules/notification/notification.module';
+import { WorkerModule } from './worker/worker.module';
 
 @Module({
   imports: [
@@ -43,6 +45,8 @@ import { TicketModule } from './modules/ticket/ticket.module';
     HealthModule,
     OrderModule,
     TicketModule,
+    NotificationModule,
+    WorkerModule,
     BullModule.forRootAsync({
       imports: [ConfigModule],
       inject: [ConfigService],
