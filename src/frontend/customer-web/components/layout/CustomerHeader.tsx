@@ -1,10 +1,15 @@
+'use client';
+
 import Link from 'next/link';
+import { useAuth } from '@/hooks/useAuth';
 
 interface CustomerHeaderProps {
   concertName?: string;
 }
 
 export default function CustomerHeader({ concertName }: CustomerHeaderProps) {
+  const { user, isAuthenticated, logout } = useAuth();
+
   return (
     <header className="sticky top-0 z-40 border-b border-slate-200 bg-white/95 backdrop-blur">
       <div className="mx-auto flex h-14 max-w-7xl items-center justify-between px-4 sm:px-6">
@@ -23,6 +28,24 @@ export default function CustomerHeader({ concertName }: CustomerHeaderProps) {
           <Link href="/" className="text-slate-600 hover:text-indigo-600">
             Sự kiện
           </Link>
+          {isAuthenticated ? (
+            <>
+              <span className="hidden text-slate-600 sm:inline">
+                {user?.fullName ?? user?.email}
+              </span>
+              <button
+                type="button"
+                onClick={logout}
+                className="text-slate-600 hover:text-indigo-600"
+              >
+                Đăng xuất
+              </button>
+            </>
+          ) : (
+            <Link href="/login" className="font-medium text-indigo-600 hover:text-indigo-700">
+              Đăng nhập
+            </Link>
+          )}
         </nav>
       </div>
     </header>
