@@ -96,7 +96,7 @@ export default function OrderDetailPage({ orderId }: OrderDetailPageProps) {
           </p>
           {isPaid && (
             <p className="mt-3 text-sm text-emerald-800">
-              Vé điện tử đang được phát hành. Bạn sẽ nhận email xác nhận trong giây lát.
+              Vé điện tử đã sẵn sàng. Xem mã QR bên dưới hoặc kiểm tra email xác nhận.
             </p>
           )}
         </div>
@@ -151,6 +151,14 @@ export default function OrderDetailPage({ orderId }: OrderDetailPageProps) {
           >
             Về trang chủ
           </Link>
+          {isPaid && (
+            <Link
+              href={`/orders/${orderId}/tickets`}
+              className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700"
+            >
+              Xem vé điện tử (QR)
+            </Link>
+          )}
           {order.status === 'PENDING_PAYMENT' && (
             <Link
               href={`/orders/${orderId}/payment?concertId=${encodeURIComponent(concertId)}`}

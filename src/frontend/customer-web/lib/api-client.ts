@@ -7,6 +7,8 @@ import type {
   PaymentStatusResponse,
 } from '@/types/order';
 
+import type { TicketListResponse } from '@/types/ticket';
+
 interface ApiEnvelope<T> {
   success: boolean;
   data?: T;
@@ -85,6 +87,16 @@ export const paymentApi = {
   },
   getStatus(orderId: string) {
     return clientFetch<PaymentStatusResponse>(`/api/payments/${orderId}/status`);
+  },
+};
+
+export const ticketApi = {
+  getByOrderId(orderId: string) {
+    return clientFetch<TicketListResponse>(`/api/orders/${orderId}/tickets`);
+  },
+  getMine(orderId?: string) {
+    const query = orderId ? `?orderId=${encodeURIComponent(orderId)}` : '';
+    return clientFetch<TicketListResponse>(`/api/tickets/me${query}`);
   },
 };
 
