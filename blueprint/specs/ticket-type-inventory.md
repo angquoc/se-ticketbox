@@ -38,7 +38,9 @@
 
 ## 2. Redis Keys
 
-Redis đóng vai trò là lớp lưu trữ thông tin tồn kho tạm thời (hot path), được đồng bộ với PostgreSQL tại các thời điểm giao dịch (khi order được tạo, thanh toán, hủy, hoàn tiền). Redis có 4 keys quan trọng:
+Redis đóng vai trò là lớp lưu trữ thông tin tồn kho tạm thời (hot path), được đồng bộ với PostgreSQL tại các thời điểm giao dịch (khi order được tạo, thanh toán, hủy, hoàn tiền).
+
+### 2.1. Inventory (dành cho Ticket Type Inventory)
 
 | Key | Kiểu | TTL | Ý nghĩa |
 |-----|------|-----|---------|
@@ -46,6 +48,18 @@ Redis đóng vai trò là lớp lưu trữ thông tin tồn kho tạm thời (ho
 | `user-limit:{userId}:{ticketTypeId}` | String (integer) | Không có TTL | Tổng số vé user đã mua (đã thanh toán) + đang giữ (PENDING) của loại vé này. Dùng để kiểm tra `maxPerUser`. |
 | `reservation:{orderId}` | Hash | `expiresAt - now()` | Lưu thông tin reservation tạm thời: `{ ticketTypeId: quantity, ... }`. Tự động bị xóa khi TTL hết hạn. |
 | `idempotency:{userId}:{key}` | String | 15 phút | Idempotency key cho request tạo/sửa/xóa ticket type. |
+
+### 2.2. Cache / Rate Limiting (toàn hệ thống)
+
+| Key | Kiểu | TTL | Ý nghĩa |
+|-----|------|-----|---------|
+| `cache:concert:list` | String | 60 giây | Cache danh sách concert |
+| `cache:concert:detail:{concertId}` | String | 60 giây | Cache chi tiết một concert |
+| `cache:ticket-availability:{concertId}` | String | 1-3 giây | Số vé còn lại hiển thị nhanh |
+| `rate-limit:{userId}:{route}` | String | 1 phút | Token bucket rate limit theo user |
+| `rate-limit:ip:{ip}:{route}` | String | 1 phút | Token bucket rate limit theo IP |
+| `waiting-room:token:{token}` | String | Thời gian chờ | Token đang trong waiting room |
+| `waiting-room:position:{concertId}:{userId}` | String | Thời gian chờ | Vị trí của user trong waiting room |
 
 ---
 

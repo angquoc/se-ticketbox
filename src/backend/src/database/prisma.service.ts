@@ -1,23 +1,19 @@
-import { Injectable, OnModuleInit, OnModuleDestroy } from '@nestjs/common';
+import { Injectable, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { PrismaClient } from '@prisma/client';
-import { Pool } from 'pg';
 import { PrismaPg } from '@prisma/adapter-pg';
-import * as dotenv from 'dotenv';
-
-// Ép nạp biến môi trường ngay lập tức khi file được biên dịch
-dotenv.config();
+import { Pool } from 'pg';
 
 @Injectable()
 export class PrismaService
   extends PrismaClient
   implements OnModuleInit, OnModuleDestroy
 {
-  constructor() {
-    const connectionString = process.env.DATABASE_URL;
+  constructor(private readonly configService: ConfigService) {
+    const connectionString = configService.get<string>('database.url');
 
-    // Rào chắn kiểm tra: Nếu không có biến môi trường sẽ báo lỗi ngay
     if (!connectionString) {
-      throw new Error('DATABASE_URL is missing in .env file!');
+      throw new Error('DATABASE_URL is missing in environment variables.');
     }
 
     const pool = new Pool({ connectionString });
@@ -32,5 +28,10 @@ export class PrismaService
 
   async onModuleDestroy() {
     await this.$disconnect();
+  }
+
+  async checkHealth(): Promise<'ok'> {
+    await this.$queryRaw`SELECT 1`;
+    return 'ok';
   }
 }

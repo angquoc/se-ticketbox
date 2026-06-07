@@ -1,7 +1,15 @@
 import { Module } from '@nestjs/common';
-import { ConfigModule } from '@nestjs/config';
+import { ConfigModule, ConfigService } from '@nestjs/config';
+import { BullModule } from '@nestjs/bullmq';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
+import {
+  appConfig,
+  authConfig,
+  databaseConfig,
+  envValidationSchema,
+  redisConfig,
+} from './config';
 import { PrismaModule } from './database/prisma.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { ConcertModule } from './modules/concert/concert.module';
@@ -10,18 +18,37 @@ import { QueueModule } from './modules/queue/queue.module';
 import { IdempotencyModule } from './modules/idempotency/idempotency.module';
 import { ScheduleModule } from '@nestjs/schedule';
 import { TicketTypeModule } from './modules/ticket-type/ticket-type.module';
+import { RedisModule } from './modules/redis/redis.module';
+import { HealthModule } from './modules/health/health.module';
+import { OrderModule } from './modules/order/order.module';
 
 @Module({
   imports: [
-    ConfigModule.forRoot({ isGlobal: true }),
+    ConfigModule.forRoot({
+      isGlobal: true,
+      load: [appConfig, authConfig, databaseConfig, redisConfig],
+      validationSchema: envValidationSchema,
+    }),
     QueueModule,
     PrismaModule,
     AuthModule,
     ConcertModule,
     IdempotencyModule,
     PaymentModule,
-    ScheduleModule.forRoot(),
+    ScheduleModule,
     TicketTypeModule,
+    RedisModule,
+    HealthModule,
+    OrderModule,
+    BullModule.forRootAsync({
+      imports: [ConfigModule],
+      inject: [ConfigService],
+      useFactory: (configService: ConfigService) => ({
+        connection: {
+          url: configService.get<string>('redis.url', 'redis://localhost:6379'),
+        },
+      }),
+    }),
   ],
   controllers: [AppController],
   providers: [AppService],

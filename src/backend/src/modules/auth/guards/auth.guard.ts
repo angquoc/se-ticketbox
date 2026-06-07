@@ -4,10 +4,10 @@ import {
   Injectable,
   UnauthorizedException,
 } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import { Request } from 'express';
 
-// Định nghĩa kiểu dữ liệu cho Payload
 interface JwtPayload {
   sub: string;
   email: string;
@@ -16,7 +16,10 @@ interface JwtPayload {
 
 @Injectable()
 export class AuthGuard implements CanActivate {
-  constructor(private jwtService: JwtService) {}
+  constructor(
+    private readonly jwtService: JwtService,
+    private readonly configService: ConfigService,
+  ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const request = context
@@ -29,16 +32,18 @@ export class AuthGuard implements CanActivate {
     }
 
     try {
-      // Truyền <JwtPayload> trực tiếp vào hàm để nó biết chắc chắn kết quả trả về là gì
       const payload = await this.jwtService.verifyAsync<JwtPayload>(token, {
-        secret: process.env.JWT_SECRET || 'ticketbox-super-secret',
+        secret: this.configService.get<string>(
+          'auth.jwtSecret',
+          'ticketbox-super-secret',
+        ),
       });
 
-      // Gắn payload vào request
       request.user = payload;
     } catch {
       throw new UnauthorizedException('Token không hợp lệ hoặc đã hết hạn');
     }
+
     return true;
   }
 

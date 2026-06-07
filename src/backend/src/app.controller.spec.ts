@@ -16,7 +16,9 @@ describe('AppController', () => {
   };
 
   const appServiceMock = {
-    getHealth: jest.fn<Promise<HealthStatus>, []>().mockResolvedValue(healthStatus),
+    getHealth: jest
+      .fn<Promise<HealthStatus>, []>()
+      .mockResolvedValue(healthStatus),
   };
 
   beforeEach(async () => {
