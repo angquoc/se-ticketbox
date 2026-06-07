@@ -6,6 +6,7 @@ import {
 import { createHash } from 'crypto';
 import { InjectQueue } from '@nestjs/bullmq';
 import { Queue } from 'bullmq';
+import { CircuitBreakerState } from './services/payment-circuit-breaker.service';
 import {
   OrderStatus,
   PaymentProvider,
@@ -430,7 +431,7 @@ export class PaymentService {
     };
   }
 
-  getCircuitBreakerStatus() {
+  getCircuitBreakerStatus(): CircuitBreakerState {
     return this.circuitBreaker.getStatus();
   }
 }

@@ -17,6 +17,7 @@ import { PaymentService } from './payment.service';
 import { CreatePaymentDto } from './dto/create-payment.dto';
 import { MockPaymentResult, MockWebhookDto } from './dto/mock-webhook.dto';
 import { MockGatewayService } from './services/mock-gateway.service';
+import type { CircuitBreakerState } from './services/payment-circuit-breaker.service';
 
 interface JwtPayload {
   sub: string;
@@ -59,7 +60,7 @@ export class PaymentController {
   }
 
   @Get('system/circuit-breaker')
-  getCircuitBreakerStatus() {
+  getCircuitBreakerStatus(): CircuitBreakerState {
     return this.paymentService.getCircuitBreakerStatus();
   }
 

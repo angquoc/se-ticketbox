@@ -5,7 +5,7 @@ import {
 } from '@nestjs/common';
 import CircuitBreaker from 'opossum';
 
-interface CircuitBreakerState {
+export interface CircuitBreakerState {
   opened: boolean;
   closed: boolean;
   halfOpen: boolean;
