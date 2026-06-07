@@ -3,7 +3,6 @@ import {
   Logger,
   OnModuleDestroy,
   OnModuleInit,
-  Optional,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import Redis from 'ioredis';
@@ -53,7 +52,7 @@ export class RedisService implements OnModuleDestroy, OnModuleInit {
    */
   constructor(
     private readonly configService: ConfigService,
-    @Optional() client?: RedisClient,
+    client?: RedisClient,
   ) {
     if (client) {
       this.client = client;
@@ -86,19 +85,12 @@ export class RedisService implements OnModuleDestroy, OnModuleInit {
    * Load all Lua scripts into Redis and cache their SHA digests.
    * Called once on module init. EVALSHA will be used for subsequent calls.
    */
-  private getScriptPath(filename: string): string {
-    // At runtime __dirname = dist/src/modules/redis/
-    // Lua files are at dist/modules/redis/scripts/
-    const distRoot = join(__dirname, '..', '..', '..');
-    return join(distRoot, 'modules', 'redis', 'scripts', filename);
-  }
-
   private async initScripts(): Promise<void> {
     const scripts = ['reserve-ticket.lua', 'release-reservation.lua'];
 
     for (const filename of scripts) {
       try {
-        const scriptPath = this.getScriptPath(filename);
+        const scriptPath = join(__dirname, 'scripts', filename);
         const scriptBody = readFileSync(scriptPath, 'utf8');
         const sha = (await this.client.script('LOAD', scriptBody)) as string;
         this.scriptCache.set(filename, sha);
@@ -130,7 +122,7 @@ export class RedisService implements OnModuleDestroy, OnModuleInit {
         // NOSCRIPT: Redis restarted and script cache was flushed → fall back to EVAL
         if (err instanceof Error && err.message.includes('NOSCRIPT')) {
           this.logger.warn(`EVALSHA NOSCRIPT for "${filename}", falling back to EVAL`);
-          const scriptPath = this.getScriptPath(filename);
+          const scriptPath = join(__dirname, 'scripts', filename);
           const scriptBody = readFileSync(scriptPath, 'utf8');
           raw = await this.client.eval(scriptBody, keys.length, ...keys, ...args);
         } else {
@@ -139,7 +131,7 @@ export class RedisService implements OnModuleDestroy, OnModuleInit {
       }
     } else {
       // EVAL: fallback to sending script body directly
-      const scriptPath = this.getScriptPath(filename);
+      const scriptPath = join(__dirname, 'scripts', filename);
       const scriptBody = readFileSync(scriptPath, 'utf8');
       raw = await this.client.eval(scriptBody, keys.length, ...keys, ...args);
     }

@@ -39,7 +39,7 @@ import { WorkerModule } from './worker/worker.module';
     ConcertModule,
     IdempotencyModule,
     PaymentModule,
-    // ScheduleModule, // TODO: re-enable once @nestjs/schedule is fixed
+    ScheduleModule,
     TicketTypeModule,
     RedisModule,
     HealthModule,
