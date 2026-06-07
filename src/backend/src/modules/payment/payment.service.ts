@@ -15,6 +15,7 @@ import {
 } from '@prisma/client';
 
 import { PrismaService } from '../../database/prisma.service';
+import { RedisService } from '../redis/redis.service';
 import { IdempotencyService } from '../idempotency/idempotency.service';
 import { NOTIFICATION_QUEUE } from '../queue/queue.constants';
 import { PaymentCircuitBreakerService } from './services/payment-circuit-breaker.service';
@@ -28,7 +29,7 @@ export class PaymentService {
     private readonly idempotencyService: IdempotencyService,
     private readonly circuitBreaker: PaymentCircuitBreakerService,
     private readonly mockGateway: MockGatewayService,
-    private readonly redisService: import('../redis/redis.service').RedisService,
+    private readonly redisService: RedisService,
     @InjectQueue(NOTIFICATION_QUEUE)
     private readonly notificationQueue: Queue,
   ) {}
