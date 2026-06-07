@@ -1,5 +1,16 @@
-import { HttpException, Injectable, ServiceUnavailableException } from '@nestjs/common';
+import {
+  HttpException,
+  Injectable,
+  ServiceUnavailableException,
+} from '@nestjs/common';
 import CircuitBreaker from 'opossum';
+
+interface CircuitBreakerState {
+  opened: boolean;
+  closed: boolean;
+  halfOpen: boolean;
+  stats: unknown;
+}
 
 @Injectable()
 export class PaymentCircuitBreakerService {
@@ -19,13 +30,11 @@ export class PaymentCircuitBreakerService {
       },
     );
 
-    this.breaker.fallback((err) => {
-      // Nếu là lỗi nghiệp vụ (400, 404, 409) do mình chủ động throw, hãy ném nó ra ngoài
+    this.breaker.fallback((err: unknown) => {
       if (err instanceof HttpException) {
         throw err;
       }
-      
-      // Nếu là lỗi hệ thống (timeout, crash gateway), mới báo 503
+
       throw new ServiceUnavailableException(
         'Cổng thanh toán đang tạm gián đoạn, vui lòng thử lại sau',
       );
@@ -36,12 +45,13 @@ export class PaymentCircuitBreakerService {
     return this.breaker.fire(action) as Promise<T>;
   }
 
-  getStatus() {
+  getStatus(): CircuitBreakerState {
+    const state = this.breaker as unknown as CircuitBreakerState;
     return {
-      opened: this.breaker.opened,
-      closed: this.breaker.closed,
-      halfOpen: this.breaker.halfOpen,
-      stats: this.breaker.stats,
+      opened: state.opened,
+      closed: state.closed,
+      halfOpen: state.halfOpen,
+      stats: state.stats,
     };
   }
 }
