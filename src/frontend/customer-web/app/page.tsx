@@ -35,10 +35,10 @@ export default function HomePage() {
               <p className="mt-1 text-sm text-slate-500">{concert.venue}</p>
               <p className="mt-1 text-sm text-slate-500">{concert.date}</p>
               <Link
-                href={`/concerts/${concert.id}/seats`}
+                href={`/concerts/${concert.id}/waiting`}
                 className="mt-4 inline-flex rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700"
               >
-                Chọn ghế
+                Mua vé
               </Link>
             </article>
           ))}

@@ -1,11 +1,12 @@
 'use client';
 
 import type { TicketType } from '@/types/seatmap';
+import { ALL_TICKET_TYPES } from '@/hooks/useSeatMap';
 import { formatVnd } from '@/lib/format';
 
 interface SeatFiltersProps {
   ticketTypes: TicketType[];
-  activeTicketTypeId: string | null;
+  activeTicketTypeId: string;
   onTicketTypeChange: (id: string) => void;
   regions: { regionId: string; regionName: string }[];
   regionFilter: string;
@@ -27,6 +28,17 @@ export default function SeatFilters({
   return (
     <div className="flex flex-col gap-3 rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
       <div className="flex flex-wrap gap-2">
+        <button
+          type="button"
+          onClick={() => onTicketTypeChange(ALL_TICKET_TYPES)}
+          className={`rounded-full px-4 py-1.5 text-sm font-medium transition-colors ${
+            activeTicketTypeId === ALL_TICKET_TYPES
+              ? 'bg-indigo-600 text-white'
+              : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+          }`}
+        >
+          Tất cả loại vé
+        </button>
         {ticketTypes.map((tt) => (
           <button
             key={tt.id}

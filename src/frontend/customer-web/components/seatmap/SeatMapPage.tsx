@@ -1,7 +1,9 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useSeatMap } from '@/hooks/useSeatMap';
+import { useRouter } from 'next/navigation';
+import { ALL_TICKET_TYPES, useSeatMap } from '@/hooks/useSeatMap';
+import { readAdmittedToken } from '@/lib/waiting-room-storage';
 import CustomerHeader from '@/components/layout/CustomerHeader';
 import SeatFilters from './SeatFilters';
 import InteractiveSeatMap from './InteractiveSeatMap';
@@ -15,6 +17,18 @@ interface SeatMapPageProps {
 }
 
 export default function SeatMapPage({ concertId }: SeatMapPageProps) {
+  const router = useRouter();
+  const [accessChecked, setAccessChecked] = useState(false);
+
+  useEffect(() => {
+    const token = readAdmittedToken(concertId);
+    if (!token) {
+      router.replace(`/concerts/${concertId}/waiting`);
+      return;
+    }
+    setAccessChecked(true);
+  }, [concertId, router]);
+
   const {
     data,
     loading,
@@ -63,6 +77,20 @@ export default function SeatMapPage({ concertId }: SeatMapPageProps) {
     );
   };
 
+  if (!accessChecked) {
+    return (
+      <div className="flex min-h-screen flex-col bg-slate-50">
+        <CustomerHeader />
+        <main className="flex flex-1 items-center justify-center">
+          <div className="text-center">
+            <div className="mx-auto h-10 w-10 animate-spin rounded-full border-4 border-indigo-200 border-t-indigo-600" />
+            <p className="mt-4 text-slate-600">Đang xác minh quyền truy cập...</p>
+          </div>
+        </main>
+      </div>
+    );
+  }
+
   if (loading) {
     return (
       <div className="flex min-h-screen flex-col bg-slate-50">
@@ -90,7 +118,10 @@ export default function SeatMapPage({ concertId }: SeatMapPageProps) {
     );
   }
 
-  const activeTicketType = data.ticketTypes.find((tt) => tt.id === activeTicketTypeId);
+  const isAllTicketTypes = activeTicketTypeId === ALL_TICKET_TYPES;
+  const activeTicketType = isAllTicketTypes
+    ? null
+    : data.ticketTypes.find((tt) => tt.id === activeTicketTypeId);
   const availableTotal = data.ticketTypes.reduce(
     (sum, tt) => sum + tt.seatRegions.reduce((s, r) => s + r.availableCount, 0),
     0,
@@ -106,12 +137,16 @@ export default function SeatMapPage({ concertId }: SeatMapPageProps) {
           <p className="mt-1 text-slate-600">{data.concertName}</p>
           <p className="mt-2 text-sm text-slate-500">
             Còn {availableTotal} ghế trống
-            {activeTicketType && (
-              <>
-                {' '}
-                · {activeTicketType.name}: tối đa {activeTicketType.maxPerUser} ghế/người (
-                {formatVnd(activeTicketType.price)}/ghế)
-              </>
+            {isAllTicketTypes ? (
+              <> · Hiển thị VIP, Standard, Economy</>
+            ) : (
+              activeTicketType && (
+                <>
+                  {' '}
+                  · {activeTicketType.name}: tối đa {activeTicketType.maxPerUser} ghế/người (
+                  {formatVnd(activeTicketType.price)}/ghế)
+                </>
+              )
             )}
           </p>
         </div>

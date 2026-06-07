@@ -11,6 +11,7 @@ import type {
 } from '@/types/seatmap';
 
 const DEBOUNCE_MS = 250;
+export const ALL_TICKET_TYPES = 'all';
 
 interface UseSeatMapOptions {
   concertId: string;
@@ -21,7 +22,7 @@ export function useSeatMap({ concertId }: UseSeatMapOptions) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedSeats, setSelectedSeats] = useState<SelectedSeat[]>([]);
-  const [activeTicketTypeId, setActiveTicketTypeId] = useState<string | null>(null);
+  const [activeTicketTypeId, setActiveTicketTypeId] = useState<string>(ALL_TICKET_TYPES);
   const [regionFilter, setRegionFilter] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [hoveredSeat, setHoveredSeat] = useState<Seat | null>(null);
@@ -40,7 +41,7 @@ export function useSeatMap({ concertId }: UseSeatMapOptions) {
         const json = await res.json();
         if (!cancelled) {
           setData(json.data);
-          setActiveTicketTypeId(json.data.ticketTypes[0]?.id ?? null);
+          setActiveTicketTypeId(ALL_TICKET_TYPES);
         }
       } catch (e) {
         if (!cancelled) {
@@ -77,7 +78,7 @@ export function useSeatMap({ concertId }: UseSeatMapOptions) {
     if (!data) return [];
     let seats = data.seats;
 
-    if (activeTicketTypeId) {
+    if (activeTicketTypeId !== ALL_TICKET_TYPES) {
       seats = seats.filter((s) => s.ticketTypeId === activeTicketTypeId);
     }
     if (regionFilter !== 'all') {
