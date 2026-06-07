@@ -22,9 +22,9 @@ function buildService(): {
   evalSpy: jest.Mock;
   scriptSpy: jest.Mock;
 } {
-  const evalshaSpy = jest.fn<() => Promise<unknown>>();
-  const evalSpy = jest.fn<() => Promise<unknown>>();
-  const scriptSpy = jest.fn<() => Promise<string>>().mockResolvedValue('mock_sha_abc123');
+  const evalshaSpy = jest.fn();
+  const evalSpy = jest.fn();
+  const scriptSpy = jest.fn().mockResolvedValue('mock_sha_abc123');
 
   const mockClient = {
     script: scriptSpy,
@@ -113,7 +113,7 @@ describe('RedisService — reserveTicket', () => {
       });
 
       expect(evalshaSpy).toHaveBeenCalledTimes(1);
-      const call = evalshaSpy.mock.calls[0];
+      const call = evalshaSpy.mock.calls[0] as [string, number, ...(string | number)[]];
       // call[0] = sha, call[1] = numKeys, call[2] = key1, call[3] = key2, call[4] = key3,
       // call[5] = arg1(quantity), call[6] = arg2(maxPerUser), call[7] = arg3(ttlSeconds),
       // call[8] = arg4(orderId), call[9] = arg5(userId), call[10] = arg6(ticketTypeId)
@@ -462,7 +462,7 @@ describe('RedisService — releaseReservation', () => {
       });
 
       expect(evalshaSpy).toHaveBeenCalledTimes(1);
-      const call = evalshaSpy.mock.calls[0];
+      const call = evalshaSpy.mock.calls[0] as [string, number, ...(string | number)[]];
       // call[0] = sha, call[1] = numKeys, call[2] = key1, call[3] = key2, call[4] = key3,
       // call[5] = arg1(quantity), call[6] = arg2(orderId), call[7] = arg3(userId), call[8] = arg4(ticketTypeId)
       expect(call[1]).toBe(3);
