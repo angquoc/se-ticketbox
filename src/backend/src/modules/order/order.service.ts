@@ -19,12 +19,14 @@ import {
   TicketType,
   Prisma,
   OrderStatus,
+  TicketStatus,
 } from '@prisma/client';
 import { CreateOrderDto } from './dto/create-order.dto';
 import {
   OrderResponseDto,
   OrderListResponseDto,
   OrderItemResponseDto,
+  OrderTicketResponseDto,
   CreateOrderResponseDto,
 } from './dto/order-response.dto';
 import { ORDER_EXPIRE_QUEUE, NOTIFICATION_QUEUE } from '../queue/queue.constants';
@@ -33,13 +35,33 @@ import { PaymentService } from '../payment/payment.service';
 const DEFAULT_RESERVATION_TTL_SECONDS = 15 * 60; // 15 minutes
 
 // ─────────────────────────────────────────────────────────────────────────────
-type OrderItemWithType = OrderItem & {
+type TicketWithQr = {
+  id: string;
+  ticketTypeId: string;
+  status: TicketStatus;
+  checkedInAt: Date | null;
+  createdAt: Date;
+  qrTokenHash: string;
+  qrSignature: string | null;
   ticketType: Pick<TicketType, 'name'>;
-  tickets: { id: string }[];
 };
 
-type OrderWithRelations = Order & {
-  items: OrderItemWithType[];
+// OrderWithRelations: used when full ticket data is needed (e.g. GET /orders/:id)
+type OrderWithFullTickets = Order & {
+  items: (OrderItem & {
+    ticketType: Pick<TicketType, 'name'>;
+    tickets: TicketWithQr[];
+  })[];
+  concert: { title: string };
+  payments: { status: string; paymentUrl: string | null }[];
+};
+
+// OrderWithMinimalTickets: used when only ticket count is needed
+type OrderWithMinimalTickets = Order & {
+  items: (OrderItem & {
+    ticketType: Pick<TicketType, 'name'>;
+    tickets: { id: string }[];
+  })[];
   concert: { title: string };
   payments: { status: string; paymentUrl: string | null }[];
 };
@@ -63,7 +85,25 @@ export class OrderService {
   // Mapping helpers
   // ─────────────────────────────────────────────────────────────────────────────
 
-  private toOrderItemResponse(item: OrderItemWithType): OrderItemResponseDto {
+  private buildQrPayload(ticket: {
+    id: string;
+    qrTokenHash: string;
+    qrSignature: string | null;
+    createdAt: Date;
+  }): string {
+    const timestamp = Math.floor(ticket.createdAt.getTime() / 1000);
+    return `${ticket.id}:${ticket.qrTokenHash}:${timestamp}:${ticket.qrSignature ?? ''}`;
+  }
+
+  private toOrderItemResponse(item: {
+    id: string;
+    ticketTypeId: string;
+    ticketType: { name: string };
+    quantity: number;
+    unitPrice: number;
+    subtotal: number;
+    tickets?: { id: string }[];
+  }): OrderItemResponseDto {
     return {
       id: item.id,
       ticketTypeId: item.ticketTypeId,
@@ -75,8 +115,57 @@ export class OrderService {
     };
   }
 
-  private toOrderResponse(
-    order: OrderWithRelations,
+  private toTicketResponse(ticket: TicketWithQr): OrderTicketResponseDto {
+    return {
+      id: ticket.id,
+      ticketTypeId: ticket.ticketTypeId,
+      ticketTypeName: ticket.ticketType.name,
+      status: ticket.status,
+      checkedInAt: ticket.checkedInAt,
+      createdAt: ticket.createdAt,
+      qrPayload: this.buildQrPayload(ticket),
+    };
+  }
+
+  /**
+   * Maps an order with full ticket data (QR payloads) — used for GET /orders/:id.
+   */
+  private toOrderResponseFull(
+    order: OrderWithFullTickets,
+    paymentUrl?: string | null,
+  ): OrderResponseDto {
+    const tickets: OrderTicketResponseDto[] = [];
+    for (const item of order.items ?? []) {
+      for (const ticket of item.tickets ?? []) {
+        tickets.push(this.toTicketResponse(ticket));
+      }
+    }
+
+    return {
+      id: order.id,
+      userId: order.userId,
+      concertId: order.concertId,
+      concertTitle: order.concert.title,
+      status: order.status,
+      totalAmountInVnd: order.totalAmountInVnd,
+      currency: order.currency,
+      expiresAt: order.expiresAt,
+      paidAt: order.paidAt,
+      cancelledAt: order.cancelledAt,
+      createdAt: order.createdAt,
+      updatedAt: order.updatedAt,
+      items: (order.items ?? []).map((item) => this.toOrderItemResponse(item)),
+      paymentUrl,
+      ticketCount: tickets.length,
+      tickets: order.status === OrderStatus.PAID ? tickets : undefined,
+    };
+  }
+
+  /**
+   * Maps an order with minimal ticket data (count only) — used for list/cancel/create.
+   */
+  private toOrderResponseMinimal(
+    order: OrderWithMinimalTickets,
     paymentUrl?: string | null,
   ): OrderResponseDto {
     return {
@@ -302,10 +391,11 @@ export class OrderService {
 
     const totalAmount = subtotals.reduce((sum, s) => sum + s.subtotal, 0);
 
-    let order: OrderWithRelations | null = null;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    let created: any = null;
 
     try {
-      const created = await this.prisma.order.create({
+      created = await this.prisma.order.create({
         data: {
           id: orderId,
           userId,
@@ -334,7 +424,6 @@ export class OrderService {
           payments: { take: 1, orderBy: { createdAt: 'desc' } as never },
         },
       });
-      order = created as unknown as OrderWithRelations;
     } catch (err) {
       this.logger.error(
         `Failed to persist order ${orderId} to DB — rolling back Redis reservations`,
@@ -422,7 +511,7 @@ export class OrderService {
     this.logger.debug(`Expire job scheduled for order ${orderId} in ${ttl}s`);
 
     return {
-      order: this.toOrderResponse(order, paymentUrl),
+      order: this.toOrderResponseMinimal(created as unknown as OrderWithMinimalTickets, paymentUrl),
       paymentUrl,
     };
   }
@@ -438,7 +527,18 @@ export class OrderService {
         items: {
           include: {
             ticketType: { select: { name: true } },
-            tickets: { select: { id: true } },
+            tickets: {
+              select: {
+                id: true,
+                ticketTypeId: true,
+                status: true,
+                checkedInAt: true,
+                createdAt: true,
+                qrTokenHash: true,
+                qrSignature: true,
+                ticketType: { select: { name: true } },
+              },
+            },
           },
         },
         concert: { select: { title: true } },
@@ -456,7 +556,7 @@ export class OrderService {
       );
     }
 
-    return this.toOrderResponse(order, null);
+    return this.toOrderResponseFull(order as OrderWithFullTickets, null);
   }
 
   // ─────────────────────────────────────────────────────────────────────────────
@@ -492,8 +592,8 @@ export class OrderService {
     ]);
 
     return {
-      data: (orders as unknown as OrderWithRelations[]).map((o) =>
-        this.toOrderResponse(o, null),
+      data: (orders as OrderWithMinimalTickets[]).map((o) =>
+        this.toOrderResponseMinimal(o, null),
       ),
       total,
       page,
@@ -582,7 +682,7 @@ export class OrderService {
     });
 
     this.logger.log(`Order ${orderId} cancelled by user ${userId}`);
-    return this.toOrderResponse(updated, null);
+    return this.toOrderResponseMinimal(updated as OrderWithMinimalTickets, null);
   }
 
   // ─────────────────────────────────────────────────────────────────────────────
@@ -622,8 +722,8 @@ export class OrderService {
     ]);
 
     return {
-      data: (orders as unknown as OrderWithRelations[]).map((o) =>
-        this.toOrderResponse(o, null),
+      data: (orders as OrderWithMinimalTickets[]).map((o) =>
+        this.toOrderResponseMinimal(o, null),
       ),
       total,
       page,
@@ -656,7 +756,7 @@ export class OrderService {
     }
 
     const paymentUrl = (order.payments ?? [])[0]?.paymentUrl ?? null;
-    return this.toOrderResponse(order, paymentUrl);
+    return this.toOrderResponseMinimal(order as OrderWithMinimalTickets, paymentUrl);
   }
 
   // ─────────────────────────────────────────────────────────────────────────────

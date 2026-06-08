@@ -1,4 +1,15 @@
-import { OrderStatus, PaymentProvider, PaymentStatus } from '@prisma/client';
+import { OrderStatus, PaymentProvider, PaymentStatus, TicketStatus } from '@prisma/client';
+
+export class OrderTicketResponseDto {
+  id!: string;
+  ticketTypeId!: string;
+  ticketTypeName!: string;
+  status!: TicketStatus;
+  checkedInAt!: Date | null;
+  createdAt!: Date;
+  /** QR payload: {ticketId}:{qrTokenHash}:{timestamp}:{qrSignature} */
+  qrPayload!: string;
+}
 
 export class OrderItemResponseDto {
   id!: string;
@@ -37,6 +48,8 @@ export class OrderResponseDto {
   items!: OrderItemResponseDto[];
   paymentUrl?: string | null;
   ticketCount!: number;
+  /** Full ticket records with QR payloads (only available when status = PAID) */
+  tickets?: OrderTicketResponseDto[];
 }
 
 export class OrderListResponseDto {
