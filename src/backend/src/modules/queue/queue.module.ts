@@ -4,6 +4,7 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import {
   TICKET_ISSUE_QUEUE,
   NOTIFICATION_QUEUE,
+  ORDER_EXPIRE_QUEUE,
 } from './queue.constants';
 
 @Module({
@@ -23,6 +24,15 @@ import {
     BullModule.registerQueue(
       { name: TICKET_ISSUE_QUEUE },
       { name: NOTIFICATION_QUEUE },
+      {
+        name: ORDER_EXPIRE_QUEUE,
+        defaultJobOptions: {
+          attempts: 3,
+          backoff: { type: 'exponential', delay: 5000 },
+          removeOnComplete: true,
+          removeOnFail: false,
+        },
+      },
     ),
   ],
   exports: [BullModule],
