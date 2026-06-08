@@ -17,6 +17,7 @@ import {
   OrderItem,
   TicketType,
   Prisma,
+  OrderStatus,
 } from '@prisma/client';
 import { CreateOrderDto } from './dto/create-order.dto';
 import {
@@ -360,6 +361,17 @@ export class OrderService {
       );
     }
 
+    // Update UserTicketCounter in PostgreSQL (source of truth for per-user limits)
+    await Promise.all(
+      ticketMeta.map((m) =>
+        this.prisma.userTicketCounter.upsert({
+          where: { userId_ticketTypeId: { userId, ticketTypeId: m.ticketTypeId } },
+          create: { userId, ticketTypeId: m.ticketTypeId, reservedQty: m.quantity },
+          update: { reservedQty: { increment: m.quantity } },
+        }),
+      ),
+    );
+
     const paymentUrl = (order.payments ?? [])[0]?.paymentUrl ?? null;
     this.logger.log(
       `Order ${orderId} created, payment URL: ${paymentUrl ?? 'N/A'}`,
@@ -420,12 +432,13 @@ export class OrderService {
     userId: string,
     page = 1,
     limit = 10,
+    status?: OrderStatus,
   ): Promise<OrderListResponseDto> {
     const skip = (page - 1) * limit;
 
     const [orders, total] = await Promise.all([
       this.prisma.order.findMany({
-        where: { userId },
+        where: { userId, ...(status ? { status } : {}) },
         skip,
         take: limit,
         orderBy: { createdAt: 'desc' },
@@ -503,12 +516,22 @@ export class OrderService {
       ),
     );
 
+    // Release per-user reservedQty in PostgreSQL
+    await Promise.all(
+      order.items.map((item) =>
+        this.prisma.userTicketCounter.update({
+          where: { userId_ticketTypeId: { userId, ticketTypeId: item.ticketTypeId } },
+          data: { reservedQty: { decrement: item.quantity } },
+        }),
+      ),
+    );
+
     const updated = await this.prisma.order.update({
       where: { id: orderId },
       data: {
         status: 'CANCELLED',
         cancelledAt: new Date(),
-        releaseReason: 'User requested cancellation',
+        releaseReason: 'CANCELLED',
         inventoryReleasedAt: new Date(),
       },
       include: {
@@ -641,12 +664,26 @@ export class OrderService {
       ),
     );
 
+    await Promise.all(
+      order.items.map((item) =>
+        this.prisma.userTicketCounter.update({
+          where: {
+            userId_ticketTypeId: {
+              userId: order.userId,
+              ticketTypeId: item.ticketType.id,
+            },
+          },
+          data: { reservedQty: { decrement: item.quantity } },
+        }),
+      ),
+    );
+
     await this.prisma.order.update({
       where: { id: orderId },
       data: {
         status: 'EXPIRED',
         inventoryReleasedAt: new Date(),
-        releaseReason: 'Payment not received within reservation window',
+        releaseReason: 'PAYMENT_TIMEOUT',
       },
     });
 
