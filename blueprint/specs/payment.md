@@ -58,7 +58,7 @@ idem:{userId}:{idempotencyKey}
 Ví dụ endpoint:
 
 ```http
-POST /payments/webhook
+POST /payment/webhook
 ```
 
 4. Backend verify chữ ký hoặc secret của webhook.
@@ -228,6 +228,285 @@ Nếu order đã `EXPIRED` nhưng sau đó Gateway gửi webhook thành công:
 
 ---
 
+## Mock Payment Callback (`POST /payment/mock-callback`)
+
+### Mục đích
+
+Endpoint `POST /payment/mock-callback` mô phỏng webhook/callback từ cổng thanh toán. Endpoint này tách biệt hoàn toàn khỏi `OrdersController` và xử lý tất cả logic liên quan đến thanh toán trong `PaymentModule`.
+
+### Request
+
+```http
+POST /payment/mock-callback
+Content-Type: application/json
+
+{
+  "orderId": "ord_xyz789",
+  "providerTransactionId": "MOCK_ord_xyz789_1719123456",
+  "result": "SUCCESS",
+  "amount": 2500000,
+  "signature": "..."
+}
+```
+
+### Validation
+
+| Trường | Quy tắc |
+|--------|---------|
+| `orderId` | Required, phải tồn tại trong PostgreSQL |
+| `providerTransactionId` | Required, dùng để idempotency (cặp `provider + providerTransactionId` là unique) |
+| `result` | Required, enum `SUCCESS`, `FAILED`, `TIMEOUT` |
+| `amount` | Required, phải khớp với `Order.totalAmountInVnd` |
+| `signature` | Required, HMAC-SHA256 signature để verify webhook |
+
+### Luồng xử lý
+
+```
+1. Nhận request
+   ↓
+2. Kiểm tra cặp provider + providerTransactionId đã tồn tại trong PaymentTransaction chưa?
+   ├─ Đã tồn tại → return idempotent success (đã xử lý trước đó)
+   └─ Chưa tồn tại → tiếp tục
+   ↓
+3. Tìm order theo orderId
+   └─ Không tìm thấy → 404 Not Found
+   ↓
+4. Kiểm tra amountInVnd khớp với Order.totalAmountInVnd?
+   └─ Không khớp → 400 Bad Request
+   ↓
+5. Kiểm tra Order.status
+   ├─ PAID → return idempotent success
+   ├─ EXPIRED → ghi nhận late webhook, return requiresManualAction (KHÔNG phát hành vé)
+   ├─ CANCELLED / REFUNDED / PAYMENT_FAILED → return skip (bỏ qua)
+   └─ PENDING_PAYMENT → tiếp tục xử lý
+   ↓
+6. Xử lý theo callback status
+   ├─ FAILED → applyPaymentFailed: hoàn tồn kho, giải phóng Redis
+   ├─ TIMEOUT → ghi nhận PaymentTransaction TIMEOUT, order giữ PENDING_PAYMENT
+   └─ SUCCESS → applyPaymentSuccess: 7 bước + queue notification
+```
+
+### Response mẫu
+
+**Thành công (idempotent — đã xử lý trước đó):**
+
+```json
+{
+  "success": true,
+  "message": "Callback đã được xử lý trước đó (idempotent)",
+  "orderId": "ord_xyz789",
+  "orderStatus": "PAID",
+  "alreadyProcessed": true
+}
+```
+
+**Thành công lần đầu:**
+
+```json
+{
+  "success": true,
+  "message": "Thanh toán thành công, vé đã được phát hành",
+  "orderId": "ord_xyz789",
+  "orderStatus": "PAID",
+  "alreadyProcessed": false
+}
+```
+
+**Late webhook (order đã EXPIRED):**
+
+```json
+{
+  "success": false,
+  "message": "Callback đến sau khi đơn hàng đã hết hạn. Không phát hành vé, cần xử lý hoàn tiền thủ công.",
+  "orderId": "ord_xyz789",
+  "orderStatus": "EXPIRED",
+  "alreadyProcessed": false,
+  "requiresManualAction": true
+}
+```
+
+---
+
+## Cơ chế Idempotent cho Payment Callback
+
+### Hai lớp bảo vệ
+
+**Lớp 1 — Unique Constraint trong PostgreSQL**
+
+Bảng `PaymentTransaction` có unique constraint trên cặp `(provider, providerTransactionId)`:
+
+```prisma
+@@unique([provider, providerTransactionId])
+```
+
+Nhờ constraint này, dù request nào gửi cùng `provider + transactionCode` lần 2, PostgreSQL sẽ reject việc insert trùng. Tuy nhiên, implementation dùng `findUnique` trước để trả response idempotent thay vì để transaction bị lỗi.
+
+**Lớp 2 — Kiểm tra Order Status**
+
+Ngay cả khi unique constraint bị bypass (ví dụ: hai request đến gần như đồng thời), kiểm tra `order.status === PAID` đảm bảo không tạo vé lần 2.
+
+### Hành vi cụ thể
+
+| Trường hợp | Hành vi |
+|------------|---------|
+| Cùng `provider + providerTransactionId` gửi 2 lần | Lần 2 nhận idempotent success, không tạo thêm vé |
+| Order đã `PAID`, callback gửi lại | Nhận idempotent success |
+| Order `EXPIRED`, late callback SUCCESS đến | Ghi nhận, không phát hành vé, `requiresManualAction: true` |
+| Order `EXPIRED`, late callback FAILED đến | Ghi nhận, không thay đổi order |
+
+### Khi nào cần xử lý thủ công
+
+*Order đã `EXPIRED` nhưng nhận được callback SUCCESS:*
+
+* Hệ thống ghi nhận sự kiện vào `PaymentTransaction` với `status = SUCCESS`.
+* Order giữ nguyên `EXPIRED`.
+* Admin cần xác minh và quyết định: hoàn tiền cho khách hoặc phát hành vé thủ công nếu khách vẫn muốn.
+
+---
+
+## Áp dụng thanh toán thành công (`applyPaymentSuccess`)
+
+Method `applyPaymentSuccess` xử lý 7 bước trong một PostgreSQL transaction duy nhất, đảm bảo tính nguyên tử:
+
+### Bước A — Tạo PaymentTransaction
+
+```typescript
+await tx.paymentTransaction.create({
+  data: {
+    orderId,
+    provider,
+    providerTransactionId: transactionCode,
+    status: PaymentStatus.SUCCESS,
+    amount,
+    receivedAt: new Date(),
+  },
+});
+```
+
+### Bước B — Cập nhật Order → PAID
+
+```typescript
+await tx.order.update({
+  where: { id: orderId },
+  data: { status: OrderStatus.PAID, paidAt: new Date() },
+});
+```
+
+### Bước C — Giảm TicketType.reservedQty
+
+```typescript
+await tx.ticketType.update({
+  where: { id: ticketTypeId },
+  data: { reservedQty: { decrement: quantity } },
+});
+```
+
+### Bước D — Tăng TicketType.soldQty
+
+```typescript
+await tx.ticketType.update({
+  where: { id: ticketTypeId },
+  data: { soldQty: { increment: quantity } },
+});
+```
+
+### Bước E — Giảm UserTicketCounter.reservedQty
+
+```typescript
+await tx.userTicketCounter.upsert({
+  where: { userId_ticketTypeId: { userId, ticketTypeId } },
+  update: { reservedQty: { decrement: quantity } },
+});
+```
+
+### Bước F — Tăng UserTicketCounter.paidQty
+
+```typescript
+await tx.userTicketCounter.upsert({
+  where: { userId_ticketTypeId: { userId, ticketTypeId } },
+  update: { paidQty: { increment: quantity } },
+});
+```
+
+### Bước G — Phát hành QR Tickets
+
+Với mỗi `OrderItem.quantity = N`, tạo N bản ghi `Ticket`:
+
+```typescript
+for (let i = 0; i < quantity; i++) {
+  await tx.ticket.create({
+    data: {
+      orderId,
+      orderItemId,
+      concertId,
+      ticketTypeId,
+      userId,
+      qrTokenHash: crypto.randomUUID(), // SHA-256 của UUID ngẫu nhiên
+      status: TicketStatus.ISSUED,
+    },
+  });
+}
+```
+
+### Bước H — Dọn dẹp Redis (ngoài transaction)
+
+Sau transaction PostgreSQL thành công, dọn dẹp Redis:
+
+```typescript
+await redis.del(`reservation:${orderId}`);
+for (const item of order.items) {
+  await redis.decrementUserLimit({ ticketTypeId, userId, quantity });
+}
+```
+
+### Bước I — Queue Notification (ngoài transaction)
+
+Đẩy job gửi email vào BullMQ:
+
+```typescript
+await notificationQueue.add(
+  'send-order-paid-email',
+  { orderId, userId },
+  { attempts: 3, backoff: { type: 'exponential', delay: 3000 } },
+);
+```
+
+---
+
+## Thành phần module
+
+### PaymentModule (`modules/payment/`)
+
+Module thanh toán, xử lý tạo payment URL, callback webhook, và trạng thái thanh toán.
+
+#### Files
+
+| File | Mô tả |
+|------|--------|
+| `payment.module.ts` | NestJS module |
+| `payment.controller.ts` | REST controller, expose `POST /payment/mock-callback` |
+| `payment.service.ts` | Business logic: `handlePaymentCallback`, `applyPaymentSuccess`, `applyPaymentFailed` |
+| `dto/payment-callback.dto.ts` | DTO cho callback request |
+| `dto/index.ts` | Export barrel |
+
+#### Dependencies
+
+* `PrismaModule` — truy cập PostgreSQL
+* `QueueModule` — đẩy notification job vào BullMQ
+* `RedisModule` — dọn dẹp Redis reservation và user-limit
+
+---
+
+## Error Responses
+
+| Status | Trường hợp | Body |
+|--------|-------------|------|
+| `400` | Số tiền không khớp | `{ "message": "Số tiền không khớp: expected=..., got=..." }` |
+| `404` | Order không tồn tại | `{ "message": "Không tìm thấy đơn hàng: ..." }` |
+| `400` | DTO validation fail | `{ "message": "...", "errors": [...] }` |
+
+---
+
 ## Ràng buộc
 
 ### 1. Ràng buộc tính nhất quán
@@ -343,3 +622,25 @@ Nếu order đã `EXPIRED` nhưng sau đó Gateway gửi webhook thành công:
 * Nếu webhook không đến nhưng Gateway xác nhận giao dịch thành công, Cronjob cập nhật order sang `PAID`.
 * Nếu Gateway xác nhận giao dịch thất bại hoặc hết hạn, order được chuyển sang trạng thái phù hợp.
 * Không phát hành vé khi giao dịch chưa được xác nhận thành công.
+
+### 11. Payment callback idempotent — cùng provider + transactionCode gửi nhiều lần
+
+* Callback cùng `provider + providerTransactionId` được gửi 2 lần → lần 2 trả `alreadyProcessed: true`, không tạo thêm vé, không tăng `soldQty`.
+* Counter `UserTicketCounter.paidQty` và `TicketType.soldQty` không bị tăng thêm.
+* Redis không bị thay đổi lần 2.
+* Response trả về `success: true` để gateway không retry vô tận.
+
+### 12. Late callback — order EXPIRED nhưng webhook SUCCESS đến muộn
+
+* Order đã `EXPIRED`, callback `SUCCESS` đến → không phát hành vé, không tạo ticket.
+* Response trả về `requiresManualAction: true`, `orderStatus: EXPIRED`.
+* `PaymentTransaction` được ghi nhận với `status = SUCCESS` để audit.
+* Admin cần xử lý hoàn tiền thủ công.
+
+### 13. Áp dụng thanh toán thành công tạo đúng số lượng vé
+
+* Khi callback `SUCCESS` cho order có 2 OrderItem (VIP × 2, Standard × 1) → tạo đúng 3 bản ghi `Ticket`.
+* `TicketType.soldQty` tăng đúng số lượng.
+* `TicketType.reservedQty` giảm đúng số lượng.
+* `UserTicketCounter.paidQty` tăng, `reservedQty` giảm.
+* Notification job được đẩy vào queue.
