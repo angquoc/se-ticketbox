@@ -3,7 +3,6 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { createHash } from 'crypto';
 import { InjectQueue } from '@nestjs/bullmq';
 import { Queue } from 'bullmq';
 import { CircuitBreakerState } from './services/payment-circuit-breaker.service';
@@ -33,10 +32,6 @@ export class PaymentService {
     @InjectQueue(NOTIFICATION_QUEUE)
     private readonly notificationQueue: Queue,
   ) {}
-
-  private hashRequest(payload: unknown) {
-    return createHash('sha256').update(JSON.stringify(payload)).digest('hex');
-  }
 
   private async recordLateWebhook(dto: MockWebhookDto) {
     await this.prisma.paymentTransaction.upsert({
@@ -72,7 +67,7 @@ export class PaymentService {
     idempotencyKey: string;
     orderId: string;
   }) {
-    const requestHash = this.hashRequest({
+    const requestHash = this.idempotencyService.hashRequest({
       orderId: params.orderId,
     });
 
