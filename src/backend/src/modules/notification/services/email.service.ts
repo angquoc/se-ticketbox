@@ -2,6 +2,13 @@ import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import * as nodemailer from 'nodemailer';
 
+interface QrPayload {
+  ticketId: string;
+  rawToken: string;
+  qrTokenHash: string;
+  qrSignature: string;
+}
+
 @Injectable()
 export class EmailService {
   private readonly logger = new Logger(EmailService.name);
@@ -25,7 +32,21 @@ export class EmailService {
     concertTitle: string;
     ticketCount: number;
     totalAmount: number;
+    qrPayloads?: QrPayload[];
   }): Promise<void> {
+    const ticketsHtml = (params.qrPayloads ?? [])
+      .map(
+        (qr, index) => `
+      <div class="ticket-item">
+        <div class="label">Ticket #${index + 1} ID</div>
+        <div class="value" style="font-size:12px; word-break:break-all;">${qr.ticketId}</div>
+        <div class="label" style="margin-top:8px;">QR Token</div>
+        <div class="value" style="font-size:12px; word-break:break-all; font-family:monospace;">${qr.rawToken}</div>
+      </div>
+    `,
+      )
+      .join('<hr style="border:none;border-top:1px solid #e0e0e0;margin:12px 0;"/>');
+
     const html = `
 <!DOCTYPE html>
 <html>
@@ -36,6 +57,7 @@ export class EmailService {
     .container { background: white; border-radius: 8px; padding: 32px; max-width: 600px; margin: auto; }
     h1 { color: #1a1a1a; font-size: 24px; }
     .ticket-card { background: #f0f7ff; border-radius: 6px; padding: 16px; margin: 16px 0; }
+    .ticket-item { margin-bottom: 8px; }
     .label { color: #666; font-size: 12px; text-transform: uppercase; }
     .value { font-size: 16px; font-weight: bold; color: #1a1a1a; }
     .footer { margin-top: 24px; font-size: 12px; color: #999; text-align: center; }
@@ -65,6 +87,17 @@ export class EmailService {
       <div class="label">Total Paid</div>
       <div class="value">${params.totalAmount.toLocaleString('vi-VN')} VND</div>
     </div>
+
+    ${
+      ticketsHtml
+        ? `
+    <div class="ticket-card">
+      <div class="label" style="margin-bottom:8px;">Your E-Tickets</div>
+      ${ticketsHtml}
+    </div>
+    `
+        : ''
+    }
 
     <p>Present the QR code on your mobile device at the venue entrance.</p>
 
