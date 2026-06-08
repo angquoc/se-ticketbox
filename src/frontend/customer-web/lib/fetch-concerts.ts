@@ -6,7 +6,7 @@ const LIST_STATUSES: ConcertStatus[] = ['SALE_OPEN', 'PUBLISHED', 'COMPLETED'];
 export async function fetchConcertsFromBackend(): Promise<Concert[]> {
   const responses = await Promise.allSettled(
     LIST_STATUSES.map((status) =>
-      backendFetch<ConcertListResponse>(`/concerts?status=${status}&limit=50`),
+      backendFetch<ConcertListResponse>(`/concerts?status=${status}`),
     ),
   );
 

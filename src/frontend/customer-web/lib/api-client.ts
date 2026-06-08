@@ -5,6 +5,7 @@ import type {
   CreatePaymentResponse,
   Order,
   PaymentStatusResponse,
+  TicketTypeAvailability,
 } from '@/types/order';
 
 import type { TicketListResponse } from '@/types/ticket';
@@ -102,7 +103,7 @@ export const ticketApi = {
 
 export const concertApi = {
   getTicketTypes(concertId: string) {
-    return clientFetch<{ data: Array<{ id: string; name: string; price: number; availableQty: number; maxPerUser: number; concertId: string }>; total: number }>(
+    return clientFetch<{ data: TicketTypeAvailability[]; total: number }>(
       `/api/concerts/${concertId}/ticket-types`,
     );
   },

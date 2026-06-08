@@ -70,11 +70,19 @@ export interface PaymentStatusResponse {
   ticketCount: number;
 }
 
+export type TicketTypeStatus = 'ACTIVE' | 'INACTIVE' | 'SOLD_OUT';
+
 export interface TicketTypeAvailability {
   id: string;
   concertId: string;
   name: string;
   price: number;
+  totalQty: number;
+  soldQty: number;
+  reservedQty: number;
   availableQty: number;
   maxPerUser: number;
+  saleStartsAt: string;
+  saleEndsAt: string | null;
+  status: TicketTypeStatus;
 }

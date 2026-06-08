@@ -6,6 +6,8 @@ export type ConcertStatus =
   | 'CANCELLED'
   | 'COMPLETED';
 
+export type TicketTypeStatus = 'ACTIVE' | 'INACTIVE' | 'SOLD_OUT';
+
 export interface TicketTypeSummary {
   id: string;
   name: string;
@@ -13,7 +15,9 @@ export interface TicketTypeSummary {
   totalQty: number;
   soldQty: number;
   reservedQty: number;
-  status: string;
+  availableQty?: number;
+  maxPerUser?: number;
+  status: TicketTypeStatus;
   saleStartsAt: string;
   saleEndsAt: string | null;
 }
