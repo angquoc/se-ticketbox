@@ -6,6 +6,7 @@ import {
   Param,
   Query,
   UseGuards,
+  UseInterceptors,
   HttpCode,
   HttpStatus,
   ParseIntPipe,
@@ -20,27 +21,8 @@ import {
   CurrentUser,
   type AuthUser,
 } from '../auth/decorators/current-user.decorator';
-import { Role } from '@prisma/client';
-import { IsString, IsOptional } from 'class-validator';
-
-class PaymentWebhookDto {
-  @IsString()
-  providerTransactionId!: string;
-
-  @IsString()
-  orderId!: string;
-
-  @IsOptional()
-  @IsString()
-  amount?: number;
-
-  @IsString()
-  status!: 'SUCCESS' | 'FAILED' | 'CANCELLED';
-
-  @IsOptional()
-  @IsString()
-  signature?: string;
-}
+import { OrderStatus, Role } from '@prisma/client';
+import { IdempotencyInterceptor } from '../../common/interceptors/idempotency.interceptor';
 
 @Controller()
 export class OrderController {
@@ -54,7 +36,9 @@ export class OrderController {
    * Requires authentication.
    */
   @Post('orders')
-  @UseGuards(AuthGuard)
+  @UseGuards(AuthGuard, RolesGuard)
+  @Roles(Role.CUSTOMER, Role.ORGANIZER, Role.ADMIN)
+  @UseInterceptors(IdempotencyInterceptor)
   @HttpCode(HttpStatus.CREATED)
   async createOrder(
     @Body() dto: CreateOrderDto,
@@ -73,8 +57,14 @@ export class OrderController {
     @CurrentUser() user: AuthUser,
     @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
     @Query('limit', new DefaultValuePipe(10), ParseIntPipe) limit: number,
+    @Query('status') status?: string,
   ) {
-    return this.orderService.getMyOrders(user.sub, page, limit);
+    return this.orderService.getMyOrders(
+      user.sub,
+      page,
+      limit,
+      status as OrderStatus | undefined,
+    );
   }
 
   /**
@@ -128,27 +118,5 @@ export class OrderController {
   @Roles(Role.ADMIN, Role.ORGANIZER)
   async getOrderAdmin(@Param('id') orderId: string) {
     return this.orderService.getOrderAdmin(orderId);
-  }
-
-  // ─── Webhook endpoint ─────────────────────────────────────────────────────
-
-  /**
-   * POST /webhooks/payment/:provider
-   * Payment gateway calls this after user completes payment.
-   * No auth — verified by signature check.
-   */
-  @Post('webhooks/payment/:provider')
-  @HttpCode(HttpStatus.OK)
-  async paymentWebhook(
-    @Param('provider') provider: string,
-    @Body() payload: PaymentWebhookDto,
-  ) {
-    return this.orderService.handlePaymentWebhook(provider, {
-      providerTransactionId: payload.providerTransactionId,
-      orderId: payload.orderId,
-      amount: payload.amount ?? 0,
-      status: payload.status,
-      signature: payload.signature,
-    });
   }
 }

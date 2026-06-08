@@ -4,9 +4,8 @@ import {
   Injectable,
   UnauthorizedException,
 } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
-import { JwtService } from '@nestjs/jwt';
 import { Request } from 'express';
+import { JwtService } from '@nestjs/jwt';
 
 interface JwtPayload {
   sub: string;
@@ -16,29 +15,22 @@ interface JwtPayload {
 
 @Injectable()
 export class AuthGuard implements CanActivate {
-  constructor(
-    private readonly jwtService: JwtService,
-    private readonly configService: ConfigService,
-  ) {}
-
-  async canActivate(context: ExecutionContext): Promise<boolean> {
+  canActivate(context: ExecutionContext): boolean {
     const request = context
       .switchToHttp()
       .getRequest<Request & { user?: JwtPayload }>();
-    const token = this.extractTokenFromHeader(request);
 
+    const token = this.extractTokenFromHeader(request);
     if (!token) {
       throw new UnauthorizedException('Không tìm thấy token truy cập');
     }
 
-    try {
-      const payload = await this.jwtService.verifyAsync<JwtPayload>(token, {
-        secret: this.configService.get<string>(
-          'auth.jwtSecret',
-          'ticketbox-super-secret',
-        ),
-      });
+    const jwtService = new JwtService({
+      secret: process.env['JWT_SECRET'] ?? 'ticketbox-super-secret',
+    });
 
+    try {
+      const payload = jwtService.verify<JwtPayload>(token);
       request.user = payload;
     } catch {
       throw new UnauthorizedException('Token không hợp lệ hoặc đã hết hạn');

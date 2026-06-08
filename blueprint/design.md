@@ -1520,3 +1520,4 @@ TicketBox không tạo bảng `Reservation` riêng. Thay vào đó, một `Order
 * Admin không nhận kết quả xử lý ngay lập tức mà cần chờ trạng thái job.
 * Cần thiết kế retry, backoff và dead-letter queue để xử lý job lỗi.
 
+

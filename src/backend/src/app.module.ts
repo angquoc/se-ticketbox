@@ -7,6 +7,7 @@ import {
   appConfig,
   authConfig,
   databaseConfig,
+  emailConfig,
   envValidationSchema,
   redisConfig,
 } from './config';
@@ -16,17 +17,19 @@ import { ConcertModule } from './modules/concert/concert.module';
 import { PaymentModule } from './modules/payment/payment.module';
 import { QueueModule } from './modules/queue/queue.module';
 import { IdempotencyModule } from './modules/idempotency/idempotency.module';
-import { ScheduleModule } from '@nestjs/schedule';
 import { TicketTypeModule } from './modules/ticket-type/ticket-type.module';
 import { RedisModule } from './modules/redis/redis.module';
 import { HealthModule } from './modules/health/health.module';
 import { OrderModule } from './modules/order/order.module';
+import { TicketModule } from './modules/ticket/ticket.module';
+import { NotificationModule } from './modules/notification/notification.module';
+import { WorkerModule } from './worker/worker.module';
 
 @Module({
   imports: [
     ConfigModule.forRoot({
       isGlobal: true,
-      load: [appConfig, authConfig, databaseConfig, redisConfig],
+      load: [appConfig, authConfig, databaseConfig, redisConfig, emailConfig],
       validationSchema: envValidationSchema,
     }),
     QueueModule,
@@ -35,11 +38,13 @@ import { OrderModule } from './modules/order/order.module';
     ConcertModule,
     IdempotencyModule,
     PaymentModule,
-    ScheduleModule,
     TicketTypeModule,
     RedisModule,
     HealthModule,
     OrderModule,
+    TicketModule,
+    NotificationModule,
+    WorkerModule,
     BullModule.forRootAsync({
       imports: [ConfigModule],
       inject: [ConfigService],

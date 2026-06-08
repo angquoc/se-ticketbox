@@ -1,20 +1,13 @@
 import { Processor, WorkerHost } from '@nestjs/bullmq';
 import { Job } from 'bullmq';
-import { TICKET_ISSUE_QUEUE, NOTIFICATION_QUEUE } from '../../modules/queue/queue.constants';
+import { TICKET_ISSUE_QUEUE } from '../../modules/queue/queue.constants';
 import { PrismaService } from '../../database/prisma.service';
-import { InjectQueue } from '@nestjs/bullmq';
-import { Queue } from 'bullmq';
 import { OrderStatus, Ticket } from '@prisma/client';
 import { createHash, randomUUID } from 'crypto';
 
 @Processor(TICKET_ISSUE_QUEUE)
 export class TicketIssueProcessor extends WorkerHost {
-  constructor(
-    private readonly prisma: PrismaService,
-
-    @InjectQueue(NOTIFICATION_QUEUE)
-    private readonly notificationQueue: Queue,
-  ) {
+  constructor(private readonly prisma: PrismaService) {
     super();
   }
 
@@ -62,6 +55,7 @@ export class TicketIssueProcessor extends WorkerHost {
 
     await this.prisma.$transaction(async (tx) => {
       for (const item of order.items) {
+        // Move tickets from "reserved" to "sold" in DB
         await tx.ticketType.update({
           where: { id: item.ticketTypeId },
           data: {
@@ -74,6 +68,7 @@ export class TicketIssueProcessor extends WorkerHost {
           },
         });
 
+        // Update per-user paid/reserved counters
         await tx.userTicketCounter.upsert({
           where: {
             userId_ticketTypeId: {
@@ -97,6 +92,7 @@ export class TicketIssueProcessor extends WorkerHost {
           },
         });
 
+        // Create one Ticket record per purchased quantity
         for (let i = 0; i < item.quantity; i++) {
           const rawQrToken = randomUUID();
 
@@ -121,22 +117,10 @@ export class TicketIssueProcessor extends WorkerHost {
       }
     });
 
-    await this.notificationQueue.add(
-      'send-order-paid-email',
-      {
-        orderId,
-        userId: order.userId,
-      },
-      {
-        attempts: 3,
-        backoff: {
-          type: 'exponential',
-          delay: 3000,
-        },
-        removeOnComplete: true,
-        removeOnFail: false,
-      },
-    );
+    // NOTE: Redis stock sync and user_limit decrement are handled by the
+    // caller (PaymentService.markPaymentSuccessAndQueueTicketIssue or
+    // OrderService.finalizePayment) before/after queueing this job.
+    // This processor focuses solely on persisting tickets in PostgreSQL.
 
     return {
       issued: true,

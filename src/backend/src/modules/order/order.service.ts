@@ -3,6 +3,7 @@ import {
   NotFoundException,
   BadRequestException,
   UnauthorizedException,
+  UnprocessableEntityException,
   Logger,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
@@ -16,31 +17,53 @@ import {
   Order,
   OrderItem,
   TicketType,
-  PaymentTransaction,
-  Ticket,
   Prisma,
+  OrderStatus,
+  TicketStatus,
 } from '@prisma/client';
 import { CreateOrderDto } from './dto/create-order.dto';
 import {
   OrderResponseDto,
   OrderListResponseDto,
   OrderItemResponseDto,
+  OrderTicketResponseDto,
   CreateOrderResponseDto,
 } from './dto/order-response.dto';
-import { ORDER_EXPIRE_QUEUE } from './processors/order-expire.processor';
+import { ORDER_EXPIRE_QUEUE, NOTIFICATION_QUEUE } from '../queue/queue.constants';
+import { PaymentService } from '../payment/payment.service';
 
 const DEFAULT_RESERVATION_TTL_SECONDS = 15 * 60; // 15 minutes
 
 // ─────────────────────────────────────────────────────────────────────────────
-type OrderItemWithType = OrderItem & {
+type TicketWithQr = {
+  id: string;
+  ticketTypeId: string;
+  status: TicketStatus;
+  checkedInAt: Date | null;
+  createdAt: Date;
+  qrTokenHash: string;
+  qrSignature: string | null;
   ticketType: Pick<TicketType, 'name'>;
-  tickets: Pick<Ticket, 'id'>[];
 };
 
-type OrderWithRelations = Order & {
-  items: OrderItemWithType[];
+// OrderWithRelations: used when full ticket data is needed (e.g. GET /orders/:id)
+type OrderWithFullTickets = Order & {
+  items: (OrderItem & {
+    ticketType: Pick<TicketType, 'name'>;
+    tickets: TicketWithQr[];
+  })[];
   concert: { title: string };
-  payments: PaymentTransaction[];
+  payments: { status: string; paymentUrl: string | null }[];
+};
+
+// OrderWithMinimalTickets: used when only ticket count is needed
+type OrderWithMinimalTickets = Order & {
+  items: (OrderItem & {
+    ticketType: Pick<TicketType, 'name'>;
+    tickets: { id: string }[];
+  })[];
+  concert: { title: string };
+  payments: { status: string; paymentUrl: string | null }[];
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -53,14 +76,34 @@ export class OrderService {
     private prisma: PrismaService,
     private redis: RedisService,
     private configService: ConfigService,
+    private paymentService: PaymentService,
     @InjectQueue(ORDER_EXPIRE_QUEUE) private readonly expireQueue: Queue,
+    @InjectQueue(NOTIFICATION_QUEUE) private readonly notificationQueue: Queue,
   ) {}
 
   // ─────────────────────────────────────────────────────────────────────────────
   // Mapping helpers
   // ─────────────────────────────────────────────────────────────────────────────
 
-  private toOrderItemResponse(item: OrderItemWithType): OrderItemResponseDto {
+  private buildQrPayload(ticket: {
+    id: string;
+    qrTokenHash: string;
+    qrSignature: string | null;
+    createdAt: Date;
+  }): string {
+    const timestamp = Math.floor(ticket.createdAt.getTime() / 1000);
+    return `${ticket.id}:${ticket.qrTokenHash}:${timestamp}:${ticket.qrSignature ?? ''}`;
+  }
+
+  private toOrderItemResponse(item: {
+    id: string;
+    ticketTypeId: string;
+    ticketType: { name: string };
+    quantity: number;
+    unitPrice: number;
+    subtotal: number;
+    tickets?: { id: string }[];
+  }): OrderItemResponseDto {
     return {
       id: item.id,
       ticketTypeId: item.ticketTypeId,
@@ -72,8 +115,57 @@ export class OrderService {
     };
   }
 
-  private toOrderResponse(
-    order: OrderWithRelations,
+  private toTicketResponse(ticket: TicketWithQr): OrderTicketResponseDto {
+    return {
+      id: ticket.id,
+      ticketTypeId: ticket.ticketTypeId,
+      ticketTypeName: ticket.ticketType.name,
+      status: ticket.status,
+      checkedInAt: ticket.checkedInAt,
+      createdAt: ticket.createdAt,
+      qrPayload: this.buildQrPayload(ticket),
+    };
+  }
+
+  /**
+   * Maps an order with full ticket data (QR payloads) — used for GET /orders/:id.
+   */
+  private toOrderResponseFull(
+    order: OrderWithFullTickets,
+    paymentUrl?: string | null,
+  ): OrderResponseDto {
+    const tickets: OrderTicketResponseDto[] = [];
+    for (const item of order.items ?? []) {
+      for (const ticket of item.tickets ?? []) {
+        tickets.push(this.toTicketResponse(ticket));
+      }
+    }
+
+    return {
+      id: order.id,
+      userId: order.userId,
+      concertId: order.concertId,
+      concertTitle: order.concert.title,
+      status: order.status,
+      totalAmountInVnd: order.totalAmountInVnd,
+      currency: order.currency,
+      expiresAt: order.expiresAt,
+      paidAt: order.paidAt,
+      cancelledAt: order.cancelledAt,
+      createdAt: order.createdAt,
+      updatedAt: order.updatedAt,
+      items: (order.items ?? []).map((item) => this.toOrderItemResponse(item)),
+      paymentUrl,
+      ticketCount: tickets.length,
+      tickets: order.status === OrderStatus.PAID ? tickets : undefined,
+    };
+  }
+
+  /**
+   * Maps an order with minimal ticket data (count only) — used for list/cancel/create.
+   */
+  private toOrderResponseMinimal(
+    order: OrderWithMinimalTickets,
     paymentUrl?: string | null,
   ): OrderResponseDto {
     return {
@@ -96,19 +188,6 @@ export class OrderService {
         0,
       ),
     };
-  }
-
-  private buildOrderInclude() {
-    return {
-      items: {
-        include: {
-          ticketType: { select: { name: true } },
-          tickets: { select: { id: true } },
-        },
-      },
-      concert: { select: { title: true } },
-      payments: { orderBy: { createdAt: 'desc' } as never },
-    } as const;
   }
 
   // ─────────────────────────────────────────────────────────────────────────────
@@ -286,18 +365,18 @@ export class OrderService {
       }
 
       if (failedResult.error === 'OUT_OF_STOCK') {
-        throw new BadRequestException(
+        throw new UnprocessableEntityException(
           `Not enough tickets available for ticket type "${ticketMeta[failedIndex].ticketTypeId}"`,
         );
       }
       if (failedResult.error === 'EXCEED_USER_LIMIT') {
         const remaining = (failedResult as Record<string, unknown>)
           .remaining_can_buy as number | undefined;
-        throw new BadRequestException(
+        throw new UnprocessableEntityException(
           `Purchase limit exceeded. You can buy up to ${remaining ?? 0} more ticket(s) for this ticket type`,
         );
       }
-      throw new BadRequestException(
+      throw new UnprocessableEntityException(
         `Reservation failed: ${failedResult.error} — ${failedResult.message}`,
       );
     }
@@ -312,10 +391,11 @@ export class OrderService {
 
     const totalAmount = subtotals.reduce((sum, s) => sum + s.subtotal, 0);
 
-    let order: OrderWithRelations | null = null;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    let created: any = null;
 
     try {
-      const created = await this.prisma.order.create({
+      created = await this.prisma.order.create({
         data: {
           id: orderId,
           userId,
@@ -332,13 +412,6 @@ export class OrderService {
               subtotal: s.subtotal,
             })),
           },
-          payments: {
-            create: {
-              provider: 'MOCK',
-              status: 'INITIATED',
-              amount: totalAmount,
-            },
-          },
         },
         include: {
           items: {
@@ -351,8 +424,6 @@ export class OrderService {
           payments: { take: 1, orderBy: { createdAt: 'desc' } as never },
         },
       });
-
-      order = created;
     } catch (err) {
       this.logger.error(
         `Failed to persist order ${orderId} to DB — rolling back Redis reservations`,
@@ -375,7 +446,57 @@ export class OrderService {
       );
     }
 
-    const paymentUrl = (order.payments ?? [])[0]?.paymentUrl ?? null;
+    // Update UserTicketCounter in PostgreSQL (source of truth for per-user limits)
+    await Promise.all(
+      ticketMeta.map((m) =>
+        this.prisma.userTicketCounter.upsert({
+          where: { userId_ticketTypeId: { userId, ticketTypeId: m.ticketTypeId } },
+          create: { userId, ticketTypeId: m.ticketTypeId, reservedQty: m.quantity },
+          update: { reservedQty: { increment: m.quantity } },
+        }),
+      ),
+    );
+
+    // Create PaymentTransaction and get payment URL from gateway
+    let paymentUrl: string;
+    try {
+      const result = await this.paymentService.createPaymentUrl({ orderId, userId });
+      paymentUrl = result.paymentUrl;
+    } catch (gatewayErr) {
+      // Payment gateway failed → rollback everything
+      this.logger.error(
+        `Payment gateway failed for order ${orderId}: ${gatewayErr} — rolling back`,
+      );
+
+      // Rollback Redis reservations
+      await Promise.all(
+        ticketMeta.map((m) =>
+          this.redis.releaseReservation({
+            ticketTypeId: m.ticketTypeId,
+            userId,
+            orderId,
+            quantity: m.quantity,
+          }),
+        ),
+      );
+
+      // Rollback UserTicketCounter
+      await Promise.all(
+        ticketMeta.map((m) =>
+          this.prisma.userTicketCounter.update({
+            where: {
+              userId_ticketTypeId: { userId, ticketTypeId: m.ticketTypeId },
+            },
+            data: { reservedQty: { decrement: m.quantity } },
+          }),
+        ),
+      );
+
+      // Delete the order record (it only exists because payment failed)
+      await this.prisma.order.delete({ where: { id: orderId } });
+
+      throw gatewayErr;
+    }
     this.logger.log(
       `Order ${orderId} created, payment URL: ${paymentUrl ?? 'N/A'}`,
     );
@@ -390,7 +511,7 @@ export class OrderService {
     this.logger.debug(`Expire job scheduled for order ${orderId} in ${ttl}s`);
 
     return {
-      order: this.toOrderResponse(order, paymentUrl),
+      order: this.toOrderResponseMinimal(created as unknown as OrderWithMinimalTickets, paymentUrl),
       paymentUrl,
     };
   }
@@ -406,7 +527,18 @@ export class OrderService {
         items: {
           include: {
             ticketType: { select: { name: true } },
-            tickets: { select: { id: true } },
+            tickets: {
+              select: {
+                id: true,
+                ticketTypeId: true,
+                status: true,
+                checkedInAt: true,
+                createdAt: true,
+                qrTokenHash: true,
+                qrSignature: true,
+                ticketType: { select: { name: true } },
+              },
+            },
           },
         },
         concert: { select: { title: true } },
@@ -424,7 +556,7 @@ export class OrderService {
       );
     }
 
-    return this.toOrderResponse(order, null);
+    return this.toOrderResponseFull(order as OrderWithFullTickets, null);
   }
 
   // ─────────────────────────────────────────────────────────────────────────────
@@ -435,12 +567,13 @@ export class OrderService {
     userId: string,
     page = 1,
     limit = 10,
+    status?: OrderStatus,
   ): Promise<OrderListResponseDto> {
     const skip = (page - 1) * limit;
 
     const [orders, total] = await Promise.all([
       this.prisma.order.findMany({
-        where: { userId },
+        where: { userId, ...(status ? { status } : {}) },
         skip,
         take: limit,
         orderBy: { createdAt: 'desc' },
@@ -459,8 +592,8 @@ export class OrderService {
     ]);
 
     return {
-      data: (orders as unknown as OrderWithRelations[]).map((o) =>
-        this.toOrderResponse(o, null),
+      data: (orders as OrderWithMinimalTickets[]).map((o) =>
+        this.toOrderResponseMinimal(o, null),
       ),
       total,
       page,
@@ -518,12 +651,22 @@ export class OrderService {
       ),
     );
 
+    // Release per-user reservedQty in PostgreSQL
+    await Promise.all(
+      order.items.map((item) =>
+        this.prisma.userTicketCounter.update({
+          where: { userId_ticketTypeId: { userId, ticketTypeId: item.ticketTypeId } },
+          data: { reservedQty: { decrement: item.quantity } },
+        }),
+      ),
+    );
+
     const updated = await this.prisma.order.update({
       where: { id: orderId },
       data: {
         status: 'CANCELLED',
         cancelledAt: new Date(),
-        releaseReason: 'User requested cancellation',
+        releaseReason: 'CANCELLED',
         inventoryReleasedAt: new Date(),
       },
       include: {
@@ -539,7 +682,7 @@ export class OrderService {
     });
 
     this.logger.log(`Order ${orderId} cancelled by user ${userId}`);
-    return this.toOrderResponse(updated, null);
+    return this.toOrderResponseMinimal(updated as OrderWithMinimalTickets, null);
   }
 
   // ─────────────────────────────────────────────────────────────────────────────
@@ -579,8 +722,8 @@ export class OrderService {
     ]);
 
     return {
-      data: (orders as unknown as OrderWithRelations[]).map((o) =>
-        this.toOrderResponse(o, null),
+      data: (orders as OrderWithMinimalTickets[]).map((o) =>
+        this.toOrderResponseMinimal(o, null),
       ),
       total,
       page,
@@ -613,223 +756,7 @@ export class OrderService {
     }
 
     const paymentUrl = (order.payments ?? [])[0]?.paymentUrl ?? null;
-    return this.toOrderResponse(order, paymentUrl);
-  }
-
-  // ─────────────────────────────────────────────────────────────────────────────
-  // Payment Webhook Handler
-  // ─────────────────────────────────────────────────────────────────────────────
-
-  async handlePaymentWebhook(
-    provider: string,
-    payload: {
-      providerTransactionId: string;
-      orderId: string;
-      amount: number;
-      status: 'SUCCESS' | 'FAILED' | 'CANCELLED';
-      signature?: string;
-    },
-  ): Promise<{ received: boolean; orderId: string; status: string }> {
-    this.logger.log(
-      `Payment webhook from ${provider}: order=${payload.orderId}, tx=${payload.providerTransactionId}, status=${payload.status}`,
-    );
-
-    const order = await this.prisma.order.findUnique({
-      where: { id: payload.orderId },
-      include: {
-        items: {
-          include: {
-            ticketType: { select: { id: true, name: true } },
-            tickets: { select: { id: true } },
-          },
-        },
-        payments: { orderBy: { createdAt: 'desc' } as never },
-      },
-    });
-
-    if (!order) {
-      throw new NotFoundException(`Order "${payload.orderId}" not found`);
-    }
-
-    if (order.status === 'PAID') {
-      this.logger.log(
-        `Order ${payload.orderId} already PAID — idempotent skip`,
-      );
-      return { received: true, orderId: payload.orderId, status: 'PAID' };
-    }
-
-    if (order.status === 'EXPIRED' || order.status === 'CANCELLED') {
-      this.logger.warn(
-        `Order ${payload.orderId} already ${order.status} — idempotent skip`,
-      );
-      return { received: true, orderId: payload.orderId, status: order.status };
-    }
-
-    if (payload.status === 'SUCCESS') {
-      return this.finalizePayment(order, payload);
-    }
-    if (payload.status === 'FAILED') {
-      return this.handlePaymentFailed(order);
-    }
-    if (payload.status === 'CANCELLED') {
-      return this.handlePaymentCancelled(order);
-    }
-
-    throw new BadRequestException(
-      `Unknown payment status: ${String(payload.status)}`,
-    );
-  }
-
-  private async finalizePayment(
-    order: Order & {
-      items: Array<
-        OrderItem & {
-          ticketType: Pick<TicketType, 'id' | 'name'>;
-          tickets: Pick<Ticket, 'id'>[];
-        }
-      >;
-      payments: PaymentTransaction[];
-    },
-    payload: { providerTransactionId: string; amount: number },
-  ): Promise<{ received: boolean; orderId: string; status: string }> {
-    await this.prisma.$transaction(async (tx) => {
-      await tx.order.update({
-        where: { id: order.id },
-        data: { status: 'PAID', paidAt: new Date() },
-      });
-
-      await tx.paymentTransaction.updateMany({
-        where: { orderId: order.id, status: 'INITIATED' },
-        data: {
-          status: 'SUCCESS',
-          providerTransactionId: payload.providerTransactionId,
-          receivedAt: new Date(),
-          rawWebhook: payload,
-        },
-      });
-
-      for (const item of order.items) {
-        for (let i = 0; i < item.quantity; i++) {
-          await tx.ticket.create({
-            data: {
-              orderId: order.id,
-              orderItemId: item.id,
-              concertId: order.concertId,
-              ticketTypeId: item.ticketTypeId,
-              userId: order.userId,
-              qrTokenHash: crypto.randomUUID(),
-              status: 'ISSUED',
-            },
-          });
-        }
-      }
-
-      for (const item of order.items) {
-        await tx.ticketType.update({
-          where: { id: item.ticketTypeId },
-          data: { soldQty: { increment: item.quantity } },
-        });
-      }
-
-      for (const item of order.items) {
-        await tx.userTicketCounter.upsert({
-          where: {
-            userId_ticketTypeId: {
-              userId: order.userId,
-              ticketTypeId: item.ticketTypeId,
-            },
-          },
-          create: {
-            userId: order.userId,
-            ticketTypeId: item.ticketTypeId,
-            paidQty: item.quantity,
-            reservedQty: 0,
-          },
-          update: { paidQty: { increment: item.quantity } },
-        });
-      }
-    });
-
-    await this.redis.del(`reservation:${order.id}`);
-    this.logger.log(`Order ${order.id} finalized — PAID, tickets issued`);
-    return { received: true, orderId: order.id, status: 'PAID' };
-  }
-
-  private async handlePaymentFailed(
-    order: Order & {
-      items: Array<OrderItem & { ticketType: Pick<TicketType, 'id'> }>;
-      payments: PaymentTransaction[];
-    },
-  ): Promise<{ received: boolean; orderId: string; status: string }> {
-    await this.prisma.$transaction(async (tx) => {
-      await tx.order.update({
-        where: { id: order.id },
-        data: {
-          status: 'PAYMENT_FAILED',
-          inventoryReleasedAt: new Date(),
-          releaseReason: 'Payment failed',
-        },
-      });
-      await tx.paymentTransaction.updateMany({
-        where: { orderId: order.id, status: 'INITIATED' },
-        data: { status: 'FAILED' },
-      });
-    });
-
-    await Promise.all(
-      order.items.map((item) =>
-        this.redis.releaseReservation({
-          ticketTypeId: item.ticketTypeId,
-          userId: order.userId,
-          orderId: order.id,
-          quantity: item.quantity,
-        }),
-      ),
-    );
-
-    this.logger.log(
-      `Order ${order.id} marked PAYMENT_FAILED — inventory released`,
-    );
-    return { received: true, orderId: order.id, status: 'PAYMENT_FAILED' };
-  }
-
-  private async handlePaymentCancelled(
-    order: Order & {
-      items: Array<OrderItem & { ticketType: Pick<TicketType, 'id'> }>;
-      payments: PaymentTransaction[];
-    },
-  ): Promise<{ received: boolean; orderId: string; status: string }> {
-    await this.prisma.$transaction(async (tx) => {
-      await tx.order.update({
-        where: { id: order.id },
-        data: {
-          status: 'CANCELLED',
-          cancelledAt: new Date(),
-          inventoryReleasedAt: new Date(),
-          releaseReason: 'Payment cancelled by user',
-        },
-      });
-      await tx.paymentTransaction.updateMany({
-        where: { orderId: order.id, status: 'INITIATED' },
-        data: { status: 'CANCELLED' },
-      });
-    });
-
-    await Promise.all(
-      order.items.map((item) =>
-        this.redis.releaseReservation({
-          ticketTypeId: item.ticketTypeId,
-          userId: order.userId,
-          orderId: order.id,
-          quantity: item.quantity,
-        }),
-      ),
-    );
-
-    this.logger.log(
-      `Order ${order.id} marked CANCELLED after payment cancellation`,
-    );
-    return { received: true, orderId: order.id, status: 'CANCELLED' };
+    return this.toOrderResponseMinimal(order as OrderWithMinimalTickets, paymentUrl);
   }
 
   // ─────────────────────────────────────────────────────────────────────────────
@@ -861,6 +788,7 @@ export class OrderService {
       return;
     }
 
+    // Release Redis reservations
     await Promise.all(
       order.items.map((item) =>
         this.redis.releaseReservation({
@@ -872,12 +800,37 @@ export class OrderService {
       ),
     );
 
+    // Decrement per-user counter in PostgreSQL
+    await Promise.all(
+      order.items.map((item) =>
+        this.prisma.userTicketCounter.update({
+          where: {
+            userId_ticketTypeId: {
+              userId: order.userId,
+              ticketTypeId: item.ticketType.id,
+            },
+          },
+          data: { reservedQty: { decrement: item.quantity } },
+        }),
+      ),
+    );
+
+    // Decrement reservedQty on TicketType in PostgreSQL
+    await Promise.all(
+      order.items.map((item) =>
+        this.prisma.ticketType.update({
+          where: { id: item.ticketTypeId },
+          data: { reservedQty: { decrement: item.quantity } },
+        }),
+      ),
+    );
+
     await this.prisma.order.update({
       where: { id: orderId },
       data: {
         status: 'EXPIRED',
         inventoryReleasedAt: new Date(),
-        releaseReason: 'Payment not received within reservation window',
+        releaseReason: 'PAYMENT_TIMEOUT',
       },
     });
 

@@ -2,6 +2,7 @@ import {
   ConflictException,
   Injectable,
 } from '@nestjs/common';
+import { createHash } from 'crypto';
 import Redis from 'ioredis';
 import { ConfigService } from '@nestjs/config';
 
@@ -15,6 +16,37 @@ type IdempotencyRecord = {
 export class IdempotencyService {
   private readonly redis: Redis;
   private readonly ttlSeconds = 15 * 60;
+
+  /**
+   * Normalizes a request payload by sorting keys and removing undefined values,
+   * then returns a SHA-256 hex digest.
+   */
+  hashRequest(payload: unknown): string {
+    return createHash('sha256')
+      .update(JSON.stringify(this.normalizePayload(payload)))
+      .digest('hex');
+  }
+
+  /** Recursively strips undefined values and sorts object keys. */
+  private normalizePayload(value: unknown): unknown {
+    if (value === null || value === undefined) return undefined;
+    if (Array.isArray(value)) return value.map((v) => this.normalizePayload(v));
+    if (typeof value === 'object') {
+      const sorted = Object.keys(value as Record<string, unknown>)
+        .sort()
+        .reduce<Record<string, unknown>>((acc, key) => {
+          const normalized = this.normalizePayload(
+            (value as Record<string, unknown>)[key],
+          );
+          if (normalized !== undefined) {
+            acc[key] = normalized;
+          }
+          return acc;
+        }, {});
+      return sorted;
+    }
+    return value;
+  }
 
   constructor(private readonly config: ConfigService) {
     this.redis = new Redis({

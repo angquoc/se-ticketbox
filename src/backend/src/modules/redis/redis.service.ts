@@ -3,6 +3,7 @@ import {
   Logger,
   OnModuleDestroy,
   OnModuleInit,
+  Optional,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import Redis from 'ioredis';
@@ -52,7 +53,7 @@ export class RedisService implements OnModuleDestroy, OnModuleInit {
    */
   constructor(
     private readonly configService: ConfigService,
-    client?: RedisClient,
+    @Optional() client?: RedisClient,
   ) {
     if (client) {
       this.client = client;
@@ -85,12 +86,19 @@ export class RedisService implements OnModuleDestroy, OnModuleInit {
    * Load all Lua scripts into Redis and cache their SHA digests.
    * Called once on module init. EVALSHA will be used for subsequent calls.
    */
+  private getScriptPath(filename: string): string {
+    // At runtime __dirname = dist/src/modules/redis/
+    // Lua files are at dist/modules/redis/scripts/
+    const distRoot = join(__dirname, '..', '..', '..');
+    return join(distRoot, 'modules', 'redis', 'scripts', filename);
+  }
+
   private async initScripts(): Promise<void> {
     const scripts = ['reserve-ticket.lua', 'release-reservation.lua'];
 
     for (const filename of scripts) {
       try {
-        const scriptPath = join(__dirname, 'scripts', filename);
+        const scriptPath = this.getScriptPath(filename);
         const scriptBody = readFileSync(scriptPath, 'utf8');
         const sha = (await this.client.script('LOAD', scriptBody)) as string;
         this.scriptCache.set(filename, sha);
@@ -122,7 +130,7 @@ export class RedisService implements OnModuleDestroy, OnModuleInit {
         // NOSCRIPT: Redis restarted and script cache was flushed → fall back to EVAL
         if (err instanceof Error && err.message.includes('NOSCRIPT')) {
           this.logger.warn(`EVALSHA NOSCRIPT for "${filename}", falling back to EVAL`);
-          const scriptPath = join(__dirname, 'scripts', filename);
+          const scriptPath = this.getScriptPath(filename);
           const scriptBody = readFileSync(scriptPath, 'utf8');
           raw = await this.client.eval(scriptBody, keys.length, ...keys, ...args);
         } else {
@@ -131,7 +139,7 @@ export class RedisService implements OnModuleDestroy, OnModuleInit {
       }
     } else {
       // EVAL: fallback to sending script body directly
-      const scriptPath = join(__dirname, 'scripts', filename);
+      const scriptPath = this.getScriptPath(filename);
       const scriptBody = readFileSync(scriptPath, 'utf8');
       raw = await this.client.eval(scriptBody, keys.length, ...keys, ...args);
     }
@@ -253,6 +261,28 @@ export class RedisService implements OnModuleDestroy, OnModuleInit {
       [stockKey, userLimitKey, reservationKey],
       [params.quantity, params.orderId, params.userId, params.ticketTypeId],
     );
+  }
+
+  /**
+   * Decrement the per-user reserved-ticket counter in Redis.
+   * Called when a reservation converts to a confirmed purchase (payment SUCCESS),
+   * so the paid tickets no longer count toward the user's "in-flight" limit.
+   */
+  async decrementUserLimit(params: {
+    ticketTypeId: string;
+    userId: string;
+    quantity: number;
+  }): Promise<void> {
+    const userLimitKey = REDIS_KEY_USER_LIMIT(
+      params.userId,
+      params.ticketTypeId,
+    );
+    const raw = await this.client.get(userLimitKey);
+    if (raw === null) return;
+
+    const current = parseInt(raw, 10);
+    const newVal = Math.max(0, current - params.quantity);
+    await this.client.set(userLimitKey, String(newVal));
   }
 
   async onModuleDestroy(): Promise<void> {
