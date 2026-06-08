@@ -27,9 +27,8 @@ import {
   OrderItemResponseDto,
   CreateOrderResponseDto,
 } from './dto/order-response.dto';
-import { ORDER_EXPIRE_QUEUE } from './order.queue';
+import { ORDER_EXPIRE_QUEUE, NOTIFICATION_QUEUE } from '../queue/queue.constants';
 import { PaymentService } from '../payment/payment.service';
-import { NOTIFICATION_QUEUE } from '../queue/queue.constants';
 
 const DEFAULT_RESERVATION_TTL_SECONDS = 15 * 60; // 15 minutes
 
@@ -689,6 +688,7 @@ export class OrderService {
       return;
     }
 
+    // Release Redis reservations
     await Promise.all(
       order.items.map((item) =>
         this.redis.releaseReservation({
@@ -700,6 +700,7 @@ export class OrderService {
       ),
     );
 
+    // Decrement per-user counter in PostgreSQL
     await Promise.all(
       order.items.map((item) =>
         this.prisma.userTicketCounter.update({
@@ -709,6 +710,16 @@ export class OrderService {
               ticketTypeId: item.ticketType.id,
             },
           },
+          data: { reservedQty: { decrement: item.quantity } },
+        }),
+      ),
+    );
+
+    // Decrement reservedQty on TicketType in PostgreSQL
+    await Promise.all(
+      order.items.map((item) =>
+        this.prisma.ticketType.update({
+          where: { id: item.ticketTypeId },
           data: { reservedQty: { decrement: item.quantity } },
         }),
       ),
