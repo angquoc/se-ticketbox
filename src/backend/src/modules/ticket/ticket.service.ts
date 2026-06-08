@@ -26,6 +26,8 @@ export class TicketService {
     checkedInAt: Date | null;
     createdAt: Date;
     ticketType: { name: string };
+    qrTokenHash: string;
+    qrSignature: string | null;
   }): TicketResponseDto {
     return {
       id: ticket.id,
@@ -36,7 +38,18 @@ export class TicketService {
       status: ticket.status,
       checkedInAt: ticket.checkedInAt,
       createdAt: ticket.createdAt,
+      qrPayload: this.buildQrPayload(ticket),
     };
+  }
+
+  private buildQrPayload(ticket: {
+    id: string;
+    qrTokenHash: string;
+    qrSignature: string | null;
+    createdAt: Date;
+  }): string {
+    const timestamp = Math.floor(ticket.createdAt.getTime() / 1000);
+    return `${ticket.id}:${ticket.qrTokenHash}:${timestamp}:${ticket.qrSignature ?? ''}`;
   }
 
   /**
@@ -121,6 +134,7 @@ export class TicketService {
       status: ticket.status,
       checkedInAt: ticket.checkedInAt,
       createdAt: ticket.createdAt,
+      qrPayload: this.buildQrPayload(ticket),
     };
   }
 
@@ -133,7 +147,7 @@ export class TicketService {
   async getTicketQrData(ticketId: string, userId: string): Promise<{ qrToken: string }> {
     const ticket = await this.prisma.ticket.findUnique({
       where: { id: ticketId },
-      select: { id: true, userId: true, qrTokenHash: true, status: true },
+      select: { id: true, userId: true, qrTokenHash: true, qrSignature: true, status: true, createdAt: true },
     });
 
     if (!ticket) {
@@ -150,9 +164,9 @@ export class TicketService {
       );
     }
 
-    // The raw token is the SHA256 hash of a UUID stored as qrTokenHash.
-    // In production this should be a signed payload instead.
+    // Return the full QR payload so the frontend can render the QR code directly
+    const qrPayload = this.buildQrPayload(ticket);
     this.logger.debug(`QR data requested for ticket ${ticketId}`);
-    return { qrToken: ticket.qrTokenHash };
+    return { qrToken: qrPayload };
   }
 }

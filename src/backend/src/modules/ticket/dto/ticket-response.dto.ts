@@ -9,6 +9,8 @@ export class TicketResponseDto {
   status!: TicketStatus;
   checkedInAt!: Date | null;
   createdAt!: Date;
+  /** QR payload for rendering the ticket QR code: {ticketId}:{qrTokenHash}:{timestamp}:{qrSignature} */
+  qrPayload?: string;
 }
 
 export class TicketListResponseDto {
