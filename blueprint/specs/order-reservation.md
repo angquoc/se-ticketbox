@@ -530,11 +530,50 @@ return {ok = true, releasedQty = ARGV[4]}
 
 ### 9. Redis reserve thành công nhưng PostgreSQL insert thất bại
 
-- Backend rollback Redis bằng cách gọi Lua Script `release-ticket`.
-- Trả lỗi 500 cho client.
-- Không tạo orphan reservation trong Redis.
+- Redis đã giữ vé (đã `DECRBY stock`, `INCRBY user-limit`, `SET reservation` với TTL).
+- PostgreSQL `order.create` thất bại (ví dụ: unique constraint violation, database timeout, connection lost).
+- Backend gọi `releaseReservation` cho **tất cả** ticket types trong order để hoàn lại `stock` và giảm `user-limit`.
+- Backend log lỗi PostgreSQL kèm `orderId` để trace.
+- Backend trả **400 Bad Request** cho khách: `"Failed to create order. Please try again."`.
+- Không có orphan reservation trong Redis sau khi rollback hoàn tất.
+- Nếu rollback cũng thất bại, log lỗi rollback riêng nhưng vẫn trả 400 cho khách.
 
-### 10. Thanh toán thành công muộn (sau khi order expired)
+**Luồng chi tiết:**
+
+```
+1. Redis Lua Script reserveTicket() → {ok: true} cho tất cả ticket types
+2. PostgreSQL prisma.order.create() → THROWS (ví dụ: DB timeout)
+3. catch block:
+   a. log.error("Failed to persist order {orderId} to DB — rolling back Redis reservations", err)
+   b. await releaseReservation() cho ticket_1
+   c. await releaseReservation() cho ticket_2
+   d. (tùy trường hợp) log.error nếu rollback lỗi
+   e. throw BadRequestException("Failed to create order. Please try again.")
+4. HTTP 400 → client hiển thị thông báo yêu cầu thử lại
+```
+
+### 10. Redis reserve thất bại giữa chừng (multi-item order)
+
+- Khi order chứa nhiều ticket types, reserve chạy song song (`Promise.all`).
+- Ticket type thứ 2/thứ 3 có thể thất bại (hết vé, vượt giới hạn) trong khi ticket type thứ 1 đã reserve thành công.
+- Backend phát hiện reservation thất bại qua `failedIndex`, rollback **tất cả** reservation đã thành công trước đó (duyệt ngược từ `failedIndex - 1`).
+- Backend trả **422 Unprocessable Entity** kèm lỗi cụ thể (`OUT_OF_STOCK` hoặc `EXCEED_USER_LIMIT`).
+- Không có orphan reservation trong Redis.
+
+**Luồng chi tiết:**
+
+```
+1. Redis reserveTicket() cho ticket_1 → {ok: true}  ✓
+2. Redis reserveTicket() cho ticket_2 → {err: "OUT_OF_STOCK"}  ✗
+3. Backend phát hiện failedIndex = 1
+4. Backend log.warn("Reservation failed for ticket_2: OUT_OF_STOCK — rolling back 1 successful reservation")
+5. Backend releaseReservation() cho ticket_1 → {ok: true}
+6. Backend trả 422: "Vé đã hết"
+```
+
+---
+
+### 11. Thanh toán thành công muộn (sau khi order expired)
 
 - Webhook đến sau khi order đã `EXPIRED`.
 - Backend ghi nhận trạng thái bất thường.
@@ -656,3 +695,18 @@ Tóm tắt tại các thời điểm giao dịch:
 - JWT không hợp lệ → `401 Unauthorized`.
 - JWT hết hạn → `401 Unauthorized`.
 - Không có order nào được tạo.
+
+### 11. Redis reserve OK nhưng PostgreSQL lỗi → rollback và trả 400
+
+- Khi PostgreSQL `order.create` thất bại, Backend gọi `releaseReservation` cho tất cả ticket types.
+- Redis `stock` và `user-limit` được khôi phuc.
+- Lỗi PostgreSQL được log kèm `orderId` để trace.
+- Backend trả **400** cho khách (không phải 500).
+- Không có orphan reservation trong Redis.
+
+### 12. Redis reserve thất bại giữa chừng → rollback reservation đã thành công
+
+- Khi multi-item order có ticket type reserve thất bại, Backend rollback các reservation đã thành công trước đó.
+- Redis `stock` được hoàn lại đúng số lượng đã giữ.
+- Backend trả **422** kèm lỗi cụ thể.
+- Không có orphan reservation trong Redis.
