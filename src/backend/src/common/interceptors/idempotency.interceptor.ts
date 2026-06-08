@@ -119,7 +119,16 @@ export class IdempotencyInterceptor implements NestInterceptor {
     return next.handle().pipe(
       tap({
         next: (responseBody: unknown) => {
-          void this.persistCompletedKey(userId, idempotencyKey, responseBody);
+          const orderId =
+            typeof responseBody === 'object' && responseBody !== null
+              ? (responseBody as Record<string, unknown>)['orderId'] ?? (responseBody as Record<string, unknown>)['order']?.['id']
+              : undefined;
+          void this.persistCompletedKey(
+            userId,
+            idempotencyKey,
+            responseBody,
+            typeof orderId === 'string' ? orderId : undefined,
+          );
         },
         error: () => {
           void this.markFailed(userId, idempotencyKey);
@@ -160,15 +169,20 @@ export class IdempotencyInterceptor implements NestInterceptor {
     userId: string,
     idempotencyKey: string,
     responseBody: unknown,
+    orderId?: string,
   ): Promise<void> {
     try {
+      const data: Prisma.IdempotencyKeyUpdateInput = {
+        status: 'COMPLETED',
+        responseBody: responseBody as Prisma.InputJsonValue,
+        resourceType: 'ORDER',
+      };
+      if (orderId) {
+        data.orderId = orderId;
+      }
       await this.prisma.idempotencyKey.update({
         where: { userId_key: { userId, key: idempotencyKey } },
-        data: {
-          status: 'COMPLETED',
-          responseBody: responseBody as Prisma.InputJsonValue,
-          resourceType: 'ORDER',
-        },
+        data,
       });
       this.logger.debug(`Idempotency key "${idempotencyKey}" marked COMPLETED`);
     } catch (err) {
