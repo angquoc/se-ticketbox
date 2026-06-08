@@ -6,6 +6,7 @@ import {
   Param,
   Query,
   UseGuards,
+  UseInterceptors,
   HttpCode,
   HttpStatus,
   ParseIntPipe,
@@ -21,6 +22,7 @@ import {
   type AuthUser,
 } from '../auth/decorators/current-user.decorator';
 import { Role } from '@prisma/client';
+import { IdempotencyInterceptor } from '../../common/interceptors/idempotency.interceptor';
 
 @Controller()
 export class OrderController {
@@ -35,6 +37,7 @@ export class OrderController {
    */
   @Post('orders')
   @UseGuards(AuthGuard)
+  @UseInterceptors(IdempotencyInterceptor)
   @HttpCode(HttpStatus.CREATED)
   async createOrder(
     @Body() dto: CreateOrderDto,
@@ -53,8 +56,9 @@ export class OrderController {
     @CurrentUser() user: AuthUser,
     @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
     @Query('limit', new DefaultValuePipe(10), ParseIntPipe) limit: number,
+    @Query('status') status?: string,
   ) {
-    return this.orderService.getMyOrders(user.sub, page, limit);
+    return this.orderService.getMyOrders(user.sub, page, limit, status as any);
   }
 
   /**

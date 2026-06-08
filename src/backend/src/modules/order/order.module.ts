@@ -5,6 +5,7 @@ import { OrderService } from './order.service';
 import { OrderExpireProcessor } from './processors/order-expire.processor';
 import { ORDER_EXPIRE_QUEUE } from './order.queue';
 import { RedisModule } from '../redis/redis.module';
+import { IdempotencyInterceptor } from '../../common/interceptors/idempotency.interceptor';
 
 @Module({
   imports: [
@@ -20,7 +21,7 @@ import { RedisModule } from '../redis/redis.module';
     }),
   ],
   controllers: [OrderController],
-  providers: [OrderService, OrderExpireProcessor],
+  providers: [OrderService, OrderExpireProcessor, IdempotencyInterceptor],
   exports: [OrderService],
 })
 export class OrderModule {}
