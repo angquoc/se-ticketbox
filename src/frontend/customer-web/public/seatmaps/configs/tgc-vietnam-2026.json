@@ -1,0 +1,79 @@
+{
+  "slug": "tgc-vietnam-2026",
+  "title": "TOKYO GIRLS COLLECTION in VIETNAM 2026",
+  "seatMapUrl": "/seatmaps/backgrounds/theater-tiered-separated.svg",
+  "zones": [
+    {
+      "ticketTypeName": "SKY LOUNGE",
+      "seatPrefix": "SKY",
+      "layout": {
+        "rows": 2,
+        "cols": 5,
+        "startX": 130,
+        "startY": 164,
+        "colGap": 36,
+        "rowGap": 30
+      }
+    },
+    {
+      "ticketTypeName": "GINZA",
+      "seatPrefix": "GNZ",
+      "layout": {
+        "rows": 2,
+        "cols": 6,
+        "startX": 496,
+        "startY": 164,
+        "colGap": 34,
+        "rowGap": 30
+      }
+    },
+    {
+      "ticketTypeName": "VIP 1",
+      "seatPrefix": "VIP",
+      "layout": {
+        "rows": 3,
+        "cols": 8,
+        "startX": 280,
+        "startY": 276,
+        "colGap": 34,
+        "rowGap": 30
+      }
+    },
+    {
+      "ticketTypeName": "SHIBUYA 1",
+      "seatPrefix": "SH1",
+      "layout": {
+        "rows": 4,
+        "cols": 8,
+        "startX": 104,
+        "startY": 408,
+        "colGap": 34,
+        "rowGap": 28
+      }
+    },
+    {
+      "ticketTypeName": "SHIBUYA 2",
+      "seatPrefix": "SHB",
+      "layout": {
+        "rows": 4,
+        "cols": 8,
+        "startX": 456,
+        "startY": 408,
+        "colGap": 34,
+        "rowGap": 28
+      }
+    },
+    {
+      "ticketTypeName": "HARAJUKU 1",
+      "seatPrefix": "HRJ",
+      "layout": {
+        "rows": 3,
+        "cols": 12,
+        "startX": 202,
+        "startY": 550,
+        "colGap": 34,
+        "rowGap": 24
+      }
+    }
+  ]
+}

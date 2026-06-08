@@ -1,0 +1,12 @@
+{
+  "slug": "your-concert-slug-here",
+  "title": "Tên concert mới",
+  "template": "festival-4-tier",
+  "seatMapUrl": "/seatmaps/backgrounds/theater-tiered.svg",
+  "zoneOverrides": [
+    { "zoneIndex": 0, "seatPrefix": "PLT" },
+    { "zoneIndex": 1, "seatPrefix": "GLD" },
+    { "zoneIndex": 2, "seatPrefix": "SLV" },
+    { "zoneIndex": 3, "seatPrefix": "GA" }
+  ]
+}

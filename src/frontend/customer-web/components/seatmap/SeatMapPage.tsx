@@ -48,6 +48,7 @@ export default function SeatMapPage({ concertId }: SeatMapPageProps) {
     hoveredSeat,
     setHoveredSeat,
     limitWarning,
+    availabilityNotice,
     filteredSeats,
     regions,
     toggleSeat,
@@ -63,13 +64,6 @@ export default function SeatMapPage({ concertId }: SeatMapPageProps) {
     }, 5000);
     return () => clearTimeout(timer);
   }, [mapReady, loading]);
-
-  useEffect(() => {
-    if (data && !loading) {
-      const t = setTimeout(() => setMapReady(true), 300);
-      return () => clearTimeout(t);
-    }
-  }, [data, loading]);
 
   const handleProceed = () => {
     if (selection.selectedSeats.length === 0) return;
@@ -173,6 +167,12 @@ export default function SeatMapPage({ concertId }: SeatMapPageProps) {
           </div>
         )}
 
+        {availabilityNotice && (
+          <div className="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-2 text-sm text-red-800">
+            {availabilityNotice}
+          </div>
+        )}
+
         {showFallback && !mapReady && (
           <div className="mb-4">
             <TextSeatFallback
@@ -196,6 +196,7 @@ export default function SeatMapPage({ concertId }: SeatMapPageProps) {
             onToggleSeat={toggleSeat}
             hoveredSeat={hoveredSeat}
             onHoverSeat={setHoveredSeat}
+            onBackgroundLoaded={() => setMapReady(true)}
           />
         </div>
 

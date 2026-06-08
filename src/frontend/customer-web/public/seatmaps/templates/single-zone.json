@@ -1,0 +1,11 @@
+{
+  "name": "single-zone",
+  "description": "Một khu ghế duy nhất (fan meeting, GA)",
+  "seatMapUrl": "/seatmaps/backgrounds/theater-tiered.svg",
+  "zones": [
+    {
+      "seatPrefix": "GEN",
+      "layout": { "rows": 8, "cols": 12, "startX": 100, "startY": 228, "colGap": 24, "rowGap": 26 }
+    }
+  ]
+}

@@ -27,9 +27,10 @@ export async function GET(
       throw new Error('Không tìm thấy concert trên backend');
     }
 
-    const backendSeatMap = buildSeatMapFromBackend({
+    const backendSeatMap = await buildSeatMapFromBackend({
       concertId: concert.id,
       concertName: concert.title,
+      concertSlug: concert.slug,
       seatMapUrl: concert.seatMapUrl,
       ticketTypes: ticketTypesResponse.data,
     });
@@ -42,7 +43,7 @@ export async function GET(
       });
     }
 
-    const mockData = getMockSeatMap(concert.id, {
+    const mockData = await getMockSeatMap(concert.id, {
       concertSlug: concert.slug,
       concertName: concert.title,
     });
@@ -56,7 +57,7 @@ export async function GET(
       data: mockData,
     });
   } catch (error) {
-    const mockData = getMockSeatMap(concertId, {
+    const mockData = await getMockSeatMap(concertId, {
       concertName: getMockConcertName(concertId),
     });
     return NextResponse.json({

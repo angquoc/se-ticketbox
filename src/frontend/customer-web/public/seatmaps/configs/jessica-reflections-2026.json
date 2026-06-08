@@ -1,0 +1,91 @@
+{
+  "slug": "jessica-reflections-2026",
+  "title": "JESSICA'S REFLECTIONS CONCERT TOUR IN HO CHI MINH CITY 2026",
+  "seatMapUrl": "/seatmaps/backgrounds/theater-tiered-separated.svg",
+  "zones": [
+    {
+      "ticketTypeName": "SVIP-1",
+      "seatPrefix": "S1",
+      "layout": {
+        "rows": 2,
+        "cols": 6,
+        "startX": 118,
+        "startY": 164,
+        "colGap": 34,
+        "rowGap": 30
+      }
+    },
+    {
+      "ticketTypeName": "SVIP-2",
+      "seatPrefix": "S2",
+      "layout": {
+        "rows": 2,
+        "cols": 6,
+        "startX": 496,
+        "startY": 164,
+        "colGap": 34,
+        "rowGap": 30
+      }
+    },
+    {
+      "ticketTypeName": "VIP",
+      "seatPrefix": "VIP",
+      "layout": {
+        "rows": 3,
+        "cols": 8,
+        "startX": 280,
+        "startY": 276,
+        "colGap": 34,
+        "rowGap": 30
+      }
+    },
+    {
+      "ticketTypeName": "PRE",
+      "seatPrefix": "PRE",
+      "layout": {
+        "rows": 4,
+        "cols": 10,
+        "startX": 246,
+        "startY": 408,
+        "colGap": 34,
+        "rowGap": 28
+      }
+    },
+    {
+      "ticketTypeName": "CAT1",
+      "seatPrefix": "C1",
+      "layout": {
+        "rows": 3,
+        "cols": 12,
+        "startX": 202,
+        "startY": 550,
+        "colGap": 34,
+        "rowGap": 24
+      }
+    },
+    {
+      "ticketTypeName": "CAT2",
+      "seatPrefix": "C2",
+      "layout": {
+        "rows": 2,
+        "cols": 14,
+        "startX": 166,
+        "startY": 638,
+        "colGap": 34,
+        "rowGap": 24
+      }
+    },
+    {
+      "ticketTypeName": "CAT3",
+      "seatPrefix": "C3",
+      "layout": {
+        "rows": 2,
+        "cols": 14,
+        "startX": 166,
+        "startY": 704,
+        "colGap": 34,
+        "rowGap": 24
+      }
+    }
+  ]
+}

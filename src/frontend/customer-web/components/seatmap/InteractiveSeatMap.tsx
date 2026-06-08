@@ -1,40 +1,42 @@
 'use client';
 
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import clsx from 'clsx';
 import type { Seat, SeatMapData } from '@/types/seatmap';
+import { SEAT_SIZE } from '@/lib/seat-layout-helpers';
 import { getSeatFillColor } from '@/lib/seat-colors';
 import SeatTooltip from './SeatTooltip';
 
 const ZONE_COLORS = ['#FEF3C7', '#DBEAFE', '#E0E7FF', '#DCFCE7', '#FCE7F3', '#FEE2E2'];
-const SEAT_SIZE = 20;
 const VIEWBOX = { width: 800, height: 580 };
 
 function buildZoneBackgrounds(seats: Seat[], ticketTypes: SeatMapData['ticketTypes']) {
-  return ticketTypes.map((ticketType, index) => {
-    const regionId = ticketType.seatRegions[0]?.regionId;
-    const regionSeats = seats.filter((seat) => seat.regionId === regionId);
-    if (regionSeats.length === 0) {
-      return null;
-    }
+  return ticketTypes
+    .map((ticketType, index) => {
+      const regionId = ticketType.seatRegions[0]?.regionId;
+      const regionSeats = seats.filter((seat) => seat.regionId === regionId);
+      if (regionSeats.length === 0) {
+        return null;
+      }
 
-    const xs = regionSeats.map((seat) => seat.coords.x);
-    const ys = regionSeats.map((seat) => seat.coords.y);
-    const minX = Math.min(...xs) - 30;
-    const minY = Math.min(...ys) - 22;
-    const maxX = Math.max(...xs) + SEAT_SIZE + 10;
-    const maxY = Math.max(...ys) + SEAT_SIZE + 10;
+      const xs = regionSeats.map((seat) => seat.coords.x);
+      const ys = regionSeats.map((seat) => seat.coords.y);
+      const minX = Math.min(...xs) - 30;
+      const minY = Math.min(...ys) - 22;
+      const maxX = Math.max(...xs) + SEAT_SIZE + 10;
+      const maxY = Math.max(...ys) + SEAT_SIZE + 10;
 
-    return {
-      id: regionId ?? ticketType.id,
-      label: ticketType.name,
-      x: minX,
-      y: minY,
-      width: maxX - minX,
-      height: maxY - minY,
-      color: ZONE_COLORS[index % ZONE_COLORS.length],
-    };
-  }).filter((zone): zone is NonNullable<typeof zone> => zone !== null);
+      return {
+        id: regionId ?? ticketType.id,
+        label: ticketType.name,
+        x: minX,
+        y: minY,
+        width: maxX - minX,
+        height: maxY - minY,
+        color: ZONE_COLORS[index % ZONE_COLORS.length],
+      };
+    })
+    .filter((zone): zone is NonNullable<typeof zone> => zone !== null);
 }
 
 interface InteractiveSeatMapProps {
@@ -44,6 +46,7 @@ interface InteractiveSeatMapProps {
   onToggleSeat: (seat: Seat) => void;
   hoveredSeat: Seat | null;
   onHoverSeat: (seat: Seat | null) => void;
+  onBackgroundLoaded?: () => void;
 }
 
 export default function InteractiveSeatMap({
@@ -53,13 +56,41 @@ export default function InteractiveSeatMap({
   onToggleSeat,
   hoveredSeat,
   onHoverSeat,
+  onBackgroundLoaded,
 }: InteractiveSeatMapProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [tooltipPos, setTooltipPos] = useState<{ x: number; y: number } | null>(null);
   const [scale, setScale] = useState(1);
   const [pan, setPan] = useState({ x: 0, y: 0 });
+  const [svgLoaded, setSvgLoaded] = useState(false);
   const dragging = useRef(false);
   const lastPointer = useRef({ x: 0, y: 0 });
+
+  const backgroundUrl = data.seatMapUrl || '/seat-map.svg';
+
+  useEffect(() => {
+    let cancelled = false;
+    setSvgLoaded(false);
+
+    const image = new Image();
+    image.onload = () => {
+      if (!cancelled) {
+        setSvgLoaded(true);
+        onBackgroundLoaded?.();
+      }
+    };
+    image.onerror = () => {
+      if (!cancelled) {
+        setSvgLoaded(false);
+        onBackgroundLoaded?.();
+      }
+    };
+    image.src = backgroundUrl;
+
+    return () => {
+      cancelled = true;
+    };
+  }, [backgroundUrl, onBackgroundLoaded]);
 
   const regionNameMap = new Map<string, string>();
   for (const tt of data.ticketTypes) {
@@ -70,6 +101,7 @@ export default function InteractiveSeatMap({
 
   const priceMap = new Map(data.ticketTypes.map((tt) => [tt.id, tt.price]));
   const zones = buildZoneBackgrounds(seats, data.ticketTypes);
+  const useInlineBackground = !svgLoaded;
 
   const handleSeatMouseEnter = useCallback(
     (seat: Seat, event: React.MouseEvent<SVGRectElement>) => {
@@ -107,6 +139,12 @@ export default function InteractiveSeatMap({
     e.preventDefault();
     const delta = e.deltaY > 0 ? -0.1 : 0.1;
     setScale((s) => Math.min(2.5, Math.max(0.6, s + delta)));
+  };
+
+  const seatTransform = (seat: Seat, hovered: boolean) => {
+    if (!hovered) return undefined;
+    const cx = seat.coords.x + SEAT_SIZE / 2;
+    const cy = seat.coords.y + SEAT_SIZE / 2;
   };
 
   return (
@@ -162,46 +200,57 @@ export default function InteractiveSeatMap({
           role="img"
           aria-label="Sơ đồ ghế"
         >
-          {/* Stage */}
-          <rect x={275} y={20} width={250} height={48} rx={8} fill="#1e293b" />
-          <text
-            x={400}
-            y={50}
-            textAnchor="middle"
-            fill="white"
-            fontSize={14}
-            fontWeight={600}
-            fontFamily="system-ui, sans-serif"
-          >
-            SÂN KHẤU
-          </text>
-
-          {/* Zone backgrounds */}
-          {zones.map((zone) => (
-            <g key={zone.id}>
-              <rect
-                x={zone.x}
-                y={zone.y}
-                width={zone.width}
-                height={zone.height}
-                rx={6}
-                fill={zone.color}
-                opacity={0.45}
-              />
+          {svgLoaded ? (
+            <image
+              href={backgroundUrl}
+              x={0}
+              y={0}
+              width={VIEWBOX.width}
+              height={VIEWBOX.height}
+              preserveAspectRatio="xMidYMid meet"
+            />
+          ) : (
+            <>
+              <rect x={275} y={20} width={250} height={48} rx={8} fill="#1e293b" />
               <text
-                x={zone.x + 12}
-                y={zone.y + 18}
-                fill="#475569"
-                fontSize={11}
+                x={400}
+                y={50}
+                textAnchor="middle"
+                fill="white"
+                fontSize={14}
                 fontWeight={600}
                 fontFamily="system-ui, sans-serif"
               >
-                {zone.label}
+                SÂN KHẤU
               </text>
-            </g>
-          ))}
+            </>
+          )}
 
-          {/* Seats */}
+          {useInlineBackground &&
+            zones.map((zone) => (
+              <g key={zone.id}>
+                <rect
+                  x={zone.x}
+                  y={zone.y}
+                  width={zone.width}
+                  height={zone.height}
+                  rx={6}
+                  fill={zone.color}
+                  opacity={0.45}
+                />
+                <text
+                  x={zone.x + 12}
+                  y={zone.y + 18}
+                  fill="#475569"
+                  fontSize={11}
+                  fontWeight={600}
+                  fontFamily="system-ui, sans-serif"
+                >
+                  {zone.label}
+                </text>
+              </g>
+            ))}
+
           {seats.map((seat) => {
             const selected = isSelected(seat.seatNumber);
             const hovered = hoveredSeat?.seatNumber === seat.seatNumber;
@@ -219,7 +268,9 @@ export default function InteractiveSeatMap({
                 fill={getSeatFillColor(seat.status, selected, hovered)}
                 stroke={selected ? '#1565C0' : 'transparent'}
                 strokeWidth={selected ? 2 : 0}
+                transform={seatTransform(seat, hovered)}
                 className={clsx(clickable && 'cursor-pointer')}
+                style={{ transition: 'transform 0.12s ease' }}
                 opacity={seat.status === 'SOLD' ? 0.7 : 1}
                 onClick={() => clickable && onToggleSeat(seat)}
                 onMouseEnter={(e) => handleSeatMouseEnter(seat, e)}

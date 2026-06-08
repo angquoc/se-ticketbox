@@ -1,0 +1,19 @@
+{
+  "name": "theater-3-tier",
+  "description": "Nhà hát 3 tầng: VIP gần sân khấu, Standard giữa, Economy xa",
+  "seatMapUrl": "/seatmaps/backgrounds/theater-tiered.svg",
+  "zones": [
+    {
+      "seatPrefix": "VIP",
+      "layout": { "rows": 3, "cols": 8, "startX": 280, "startY": 90, "colGap": 28, "rowGap": 28 }
+    },
+    {
+      "seatPrefix": "STD",
+      "layout": { "rows": 4, "cols": 10, "startX": 200, "startY": 200, "colGap": 26, "rowGap": 26 }
+    },
+    {
+      "seatPrefix": "ECO",
+      "layout": { "rows": 5, "cols": 12, "startX": 120, "startY": 330, "colGap": 24, "rowGap": 24 }
+    }
+  ]
+}

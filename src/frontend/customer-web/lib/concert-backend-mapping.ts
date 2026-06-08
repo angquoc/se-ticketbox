@@ -1,6 +1,5 @@
 import type { SelectedSeat } from '@/types/seatmap';
 import type { TicketTypeAvailability } from '@/types/order';
-import { resolveTicketTypeName } from '@/lib/ticket-type-config';
 
 function parseConcertMap(): Record<string, string> {
   const raw = process.env.BACKEND_CONCERT_MAP ?? process.env.NEXT_PUBLIC_BACKEND_CONCERT_MAP;
@@ -46,20 +45,12 @@ export function mapToBackendOrderItems(
       return { ticketTypeId: direct.id, quantity };
     }
 
-    const configName = resolveTicketTypeName(ticketTypeId);
-    if (configName) {
-      const byConfig = byName.get(configName.toLowerCase());
-      if (byConfig) {
-        return { ticketTypeId: byConfig.id, quantity };
-      }
-    }
-
     const byNameDirect = byName.get(ticketTypeId.toLowerCase());
     if (byNameDirect) {
       return { ticketTypeId: byNameDirect.id, quantity };
     }
 
-    const label = configName ?? ticketTypeId;
+    const label = ticketTypeId;
     throw new Error(
       `Không tìm thấy loại vé "${label}" trên backend. Kiểm tra dữ liệu concert và loại vé cho khớp.`,
     );

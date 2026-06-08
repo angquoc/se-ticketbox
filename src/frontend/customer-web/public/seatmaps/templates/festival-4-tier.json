@@ -1,0 +1,23 @@
+{
+  "name": "festival-4-tier",
+  "description": "Festival 4 hạng vé xếp tầng (Platinum → General Admission)",
+  "seatMapUrl": "/seatmaps/backgrounds/theater-tiered.svg",
+  "zones": [
+    {
+      "seatPrefix": "PLT",
+      "layout": { "rows": 3, "cols": 8, "startX": 280, "startY": 88, "colGap": 28, "rowGap": 28 }
+    },
+    {
+      "seatPrefix": "GLD",
+      "layout": { "rows": 4, "cols": 10, "startX": 200, "startY": 198, "colGap": 26, "rowGap": 26 }
+    },
+    {
+      "seatPrefix": "SLV",
+      "layout": { "rows": 5, "cols": 12, "startX": 120, "startY": 318, "colGap": 24, "rowGap": 24 }
+    },
+    {
+      "seatPrefix": "GA",
+      "layout": { "rows": 6, "cols": 14, "startX": 60, "startY": 438, "colGap": 22, "rowGap": 22 }
+    }
+  ]
+}
