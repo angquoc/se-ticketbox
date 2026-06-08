@@ -82,10 +82,12 @@ export class PaymentService {
     }
 
     try {
-      const response = await this.createPaymentInternal(
-        params.orderId,
-        params.userId,
-      );
+      const { paymentUrl } = await this.createPaymentUrl({
+        orderId: params.orderId,
+        userId: params.userId,
+      });
+
+      const response = { orderId: params.orderId, paymentUrl, reused: false };
 
       await this.idempotencyService.complete({
         userId: params.userId,
@@ -106,9 +108,21 @@ export class PaymentService {
     }
   }
 
-  private async createPaymentInternal(orderId: string, userId: string) {
+  /**
+   * Creates a payment URL for an existing PENDING_PAYMENT order.
+   * Called by OrderService.createOrder to embed payment URL in the order response,
+   * fulfilling the spec: "gọi Mock Payment Gateway → trả paymentUrl".
+   *
+   * If a URL already exists on an INITIATED transaction, returns the existing one.
+   * Throws BadRequestException if order is not PENDING_PAYMENT.
+   * Throws ServiceUnavailableException if the circuit breaker is OPEN.
+   */
+  async createPaymentUrl(params: {
+    orderId: string;
+    userId: string;
+  }): Promise<{ paymentUrl: string; reused: boolean }> {
     const order = await this.prisma.order.findUnique({
-      where: { id: orderId },
+      where: { id: params.orderId },
       include: { payments: true },
     });
 
@@ -116,7 +130,7 @@ export class PaymentService {
       throw new NotFoundException('Không tìm thấy đơn hàng');
     }
 
-    if (order.userId !== userId) {
+    if (order.userId !== params.userId) {
       throw new BadRequestException(
         'Đơn hàng không thuộc về người dùng hiện tại',
       );
@@ -124,20 +138,16 @@ export class PaymentService {
 
     if (order.status !== OrderStatus.PENDING_PAYMENT) {
       throw new BadRequestException(
-        'Chỉ có thể thanh toán đơn hàng đang chờ thanh toán',
+        'Chỉ có thể tạo payment URL cho đơn hàng đang chờ thanh toán',
       );
     }
 
-    const existingPayment = order.payments.find(
+    const existingInititated = order.payments.find(
       (payment) => payment.status === PaymentStatus.INITIATED,
     );
 
-    if (existingPayment?.paymentUrl) {
-      return {
-        orderId: order.id,
-        paymentUrl: existingPayment.paymentUrl,
-        reused: true,
-      };
+    if (existingInititated?.paymentUrl) {
+      return { paymentUrl: existingInititated.paymentUrl, reused: true };
     }
 
     const paymentUrl = await this.circuitBreaker.execute(async () => {
@@ -157,11 +167,7 @@ export class PaymentService {
       },
     });
 
-    return {
-      orderId: order.id,
-      paymentUrl,
-      reused: false,
-    };
+    return { paymentUrl, reused: false };
   }
 
   async handleMockWebhook(dto: MockWebhookDto) {

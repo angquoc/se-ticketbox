@@ -61,9 +61,13 @@ Mô tả chi tiết tại: [ticket-type-inventory.md](./ticket-type-inventory.md
 
 ### 2.2. Idempotency Key
 
+> **Lưu ý về storage:**
+> `POST /orders` sử dụng **PostgreSQL** (`IdempotencyKey` table) làm primary storage cho idempotency check trong `IdempotencyInterceptor`. Redis key `idem:{userId}:{idempotencyKey}` được `IdempotencyService` sử dụng cho riêng flow của `PaymentService` (tạo payment URL độc lập). Cả hai đều dùng `requestHash` (SHA-256 body) để detect body mismatch.
+
 | Key | Kiểu | TTL | Ý nghĩa |
 |-----|------|-----|---------|
-| `idem:{userId}:{idempotencyKey}` | String | 15 phút | Lưu trạng thái xử lý và kết quả order đã tạo |
+| `IdempotencyKey` table (PostgreSQL) | Row | 15 phút | Primary storage cho `POST /orders`: lưu `PROCESSING` → `COMPLETED`, `requestHash`, `responseBody`, `orderId` |
+| `idem:{userId}:{idempotencyKey}` (Redis) | String | 15 phút | Dùng bởi `IdempotencyService` cho `PaymentService.createPayment()` |
 
 ### 2.3. Rate Limiting Keys (toàn hệ thống)
 
@@ -117,12 +121,13 @@ Các bước xử lý:
 8. Nếu concert đang trong thời gian mở bán đông, kiểm tra waiting room token.
 9. Nếu token không hợp lệ hoặc hết hạn, trả `403` yêu cầu vào hàng đợi.
 
-**Bước 4 — Kiểm tra Idempotency Key**
+**Bước 4 — Kiểm tra Idempotency Key (IdempotencyInterceptor)**
 
-10. Backend tra Redis: `idem:{userId}:{idempotencyKey}`.
-11. Nếu key đã tồn tại và request trước đó đã hoàn tất → trả lại kết quả cũ (orderId, paymentUrl).
-12. Nếu key đã tồn tại và request đang xử lý → trả `409` thông báo đang xử lý.
-13. Nếu key chưa tồn tại → ghi `PROCESSING` vào Redis và tiếp tục.
+10. `IdempotencyInterceptor` kiểm tra PostgreSQL `IdempotencyKey` table: tìm row với `userId` và `key`.
+11. Nếu key đã tồn tại và status = `COMPLETED` → trả lại `responseBody` đã cache (orderId, paymentUrl).
+12. Nếu key đã tồn tại và status = `PROCESSING` → trả `409 Conflict` "Request đang được xử lý".
+13. Nếu key đã tồn tại và status = `FAILED` → reset về `PROCESSING`, cho phép retry.
+14. Nếu key chưa tồn tại → INSERT row với status = `PROCESSING` và tiếp tục.
 
 **Bước 5 — Validate nghiệp vụ**
 
@@ -206,10 +211,12 @@ return {ok = true}
 
 **Bước 8 — Tạo Payment URL và trả kết quả**
 
-28. Backend gọi Mock Payment Gateway để tạo payment URL.
-29. Backend cập nhật `PaymentTransaction` với `paymentUrl` và `providerTransactionId`.
-30. Backend cập nhật Redis Idempotency Key với kết quả: `{ orderId, paymentUrl, status: 'COMPLETED' }`.
-31. Backend trả response cho frontend:
+28. Backend gọi `PaymentService.createPaymentUrl()` cho order vừa tạo.
+29. `PaymentService` gọi Mock Payment Gateway (qua Circuit Breaker) để tạo payment URL.
+30. `PaymentService` tạo `PaymentTransaction` với `status = INITIATED` và `paymentUrl`.
+31. Nếu gateway fail → `OrderService` rollback Redis reservation, `UserTicketCounter`, và xóa Order record, rồi throw error.
+32. `IdempotencyInterceptor` cập nhật `IdempotencyKey` row: `status = COMPLETED`, `orderId`, `responseBody`.
+33. Backend trả response cho frontend:
 
 ```json
 {
