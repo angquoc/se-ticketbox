@@ -4,10 +4,12 @@ import {
   ExecutionContext,
   CallHandler,
   ConflictException,
+  BadRequestException,
   Logger,
 } from '@nestjs/common';
 import { Observable, of } from 'rxjs';
 import { tap } from 'rxjs/operators';
+import { createHash } from 'crypto';
 import { Request } from 'express';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '../../database/prisma.service';
@@ -17,19 +19,20 @@ interface AuthenticatedRequest extends Request {
 }
 
 /**
- * Interceptor that deduplicates requests using an Idempotency-Key header.
+ * Interceptor that deduplicates POST requests using an Idempotency-Key header.
  *
  * When a client sends a request with an `Idempotency-Key` header, this
  * interceptor:
- *   1. Checks if the key already exists in PostgreSQL.
- *   2. If not exists → registers PROCESSING, lets the request through,
+ *   1. Throws 400 if the header is absent.
+ *   2. Checks if the key already exists in PostgreSQL.
+ *   3. If not exists → registers PROCESSING, lets the request through,
  *      then updates the record with the response body.
- *   3. If PROCESSING → throws ConflictException (request already in flight).
- *   4. If COMPLETED  → returns the cached response body immediately.
+ *   4. If PROCESSING → throws ConflictException (request already in flight).
+ *   5. If COMPLETED  → returns the cached response body immediately.
+ *   6. If FAILED     → resets to PROCESSING and lets the request retry.
  *
- * Supported endpoints:
- *   - POST /orders
- *   - Any POST endpoint that carries financial consequences.
+ * The requestHash is computed as SHA-256 of the normalized (sorted keys,
+ * stripped undefined) JSON body, matching the spec requirement.
  *
  * TTL for idempotency records: 15 minutes.
  */
@@ -50,7 +53,7 @@ export class IdempotencyInterceptor implements NestInterceptor {
       | undefined;
 
     if (!idempotencyKey) {
-      return next.handle();
+      throw new BadRequestException('Thiếu header Idempotency-Key');
     }
 
     const userId = String(request.user?.sub ?? 'anonymous');
@@ -59,6 +62,8 @@ export class IdempotencyInterceptor implements NestInterceptor {
     if (method !== 'POST') {
       return next.handle();
     }
+
+    const requestHash = this.hashBody(request.body);
 
     const existing = await this.prisma.idempotencyKey.findUnique({
       where: { userId_key: { userId, key: idempotencyKey } },
@@ -69,8 +74,12 @@ export class IdempotencyInterceptor implements NestInterceptor {
         this.logger.warn(
           `Idempotency key "${idempotencyKey}" for user ${userId} is still PROCESSING`,
         );
+        throw new ConflictException('Request đang được xử lý');
+      }
+
+      if (existing.requestHash && existing.requestHash !== requestHash) {
         throw new ConflictException(
-          'A request with this idempotency key is already being processed. Please wait.',
+          'Idempotency key was already used with a different request',
         );
       }
 
@@ -89,7 +98,7 @@ export class IdempotencyInterceptor implements NestInterceptor {
           where: { id: existing.id },
           data: {
             status: 'PROCESSING',
-            requestHash: '',
+            requestHash,
             responseBody: undefined as unknown as Prisma.InputJsonValue,
             expiresAt: new Date(Date.now() + this.TTL_MS),
           },
@@ -100,7 +109,7 @@ export class IdempotencyInterceptor implements NestInterceptor {
         data: {
           userId,
           key: idempotencyKey,
-          requestHash: '',
+          requestHash,
           status: 'PROCESSING',
           expiresAt: new Date(Date.now() + this.TTL_MS),
         },
@@ -113,11 +122,38 @@ export class IdempotencyInterceptor implements NestInterceptor {
           void this.persistCompletedKey(userId, idempotencyKey, responseBody);
         },
         error: () => {
-          // On error, mark as FAILED so client can retry
           void this.markFailed(userId, idempotencyKey);
         },
       }),
     );
+  }
+
+  /**
+   * SHA-256 hash of the normalized request body.
+   * Normalization: sort object keys, strip undefined values.
+   * Matches the spec: "SHA-256 của normalized JSON body".
+   */
+  private hashBody(body: unknown): string {
+    return createHash('sha256')
+      .update(JSON.stringify(this.normalize(body)))
+      .digest('hex');
+  }
+
+  private normalize(value: unknown): unknown {
+    if (value === null || value === undefined) return undefined;
+    if (Array.isArray(value)) return value.map((v) => this.normalize(v));
+    if (typeof value === 'object') {
+      return Object.keys(value as Record<string, unknown>)
+        .sort()
+        .reduce<Record<string, unknown>>((acc, key) => {
+          const n = this.normalize(
+            (value as Record<string, unknown>)[key],
+          );
+          if (n !== undefined) acc[key] = n;
+          return acc;
+        }, {});
+    }
+    return value;
   }
 
   private async persistCompletedKey(
