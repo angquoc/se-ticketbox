@@ -1,3 +1,4 @@
+import { ConfigService } from '@nestjs/config';
 import {
   BadRequestException,
   Injectable,
@@ -5,6 +6,7 @@ import {
 } from '@nestjs/common';
 import { InjectQueue } from '@nestjs/bullmq';
 import { Queue } from 'bullmq';
+import { createHash, createHmac } from 'crypto';
 import { CircuitBreakerState } from './services/payment-circuit-breaker.service';
 import {
   OrderStatus,
@@ -21,6 +23,29 @@ import { PaymentCircuitBreakerService } from './services/payment-circuit-breaker
 import { MockGatewayService } from './services/mock-gateway.service';
 import { MockPaymentResult, MockWebhookDto } from './dto/mock-webhook.dto';
 
+/**
+ * Generates a cryptographically secure QR token for a ticket.
+ * - rawToken: a random UUID (sent to frontend for QR rendering, never stored in DB)
+ * - qrTokenHash: SHA-256 of rawToken (stored in DB, used for verification)
+ * - qrSignature: HMAC-SHA256 of rawToken (stored in DB, used for tamper detection)
+ *
+ * The QR payload format: {ticketId}:{qrTokenHash}:{timestamp}:{qrSignature}
+ */
+function generateQrToken(ticketId: string, secret: string): {
+  rawToken: string;
+  qrTokenHash: string;
+  qrSignature: string;
+} {
+  const rawToken = crypto.randomUUID();
+  const qrTokenHash = createHash('sha256').update(rawToken).digest('hex');
+  const timestamp = Math.floor(Date.now() / 1000);
+  const signaturePayload = `${ticketId}:${qrTokenHash}:${timestamp}`;
+  const qrSignature = createHmac('sha256', secret)
+    .update(signaturePayload)
+    .digest('hex');
+  return { rawToken, qrTokenHash, qrSignature };
+}
+
 @Injectable()
 export class PaymentService {
   constructor(
@@ -29,6 +54,7 @@ export class PaymentService {
     private readonly circuitBreaker: PaymentCircuitBreakerService,
     private readonly mockGateway: MockGatewayService,
     private readonly redisService: RedisService,
+    private readonly configService: ConfigService,
     @InjectQueue(NOTIFICATION_QUEUE)
     private readonly notificationQueue: Queue,
   ) {}
@@ -346,7 +372,7 @@ export class PaymentService {
   /**
    * Handle payment SUCCESS webhook.
    * 1. Updates order → PAID
-   * 2. Creates Ticket records
+   * 2. Creates Ticket records (with secure QR tokens)
    * 3. Updates soldQty / reservedQty in PostgreSQL
    * 4. Cleans up Redis reservation + user_limit
    * 5. Queues notification email
@@ -360,6 +386,40 @@ export class PaymentService {
       items: { id: string; ticketTypeId: string; quantity: number }[];
     },
   ) {
+    const qrSecret = this.configService.get<string>(
+      'QR_SIGNATURE_SECRET',
+      'dev_qr_secret',
+    );
+
+    // Pre-generate ticket IDs and QR tokens before the transaction.
+    // This is necessary because ticket ID must be known before calling create()
+    // to generate the correct HMAC signature.
+    type TicketCreationPlan = {
+      orderItemId: string;
+      ticketId: string;
+      rawToken: string;
+      qrTokenHash: string;
+      qrSignature: string;
+    };
+    const plans: TicketCreationPlan[] = [];
+    for (const item of order.items) {
+      for (let i = 0; i < item.quantity; i++) {
+        const ticketId = crypto.randomUUID();
+        const { rawToken, qrTokenHash, qrSignature } = generateQrToken(
+          ticketId,
+          qrSecret,
+        );
+        plans.push({
+          orderItemId: item.id,
+          ticketId,
+          rawToken,
+          qrTokenHash,
+          qrSignature,
+        });
+      }
+    }
+
+    // Phase 1: Create all tickets in a single transaction
     await this.prisma.$transaction(async (tx) => {
       await tx.paymentTransaction.upsert({
         where: {
@@ -389,21 +449,22 @@ export class PaymentService {
         data: { status: OrderStatus.PAID, paidAt: new Date() },
       });
 
-      // Create Ticket records
-      for (const item of order.items) {
-        for (let i = 0; i < item.quantity; i++) {
-          await tx.ticket.create({
-            data: {
-              orderId: order.id,
-              orderItemId: item.id,
-              concertId: order.concertId,
-              ticketTypeId: item.ticketTypeId,
-              userId: order.userId,
-              qrTokenHash: crypto.randomUUID(),
-              status: 'ISSUED',
-            },
-          });
-        }
+      // Create all tickets with pre-generated IDs and QR data
+      for (const plan of plans) {
+        await tx.ticket.create({
+          data: {
+            id: plan.ticketId,
+            orderId: order.id,
+            orderItemId: plan.orderItemId,
+            concertId: order.concertId,
+            ticketTypeId: order.items.find((item) => item.id === plan.orderItemId)!
+              .ticketTypeId,
+            userId: order.userId,
+            qrTokenHash: plan.qrTokenHash,
+            qrSignature: plan.qrSignature,
+            status: 'ISSUED',
+          },
+        });
       }
 
       // Update soldQty / reservedQty in PostgreSQL
@@ -452,10 +513,14 @@ export class PaymentService {
       ),
     );
 
-    // Queue notification email
+    // Queue notification email with raw tokens for QR payload construction
+    const ticketTokens = plans.map((p) => ({
+      ticketId: p.ticketId,
+      rawToken: p.rawToken,
+    }));
     await this.notificationQueue.add(
       'send-order-paid-email',
-      { orderId: dto.orderId, userId: order.userId },
+      { orderId: dto.orderId, userId: order.userId, ticketTokens },
       {
         attempts: 3,
         backoff: { type: 'exponential', delay: 3000 },
