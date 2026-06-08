@@ -701,7 +701,7 @@ Tóm tắt tại các thời điểm giao dịch:
 - Khi PostgreSQL `order.create` thất bại, Backend gọi `releaseReservation` cho tất cả ticket types.
 - Redis `stock` và `user-limit` được khôi phuc.
 - Lỗi PostgreSQL được log kèm `orderId` để trace.
-- Backend trả **400** cho khách (không phải 500).
+- Backend trả **400** cho khách.
 - Không có orphan reservation trong Redis.
 
 ### 12. Redis reserve thất bại giữa chừng → rollback reservation đã thành công
