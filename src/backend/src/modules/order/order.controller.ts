@@ -23,6 +23,9 @@ import {
 } from '../auth/decorators/current-user.decorator';
 import { OrderStatus, Role } from '@prisma/client';
 import { IdempotencyInterceptor } from '../../common/interceptors/idempotency.interceptor';
+import { RateLimitGuard } from '../rate-limit/rate-limit.guard';
+import { RateLimit } from '../rate-limit/rate-limit.decorator';
+import { RATE_LIMIT_DEFAULTS } from '../rate-limit/rate-limit.service';
 
 @Controller()
 export class OrderController {
@@ -34,11 +37,19 @@ export class OrderController {
    * POST /orders
    * Create a new order and reserve tickets.
    * Requires authentication.
+   *
+   * Rate limit: 5 req/min/user + 5 req/min/IP (ORDER_RESERVE)
    */
   @Post('orders')
-  @UseGuards(AuthGuard, RolesGuard)
+  @UseGuards(AuthGuard, RolesGuard, RateLimitGuard)
   @Roles(Role.CUSTOMER, Role.ORGANIZER, Role.ADMIN)
   @UseInterceptors(IdempotencyInterceptor)
+  @RateLimit({
+    route: '/orders',
+    capacity: RATE_LIMIT_DEFAULTS.ORDER_RESERVE.capacity,
+    refillRate: RATE_LIMIT_DEFAULTS.ORDER_RESERVE.refillRate,
+    tokensPerRequest: RATE_LIMIT_DEFAULTS.ORDER_RESERVE.tokensPerRequest,
+  })
   @HttpCode(HttpStatus.CREATED)
   async createOrder(
     @Body() dto: CreateOrderDto,
