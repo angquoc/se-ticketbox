@@ -25,6 +25,7 @@ import { TicketModule } from './modules/ticket/ticket.module';
 import { NotificationModule } from './modules/notification/notification.module';
 import { CheckinModule } from './modules/checkin/checkin.module';
 import { WorkerModule } from './worker/worker.module';
+import { RateLimitModule } from './modules/rate-limit/rate-limit.module';
 
 @Module({
   imports: [
@@ -47,6 +48,7 @@ import { WorkerModule } from './worker/worker.module';
     NotificationModule,
     CheckinModule,
     WorkerModule,
+    RateLimitModule,
     BullModule.forRootAsync({
       imports: [ConfigModule],
       inject: [ConfigService],
