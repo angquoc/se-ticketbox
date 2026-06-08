@@ -54,7 +54,7 @@ export class PaymentController {
     });
   }
 
-  @Post('webhook/mock')
+  @Post('mock-callback')
   handleMockWebhook(@Body() dto: MockWebhookDto) {
     return this.paymentService.handleMockWebhook(dto);
   }
@@ -104,7 +104,7 @@ export class PaymentController {
 
           <script>
             async function sendWebhook(result, signature) {
-              const response = await fetch('/payments/webhook/mock', {
+              const response = await fetch('/payment/mock-callback', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
