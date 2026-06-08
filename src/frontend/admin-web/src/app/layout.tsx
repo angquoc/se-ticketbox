@@ -1,14 +1,11 @@
 import type { Metadata } from 'next';
-import { Inter } from 'next/font/google';
 import '@/styles/globals.css';
 import AdminSidebar from '@/components/layout/AdminSidebar';
 import AdminHeader from '@/components/layout/AdminHeader';
 
-const inter = Inter({ subsets: ['latin'] });
-
 export const metadata: Metadata = {
   title: 'TicketBox Admin',
-  description: 'Quản lý sự kiện & vé bán',
+  description: 'Event Control Center',
 };
 
 export default function RootLayout({
@@ -18,18 +15,20 @@ export default function RootLayout({
 }) {
   return (
     <html lang="vi">
-      <body className={inter.className}>
-        <div className="flex">
-          {/* Sidebar cố định */}
+      <body>
+        <div style={{ display: 'flex', minHeight: '100vh', background: 'var(--color-bg-page)' }}>
           <AdminSidebar />
-
-          {/* Main content */}
-          <main className="ml-64 flex-1 min-h-screen">
+          <div style={{ marginLeft: '260px', flex: 1, display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
             <AdminHeader />
-            <div className="p-8">
+            <main style={{
+              flex: 1,
+              background: 'var(--color-bg-canvas)',
+              padding: '32px',
+              overflowY: 'auto',
+            }}>
               {children}
-            </div>
-          </main>
+            </main>
+          </div>
         </div>
       </body>
     </html>
