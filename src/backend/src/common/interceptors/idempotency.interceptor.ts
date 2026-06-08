@@ -171,14 +171,12 @@ export class IdempotencyInterceptor implements NestInterceptor {
     orderId?: string,
   ): Promise<void> {
     try {
-      const data: Prisma.IdempotencyKeyUpdateInput = {
-        status: 'COMPLETED',
+      const data = {
+        status: 'COMPLETED' as const,
         responseBody: responseBody as Prisma.InputJsonValue,
         resourceType: 'ORDER',
+        ...(orderId ? { orderId } : {}),
       };
-      if (orderId) {
-        data.orderId = orderId;
-      }
       await this.prisma.idempotencyKey.update({
         where: { userId_key: { userId, key: idempotencyKey } },
         data,
