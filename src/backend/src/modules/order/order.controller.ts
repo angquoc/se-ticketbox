@@ -36,7 +36,8 @@ export class OrderController {
    * Requires authentication.
    */
   @Post('orders')
-  @UseGuards(AuthGuard)
+  @UseGuards(AuthGuard, RolesGuard)
+  @Roles(Role.CUSTOMER, Role.ORGANIZER, Role.ADMIN)
   @UseInterceptors(IdempotencyInterceptor)
   @HttpCode(HttpStatus.CREATED)
   async createOrder(

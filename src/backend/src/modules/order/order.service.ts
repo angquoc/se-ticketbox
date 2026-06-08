@@ -3,6 +3,7 @@ import {
   NotFoundException,
   BadRequestException,
   UnauthorizedException,
+  UnprocessableEntityException,
   Logger,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
@@ -27,6 +28,8 @@ import {
   CreateOrderResponseDto,
 } from './dto/order-response.dto';
 import { ORDER_EXPIRE_QUEUE } from './order.queue';
+import { PaymentService } from '../payment/payment.service';
+import { NOTIFICATION_QUEUE } from '../queue/queue.constants';
 
 const DEFAULT_RESERVATION_TTL_SECONDS = 15 * 60; // 15 minutes
 
@@ -52,7 +55,9 @@ export class OrderService {
     private prisma: PrismaService,
     private redis: RedisService,
     private configService: ConfigService,
+    private paymentService: PaymentService,
     @InjectQueue(ORDER_EXPIRE_QUEUE) private readonly expireQueue: Queue,
+    @InjectQueue(NOTIFICATION_QUEUE) private readonly notificationQueue: Queue,
   ) {}
 
   // ─────────────────────────────────────────────────────────────────────────────
@@ -272,18 +277,18 @@ export class OrderService {
       }
 
       if (failedResult.error === 'OUT_OF_STOCK') {
-        throw new BadRequestException(
+        throw new UnprocessableEntityException(
           `Not enough tickets available for ticket type "${ticketMeta[failedIndex].ticketTypeId}"`,
         );
       }
       if (failedResult.error === 'EXCEED_USER_LIMIT') {
         const remaining = (failedResult as Record<string, unknown>)
           .remaining_can_buy as number | undefined;
-        throw new BadRequestException(
+        throw new UnprocessableEntityException(
           `Purchase limit exceeded. You can buy up to ${remaining ?? 0} more ticket(s) for this ticket type`,
         );
       }
-      throw new BadRequestException(
+      throw new UnprocessableEntityException(
         `Reservation failed: ${failedResult.error} — ${failedResult.message}`,
       );
     }
@@ -318,13 +323,6 @@ export class OrderService {
               subtotal: s.subtotal,
             })),
           },
-          payments: {
-            create: {
-              provider: 'MOCK',
-              status: 'INITIATED',
-              amount: totalAmount,
-            },
-          },
         },
         include: {
           items: {
@@ -337,8 +335,7 @@ export class OrderService {
           payments: { take: 1, orderBy: { createdAt: 'desc' } as never },
         },
       });
-
-      order = created;
+      order = created as unknown as OrderWithRelations;
     } catch (err) {
       this.logger.error(
         `Failed to persist order ${orderId} to DB — rolling back Redis reservations`,
@@ -372,7 +369,46 @@ export class OrderService {
       ),
     );
 
-    const paymentUrl = (order.payments ?? [])[0]?.paymentUrl ?? null;
+    // Create PaymentTransaction and get payment URL from gateway
+    let paymentUrl: string;
+    try {
+      const result = await this.paymentService.createPaymentUrl({ orderId, userId });
+      paymentUrl = result.paymentUrl;
+    } catch (gatewayErr) {
+      // Payment gateway failed → rollback everything
+      this.logger.error(
+        `Payment gateway failed for order ${orderId}: ${gatewayErr} — rolling back`,
+      );
+
+      // Rollback Redis reservations
+      await Promise.all(
+        ticketMeta.map((m) =>
+          this.redis.releaseReservation({
+            ticketTypeId: m.ticketTypeId,
+            userId,
+            orderId,
+            quantity: m.quantity,
+          }),
+        ),
+      );
+
+      // Rollback UserTicketCounter
+      await Promise.all(
+        ticketMeta.map((m) =>
+          this.prisma.userTicketCounter.update({
+            where: {
+              userId_ticketTypeId: { userId, ticketTypeId: m.ticketTypeId },
+            },
+            data: { reservedQty: { decrement: m.quantity } },
+          }),
+        ),
+      );
+
+      // Delete the order record (it only exists because payment failed)
+      await this.prisma.order.delete({ where: { id: orderId } });
+
+      throw gatewayErr;
+    }
     this.logger.log(
       `Order ${orderId} created, payment URL: ${paymentUrl ?? 'N/A'}`,
     );
