@@ -119,16 +119,15 @@ export class IdempotencyInterceptor implements NestInterceptor {
     return next.handle().pipe(
       tap({
         next: (responseBody: unknown) => {
-          const orderId =
-            typeof responseBody === 'object' && responseBody !== null
-              ? (responseBody as Record<string, unknown>)['orderId'] ?? (responseBody as Record<string, unknown>)['order']?.['id']
-              : undefined;
-          void this.persistCompletedKey(
-            userId,
-            idempotencyKey,
-            responseBody,
-            typeof orderId === 'string' ? orderId : undefined,
-          );
+          let orderId: string | undefined;
+          if (typeof responseBody === 'object' && responseBody !== null) {
+            const body = responseBody as Record<string, unknown>;
+            const id = body['orderId'] ?? (body['order'] as Record<string, unknown> | undefined)?.['id'];
+            if (typeof id === 'string') {
+              orderId = id;
+            }
+          }
+          void this.persistCompletedKey(userId, idempotencyKey, responseBody, orderId);
         },
         error: () => {
           void this.markFailed(userId, idempotencyKey);
