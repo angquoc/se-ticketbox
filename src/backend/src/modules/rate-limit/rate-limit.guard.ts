@@ -7,12 +7,9 @@ import {
   Logger,
 } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
-import { Request } from 'express';
+import { Request, Response } from 'express';
 import { RateLimitService } from './rate-limit.service';
-import {
-  RATE_LIMIT_KEY,
-  RateLimitConfig,
-} from './rate-limit.decorator';
+import { RATE_LIMIT_KEY, RateLimitConfig } from './rate-limit.decorator';
 import { AuthUser } from '../auth/decorators/current-user.decorator';
 
 @Injectable()
@@ -34,8 +31,10 @@ export class RateLimitGuard implements CanActivate {
       return true;
     }
 
-    const request = context.switchToHttp().getRequest<Request & { user?: AuthUser }>();
-    const response = context.switchToHttp().getResponse();
+    const request = context
+      .switchToHttp()
+      .getRequest<Request & { user?: AuthUser }>();
+    const response = context.switchToHttp().getResponse<Response>();
 
     const userId = request.user?.sub ?? null;
     const ip = this.extractIp(request);
