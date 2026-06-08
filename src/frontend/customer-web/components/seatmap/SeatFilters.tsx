@@ -74,7 +74,7 @@ export default function SeatFilters({
           type="search"
           value={searchQuery}
           onChange={(e) => onSearchChange(e.target.value)}
-          placeholder="Tìm ghế (VD: VIP-A1, STD-E5...)"
+          placeholder="Tìm ghế (VD: VIP-A1, SHB-B3...)"
           className="flex-1 rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
         />
       </div>

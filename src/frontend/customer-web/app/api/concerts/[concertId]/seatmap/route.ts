@@ -42,7 +42,10 @@ export async function GET(
       });
     }
 
-    const mockData = getMockSeatMap(concertId);
+    const mockData = getMockSeatMap(concert.id, {
+      concertSlug: concert.slug,
+      concertName: concert.title,
+    });
     return NextResponse.json({
       success: true,
       source: 'mock',
@@ -50,23 +53,18 @@ export async function GET(
         concert.status === 'COMPLETED' || concert.status === 'SALE_CLOSED'
           ? 'Sự kiện không còn mở bán. Đang hiển thị sơ đồ ghế demo để thử nghiệm giao diện.'
           : 'Chưa có loại vé khả dụng trên backend. Đang hiển thị sơ đồ ghế demo.',
-      data: {
-        ...mockData,
-        concertId: concert.id,
-        concertName: concert.title,
-      },
+      data: mockData,
     });
   } catch (error) {
-    const mockData = getMockSeatMap(concertId);
+    const mockData = getMockSeatMap(concertId, {
+      concertName: getMockConcertName(concertId),
+    });
     return NextResponse.json({
       success: true,
       source: 'mock',
       backendError: getBackendErrorMessage(error),
       warning: 'Không tải được dữ liệu từ backend. Đang hiển thị sơ đồ ghế demo.',
-      data: {
-        ...mockData,
-        concertName: getMockConcertName(concertId),
-      },
+      data: mockData,
     });
   }
 }

@@ -40,10 +40,8 @@ export function buildSeatMapFromBackend(input: BuildSeatMapInput): SeatMapData |
   let zoneIndex = 0;
 
   for (const ticketType of input.ticketTypes) {
-    const seatCount = Math.min(
-      Math.max(ticketType.availableQty, 1),
-      MAX_SEATS_PER_TYPE,
-    );
+    const capacity = ticketType.totalQty ?? ticketType.availableQty;
+    const seatCount = Math.min(Math.max(capacity, 1), MAX_SEATS_PER_TYPE);
     const cols = Math.min(14, Math.max(4, Math.ceil(Math.sqrt(seatCount * 1.4))));
     const rows = Math.ceil(seatCount / cols);
     const regionId = `zone-${ticketType.id}`;
