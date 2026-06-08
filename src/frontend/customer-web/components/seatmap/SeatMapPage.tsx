@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { ALL_TICKET_TYPES, useSeatMap } from '@/hooks/useSeatMap';
-import { readAdmittedToken } from '@/lib/waiting-room-storage';
+import { requestPurchaseAccess } from '@/lib/waiting-room-access';
 import CustomerHeader from '@/components/layout/CustomerHeader';
 import BackendNotice from '@/components/ui/BackendNotice';
 import SeatFilters from './SeatFilters';
@@ -21,14 +21,37 @@ interface SeatMapPageProps {
 export default function SeatMapPage({ concertId }: SeatMapPageProps) {
   const router = useRouter();
   const [accessChecked, setAccessChecked] = useState(false);
+  const [accessError, setAccessError] = useState<string | null>(null);
 
   useEffect(() => {
-    const token = readAdmittedToken(concertId);
-    if (!token) {
-      router.replace(`/concerts/${concertId}/waiting`);
-      return;
+    let cancelled = false;
+
+    async function verifyAccess() {
+      setAccessError(null);
+      try {
+        const result = await requestPurchaseAccess(concertId);
+        if (cancelled) return;
+
+        if (result.granted) {
+          setAccessChecked(true);
+          return;
+        }
+
+        router.replace(`/concerts/${concertId}/waiting`);
+      } catch (error) {
+        if (!cancelled) {
+          setAccessError(
+            error instanceof Error ? error.message : 'Không thể xác minh quyền truy cập',
+          );
+        }
+      }
     }
-    setAccessChecked(true);
+
+    void verifyAccess();
+
+    return () => {
+      cancelled = true;
+    };
   }, [concertId, router]);
 
   const {
@@ -75,11 +98,17 @@ export default function SeatMapPage({ concertId }: SeatMapPageProps) {
     return (
       <div className="flex min-h-screen flex-col bg-slate-50">
         <CustomerHeader />
-        <main className="flex flex-1 items-center justify-center">
-          <div className="text-center">
-            <div className="mx-auto h-10 w-10 animate-spin rounded-full border-4 border-indigo-200 border-t-indigo-600" />
-            <p className="mt-4 text-slate-600">Đang xác minh quyền truy cập...</p>
-          </div>
+        <main className="flex flex-1 items-center justify-center p-4">
+          {accessError ? (
+            <div className="max-w-md rounded-xl border border-red-200 bg-red-50 p-6 text-center">
+              <p className="text-red-700">{accessError}</p>
+            </div>
+          ) : (
+            <div className="text-center">
+              <div className="mx-auto h-10 w-10 animate-spin rounded-full border-4 border-indigo-200 border-t-indigo-600" />
+              <p className="mt-4 text-slate-600">Đang xác minh quyền truy cập...</p>
+            </div>
+          )}
         </main>
       </div>
     );

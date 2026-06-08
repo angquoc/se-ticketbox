@@ -48,9 +48,7 @@ export default function WaitingRoomScreen({ concertId }: WaitingRoomScreenProps)
   }, [messageTick]);
 
   const isConnecting = status === 'loading';
-  const displayHeadline = isConnecting
-    ? 'Đang kết nối phòng chờ...'
-    : headline;
+  const displayHeadline = isConnecting ? 'Đang kiểm tra lượt truy cập...' : headline;
 
   if (status === 'error') {
     return (
@@ -134,8 +132,9 @@ export default function WaitingRoomScreen({ concertId }: WaitingRoomScreenProps)
             </h1>
 
             <p className="mt-3 max-w-md text-sm leading-relaxed text-slate-500">
-              Lượt truy cập đang cao. Chúng tôi sẽ tự động chuyển bạn sang trang mua vé ngay khi sẵn
-              sàng — không cần làm gì thêm.
+              {isConnecting
+                ? 'Hệ thống đang đánh giá mức tải. Nếu không quá đông, bạn sẽ vào mua vé ngay.'
+                : 'Lượt truy cập đang cao. Chúng tôi sẽ tự động chuyển bạn sang trang mua vé ngay khi sẵn sàng — không cần làm gì thêm.'}
             </p>
           </div>
 

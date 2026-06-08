@@ -5,12 +5,15 @@ export interface WaitingRoomJoinResponse {
   status: WaitingRoomStatus;
   concertName: string;
   backendError?: string;
+  /** `true` khi tải cao — user phải chờ; `false` thì được vào mua vé ngay */
+  waitingRoomRequired?: boolean;
   token?: string;
   tokenExpiresAt?: number;
 }
 
 export interface WaitingRoomPollResponse {
   status: WaitingRoomStatus;
+  waitingRoomRequired?: boolean;
   token?: string;
   tokenExpiresAt?: number;
 }

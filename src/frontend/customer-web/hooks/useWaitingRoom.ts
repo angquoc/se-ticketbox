@@ -77,6 +77,12 @@ export function useWaitingRoom({ concertId, onAdmitted }: UseWaitingRoomOptions)
         return;
       }
 
+      if (data.waitingRoomRequired === false) {
+        setStatus('error');
+        setError('Trạng thái phòng chờ không hợp lệ');
+        return;
+      }
+
       setStatus('waiting');
     } catch (e) {
       if (!signal.cancelled) {

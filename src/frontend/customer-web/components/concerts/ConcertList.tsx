@@ -115,7 +115,7 @@ export default function ConcertList() {
                 <p className="mt-1 text-sm text-slate-500">{formatDate(concert.startsAt)}</p>
                 {canBuyTickets(concert.status) ? (
                   <Link
-                    href={`/concerts/${concert.id}/waiting`}
+                    href={`/concerts/${concert.id}/seats`}
                     className="mt-4 inline-flex rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700"
                   >
                     Mua vé
