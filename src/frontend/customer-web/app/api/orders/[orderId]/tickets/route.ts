@@ -1,5 +1,8 @@
 import { NextResponse } from 'next/server';
 import { backendFetch } from '@/lib/api/backend-fetch';
+import { fetchConcertByIdFromBackend } from '@/lib/fetch-concerts';
+import { mapOrderTicketsToList } from '@/lib/map-order-tickets';
+import type { Order } from '@/types/order';
 import type { TicketListResponse } from '@/types/ticket';
 
 function getToken(request: Request): string | null {
@@ -20,10 +23,19 @@ export async function GET(
   const { orderId } = await params;
 
   try {
-    const data = await backendFetch<TicketListResponse>(`/orders/${orderId}/tickets`, {
+    const order = await backendFetch<Order>(`/orders/${orderId}`, {
       method: 'GET',
       token,
     });
+
+    const concert = await fetchConcertByIdFromBackend(order.concertId);
+    const data: TicketListResponse = mapOrderTicketsToList(
+      order,
+      concert
+        ? { venue: concert.venue, startsAt: concert.startsAt }
+        : null,
+    );
+
     return NextResponse.json({ success: true, data });
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Không tải được vé điện tử';

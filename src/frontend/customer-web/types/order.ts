@@ -13,6 +13,18 @@ export type PaymentStatus =
   | 'TIMEOUT'
   | 'CANCELLED';
 
+export type OrderTicketStatus = 'ISSUED' | 'CHECKED_IN' | 'CANCELLED' | 'REFUNDED';
+
+export interface OrderTicket {
+  id: string;
+  ticketTypeId: string;
+  ticketTypeName: string;
+  status: OrderTicketStatus;
+  checkedInAt: string | null;
+  createdAt: string;
+  qrPayload: string;
+}
+
 export interface OrderItem {
   id: string;
   ticketTypeId: string;
@@ -50,6 +62,8 @@ export interface Order {
   items: OrderItem[];
   paymentUrl?: string | null;
   ticketCount: number;
+  /** Present when status is PAID — includes QR payloads for e-tickets */
+  tickets?: OrderTicket[];
 }
 
 export interface CreateOrderResponse {
