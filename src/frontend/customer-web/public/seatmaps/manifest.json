@@ -1,15 +1,11 @@
 {
-  "version": 1,
-  "description": "Danh sách cấu hình seatmap theo concert slug. Thêm concert mới: tạo file configs/{slug}.json hoặc dùng template.",
+  "version": 2,
+  "description": "Mỗi concert có một SVG đầy đủ tại public/seatmaps/concerts/{slug}.svg (background + ghế data-seat). Config JSON chỉ trỏ seatMapUrl.",
   "configs": [
     "tgc-vietnam-2026",
     "2026-kangin-fan-meeting-in-ho-chi-minh",
     "jessica-reflections-2026",
     "summer-music-festival-2026"
   ],
-  "templates": [
-    "theater-3-tier",
-    "festival-4-tier",
-    "single-zone"
-  ]
+  "layouts": "_layouts"
 }

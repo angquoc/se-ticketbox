@@ -1,0 +1,150 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 780" role="img" aria-label="Sơ đồ ghế">
+<g id="background" pointer-events="none" aria-hidden="true">
+<rect width="800" height="780" fill="#f8fafc"/>
+  <rect x="240" y="20" width="320" height="56" rx="10" fill="#1e293b"/>
+  <text x="400" y="53" text-anchor="middle" fill="white" font-size="16" font-weight="700" font-family="system-ui,sans-serif">SÂN KHẤU CHÍNH</text>
+  <line x1="80" y1="92" x2="720" y2="92" stroke="#94a3b8" stroke-width="2" stroke-dasharray="8 8"/>
+  <text x="400" y="112" text-anchor="middle" fill="#64748b" font-size="12" font-weight="600" font-family="system-ui,sans-serif">Khoảng cách an toàn</text>
+  <rect x="190" y="248" width="420" height="116" rx="8" fill="#FFEDD5" opacity="0.68" stroke="#F97316" stroke-width="1.5"/>
+  <text x="208" y="268" fill="#9a3412" font-size="12" font-weight="700" font-family="system-ui,sans-serif">VIP</text>
+  <rect x="64" y="386" width="672" height="116" rx="8" fill="#DBEAFE" opacity="0.68" stroke="#3B82F6" stroke-width="1.5"/>
+  <text x="82" y="406" fill="#1d4ed8" font-size="12" font-weight="700" font-family="system-ui,sans-serif">PATRON</text>
+  <rect x="46" y="524" width="708" height="232" rx="8" fill="#DCFCE7" opacity="0.68" stroke="#22C55E" stroke-width="1.5"/>
+  <text x="64" y="544" fill="#166534" font-size="12" font-weight="700" font-family="system-ui,sans-serif">GEN AD</text>
+  <line x1="400" y1="120" x2="400" y2="744" stroke="#cbd5e1" stroke-width="1" stroke-dasharray="6 8"/>
+</g>
+<g id="seats" aria-label="Ghế">
+  <rect data-seat="VIP-A1" data-ticket-type="VIP" data-row="A" data-column="1" x="255" y="282" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
+  <rect data-seat="VIP-A2" data-ticket-type="VIP" data-row="A" data-column="2" x="289" y="282" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
+  <rect data-seat="VIP-A3" data-ticket-type="VIP" data-row="A" data-column="3" x="323" y="282" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
+  <rect data-seat="VIP-A4" data-ticket-type="VIP" data-row="A" data-column="4" x="357" y="282" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
+  <rect data-seat="VIP-A5" data-ticket-type="VIP" data-row="A" data-column="5" x="391" y="282" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
+  <rect data-seat="VIP-A6" data-ticket-type="VIP" data-row="A" data-column="6" x="425" y="282" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
+  <rect data-seat="VIP-B1" data-ticket-type="VIP" data-row="B" data-column="1" x="255" y="312" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
+  <rect data-seat="VIP-B2" data-ticket-type="VIP" data-row="B" data-column="2" x="289" y="312" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
+  <rect data-seat="VIP-B3" data-ticket-type="VIP" data-row="B" data-column="3" x="323" y="312" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
+  <rect data-seat="VIP-B4" data-ticket-type="VIP" data-row="B" data-column="4" x="357" y="312" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
+  <rect data-seat="VIP-B5" data-ticket-type="VIP" data-row="B" data-column="5" x="391" y="312" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
+  <rect data-seat="VIP-B6" data-ticket-type="VIP" data-row="B" data-column="6" x="425" y="312" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
+  <rect data-seat="PAT-A1" data-ticket-type="PATRON" data-row="A" data-column="1" x="229" y="408" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
+  <rect data-seat="PAT-A2" data-ticket-type="PATRON" data-row="A" data-column="2" x="255" y="408" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
+  <rect data-seat="PAT-A3" data-ticket-type="PATRON" data-row="A" data-column="3" x="281" y="408" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
+  <rect data-seat="PAT-A4" data-ticket-type="PATRON" data-row="A" data-column="4" x="307" y="408" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
+  <rect data-seat="PAT-A5" data-ticket-type="PATRON" data-row="A" data-column="5" x="333" y="408" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
+  <rect data-seat="PAT-A6" data-ticket-type="PATRON" data-row="A" data-column="6" x="359" y="408" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
+  <rect data-seat="PAT-A7" data-ticket-type="PATRON" data-row="A" data-column="7" x="385" y="408" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
+  <rect data-seat="PAT-A8" data-ticket-type="PATRON" data-row="A" data-column="8" x="411" y="408" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
+  <rect data-seat="PAT-B1" data-ticket-type="PATRON" data-row="B" data-column="1" x="229" y="430" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
+  <rect data-seat="PAT-B2" data-ticket-type="PATRON" data-row="B" data-column="2" x="255" y="430" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
+  <rect data-seat="PAT-B3" data-ticket-type="PATRON" data-row="B" data-column="3" x="281" y="430" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
+  <rect data-seat="PAT-B4" data-ticket-type="PATRON" data-row="B" data-column="4" x="307" y="430" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
+  <rect data-seat="PAT-B5" data-ticket-type="PATRON" data-row="B" data-column="5" x="333" y="430" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
+  <rect data-seat="PAT-B6" data-ticket-type="PATRON" data-row="B" data-column="6" x="359" y="430" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
+  <rect data-seat="PAT-B7" data-ticket-type="PATRON" data-row="B" data-column="7" x="385" y="430" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
+  <rect data-seat="PAT-B8" data-ticket-type="PATRON" data-row="B" data-column="8" x="411" y="430" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
+  <rect data-seat="PAT-C1" data-ticket-type="PATRON" data-row="C" data-column="1" x="229" y="452" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
+  <rect data-seat="PAT-C2" data-ticket-type="PATRON" data-row="C" data-column="2" x="255" y="452" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
+  <rect data-seat="PAT-C3" data-ticket-type="PATRON" data-row="C" data-column="3" x="281" y="452" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
+  <rect data-seat="PAT-C4" data-ticket-type="PATRON" data-row="C" data-column="4" x="307" y="452" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
+  <rect data-seat="PAT-C5" data-ticket-type="PATRON" data-row="C" data-column="5" x="333" y="452" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
+  <rect data-seat="PAT-C6" data-ticket-type="PATRON" data-row="C" data-column="6" x="359" y="452" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
+  <rect data-seat="PAT-C7" data-ticket-type="PATRON" data-row="C" data-column="7" x="385" y="452" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
+  <rect data-seat="PAT-C8" data-ticket-type="PATRON" data-row="C" data-column="8" x="411" y="452" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
+  <rect data-seat="GEN-A1" data-ticket-type="GEN AD" data-row="A" data-column="1" x="115" y="554" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
+  <rect data-seat="GEN-A2" data-ticket-type="GEN AD" data-row="A" data-column="2" x="141" y="554" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
+  <rect data-seat="GEN-A3" data-ticket-type="GEN AD" data-row="A" data-column="3" x="167" y="554" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
+  <rect data-seat="GEN-A4" data-ticket-type="GEN AD" data-row="A" data-column="4" x="193" y="554" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
+  <rect data-seat="GEN-A5" data-ticket-type="GEN AD" data-row="A" data-column="5" x="219" y="554" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
+  <rect data-seat="GEN-A6" data-ticket-type="GEN AD" data-row="A" data-column="6" x="245" y="554" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
+  <rect data-seat="GEN-A7" data-ticket-type="GEN AD" data-row="A" data-column="7" x="271" y="554" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
+  <rect data-seat="GEN-A8" data-ticket-type="GEN AD" data-row="A" data-column="8" x="297" y="554" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
+  <rect data-seat="GEN-A9" data-ticket-type="GEN AD" data-row="A" data-column="9" x="323" y="554" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
+  <rect data-seat="GEN-A10" data-ticket-type="GEN AD" data-row="A" data-column="10" x="349" y="554" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
+  <rect data-seat="GEN-A11" data-ticket-type="GEN AD" data-row="A" data-column="11" x="375" y="554" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
+  <rect data-seat="GEN-A12" data-ticket-type="GEN AD" data-row="A" data-column="12" x="401" y="554" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
+  <rect data-seat="GEN-B1" data-ticket-type="GEN AD" data-row="B" data-column="1" x="115" y="568" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
+  <rect data-seat="GEN-B2" data-ticket-type="GEN AD" data-row="B" data-column="2" x="141" y="568" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
+  <rect data-seat="GEN-B3" data-ticket-type="GEN AD" data-row="B" data-column="3" x="167" y="568" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
+  <rect data-seat="GEN-B4" data-ticket-type="GEN AD" data-row="B" data-column="4" x="193" y="568" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
+  <rect data-seat="GEN-B5" data-ticket-type="GEN AD" data-row="B" data-column="5" x="219" y="568" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
+  <rect data-seat="GEN-B6" data-ticket-type="GEN AD" data-row="B" data-column="6" x="245" y="568" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
+  <rect data-seat="GEN-B7" data-ticket-type="GEN AD" data-row="B" data-column="7" x="271" y="568" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
+  <rect data-seat="GEN-B8" data-ticket-type="GEN AD" data-row="B" data-column="8" x="297" y="568" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
+  <rect data-seat="GEN-B9" data-ticket-type="GEN AD" data-row="B" data-column="9" x="323" y="568" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
+  <rect data-seat="GEN-B10" data-ticket-type="GEN AD" data-row="B" data-column="10" x="349" y="568" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
+  <rect data-seat="GEN-B11" data-ticket-type="GEN AD" data-row="B" data-column="11" x="375" y="568" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
+  <rect data-seat="GEN-B12" data-ticket-type="GEN AD" data-row="B" data-column="12" x="401" y="568" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
+  <rect data-seat="GEN-C1" data-ticket-type="GEN AD" data-row="C" data-column="1" x="115" y="582" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
+  <rect data-seat="GEN-C2" data-ticket-type="GEN AD" data-row="C" data-column="2" x="141" y="582" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
+  <rect data-seat="GEN-C3" data-ticket-type="GEN AD" data-row="C" data-column="3" x="167" y="582" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
+  <rect data-seat="GEN-C4" data-ticket-type="GEN AD" data-row="C" data-column="4" x="193" y="582" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
+  <rect data-seat="GEN-C5" data-ticket-type="GEN AD" data-row="C" data-column="5" x="219" y="582" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
+  <rect data-seat="GEN-C6" data-ticket-type="GEN AD" data-row="C" data-column="6" x="245" y="582" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
+  <rect data-seat="GEN-C7" data-ticket-type="GEN AD" data-row="C" data-column="7" x="271" y="582" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
+  <rect data-seat="GEN-C8" data-ticket-type="GEN AD" data-row="C" data-column="8" x="297" y="582" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
+  <rect data-seat="GEN-C9" data-ticket-type="GEN AD" data-row="C" data-column="9" x="323" y="582" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
+  <rect data-seat="GEN-C10" data-ticket-type="GEN AD" data-row="C" data-column="10" x="349" y="582" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
+  <rect data-seat="GEN-C11" data-ticket-type="GEN AD" data-row="C" data-column="11" x="375" y="582" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
+  <rect data-seat="GEN-C12" data-ticket-type="GEN AD" data-row="C" data-column="12" x="401" y="582" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
+  <rect data-seat="GEN-D1" data-ticket-type="GEN AD" data-row="D" data-column="1" x="115" y="596" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
+  <rect data-seat="GEN-D2" data-ticket-type="GEN AD" data-row="D" data-column="2" x="141" y="596" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
+  <rect data-seat="GEN-D3" data-ticket-type="GEN AD" data-row="D" data-column="3" x="167" y="596" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
+  <rect data-seat="GEN-D4" data-ticket-type="GEN AD" data-row="D" data-column="4" x="193" y="596" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
+  <rect data-seat="GEN-D5" data-ticket-type="GEN AD" data-row="D" data-column="5" x="219" y="596" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
+  <rect data-seat="GEN-D6" data-ticket-type="GEN AD" data-row="D" data-column="6" x="245" y="596" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
+  <rect data-seat="GEN-D7" data-ticket-type="GEN AD" data-row="D" data-column="7" x="271" y="596" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
+  <rect data-seat="GEN-D8" data-ticket-type="GEN AD" data-row="D" data-column="8" x="297" y="596" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
+  <rect data-seat="GEN-D9" data-ticket-type="GEN AD" data-row="D" data-column="9" x="323" y="596" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
+  <rect data-seat="GEN-D10" data-ticket-type="GEN AD" data-row="D" data-column="10" x="349" y="596" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
+  <rect data-seat="GEN-D11" data-ticket-type="GEN AD" data-row="D" data-column="11" x="375" y="596" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
+  <rect data-seat="GEN-D12" data-ticket-type="GEN AD" data-row="D" data-column="12" x="401" y="596" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
+  <rect data-seat="GEN-E1" data-ticket-type="GEN AD" data-row="E" data-column="1" x="115" y="610" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
+  <rect data-seat="GEN-E2" data-ticket-type="GEN AD" data-row="E" data-column="2" x="141" y="610" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
+  <rect data-seat="GEN-E3" data-ticket-type="GEN AD" data-row="E" data-column="3" x="167" y="610" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
+  <rect data-seat="GEN-E4" data-ticket-type="GEN AD" data-row="E" data-column="4" x="193" y="610" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
+  <rect data-seat="GEN-E5" data-ticket-type="GEN AD" data-row="E" data-column="5" x="219" y="610" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
+  <rect data-seat="GEN-E6" data-ticket-type="GEN AD" data-row="E" data-column="6" x="245" y="610" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
+  <rect data-seat="GEN-E7" data-ticket-type="GEN AD" data-row="E" data-column="7" x="271" y="610" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
+  <rect data-seat="GEN-E8" data-ticket-type="GEN AD" data-row="E" data-column="8" x="297" y="610" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
+  <rect data-seat="GEN-E9" data-ticket-type="GEN AD" data-row="E" data-column="9" x="323" y="610" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
+  <rect data-seat="GEN-E10" data-ticket-type="GEN AD" data-row="E" data-column="10" x="349" y="610" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
+  <rect data-seat="GEN-E11" data-ticket-type="GEN AD" data-row="E" data-column="11" x="375" y="610" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
+  <rect data-seat="GEN-E12" data-ticket-type="GEN AD" data-row="E" data-column="12" x="401" y="610" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
+  <rect data-seat="GEN-F1" data-ticket-type="GEN AD" data-row="F" data-column="1" x="115" y="624" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
+  <rect data-seat="GEN-F2" data-ticket-type="GEN AD" data-row="F" data-column="2" x="141" y="624" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
+  <rect data-seat="GEN-F3" data-ticket-type="GEN AD" data-row="F" data-column="3" x="167" y="624" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
+  <rect data-seat="GEN-F4" data-ticket-type="GEN AD" data-row="F" data-column="4" x="193" y="624" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
+  <rect data-seat="GEN-F5" data-ticket-type="GEN AD" data-row="F" data-column="5" x="219" y="624" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
+  <rect data-seat="GEN-F6" data-ticket-type="GEN AD" data-row="F" data-column="6" x="245" y="624" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
+  <rect data-seat="GEN-F7" data-ticket-type="GEN AD" data-row="F" data-column="7" x="271" y="624" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
+  <rect data-seat="GEN-F8" data-ticket-type="GEN AD" data-row="F" data-column="8" x="297" y="624" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
+  <rect data-seat="GEN-F9" data-ticket-type="GEN AD" data-row="F" data-column="9" x="323" y="624" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
+  <rect data-seat="GEN-F10" data-ticket-type="GEN AD" data-row="F" data-column="10" x="349" y="624" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
+  <rect data-seat="GEN-F11" data-ticket-type="GEN AD" data-row="F" data-column="11" x="375" y="624" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
+  <rect data-seat="GEN-F12" data-ticket-type="GEN AD" data-row="F" data-column="12" x="401" y="624" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
+  <rect data-seat="GEN-G1" data-ticket-type="GEN AD" data-row="G" data-column="1" x="115" y="638" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
+  <rect data-seat="GEN-G2" data-ticket-type="GEN AD" data-row="G" data-column="2" x="141" y="638" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
+  <rect data-seat="GEN-G3" data-ticket-type="GEN AD" data-row="G" data-column="3" x="167" y="638" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
+  <rect data-seat="GEN-G4" data-ticket-type="GEN AD" data-row="G" data-column="4" x="193" y="638" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
+  <rect data-seat="GEN-G5" data-ticket-type="GEN AD" data-row="G" data-column="5" x="219" y="638" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
+  <rect data-seat="GEN-G6" data-ticket-type="GEN AD" data-row="G" data-column="6" x="245" y="638" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
+  <rect data-seat="GEN-G7" data-ticket-type="GEN AD" data-row="G" data-column="7" x="271" y="638" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
+  <rect data-seat="GEN-G8" data-ticket-type="GEN AD" data-row="G" data-column="8" x="297" y="638" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
+  <rect data-seat="GEN-G9" data-ticket-type="GEN AD" data-row="G" data-column="9" x="323" y="638" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
+  <rect data-seat="GEN-G10" data-ticket-type="GEN AD" data-row="G" data-column="10" x="349" y="638" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
+  <rect data-seat="GEN-G11" data-ticket-type="GEN AD" data-row="G" data-column="11" x="375" y="638" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
+  <rect data-seat="GEN-G12" data-ticket-type="GEN AD" data-row="G" data-column="12" x="401" y="638" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
+  <rect data-seat="GEN-H1" data-ticket-type="GEN AD" data-row="H" data-column="1" x="115" y="652" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
+  <rect data-seat="GEN-H2" data-ticket-type="GEN AD" data-row="H" data-column="2" x="141" y="652" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
+  <rect data-seat="GEN-H3" data-ticket-type="GEN AD" data-row="H" data-column="3" x="167" y="652" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
+  <rect data-seat="GEN-H4" data-ticket-type="GEN AD" data-row="H" data-column="4" x="193" y="652" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
+  <rect data-seat="GEN-H5" data-ticket-type="GEN AD" data-row="H" data-column="5" x="219" y="652" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
+  <rect data-seat="GEN-H6" data-ticket-type="GEN AD" data-row="H" data-column="6" x="245" y="652" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
+  <rect data-seat="GEN-H7" data-ticket-type="GEN AD" data-row="H" data-column="7" x="271" y="652" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
+  <rect data-seat="GEN-H8" data-ticket-type="GEN AD" data-row="H" data-column="8" x="297" y="652" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
+  <rect data-seat="GEN-H9" data-ticket-type="GEN AD" data-row="H" data-column="9" x="323" y="652" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
+  <rect data-seat="GEN-H10" data-ticket-type="GEN AD" data-row="H" data-column="10" x="349" y="652" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
+  <rect data-seat="GEN-H11" data-ticket-type="GEN AD" data-row="H" data-column="11" x="375" y="652" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
+  <rect data-seat="GEN-H12" data-ticket-type="GEN AD" data-row="H" data-column="12" x="401" y="652" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
+</g>
+</svg>

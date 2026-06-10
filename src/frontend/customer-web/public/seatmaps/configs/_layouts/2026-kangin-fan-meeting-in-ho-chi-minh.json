@@ -1,0 +1,9 @@
+{
+  "slug": "2026-kangin-fan-meeting-in-ho-chi-minh",
+  "background": "theater-tiered.svg",
+  "zones": [
+    { "ticketTypeName": "VIP", "seatPrefix": "VIP", "layout": { "rows": 2, "cols": 6, "startX": 316, "startY": 162, "colGap": 34, "rowGap": 30 } },
+    { "ticketTypeName": "PATRON", "seatPrefix": "PAT", "layout": { "rows": 3, "cols": 8, "startX": 280, "startY": 276, "colGap": 34, "rowGap": 30 } },
+    { "ticketTypeName": "GEN AD", "seatPrefix": "GEN", "layout": { "rows": 8, "cols": 12, "startX": 202, "startY": 476, "colGap": 34, "rowGap": 28 } }
+  ]
+}

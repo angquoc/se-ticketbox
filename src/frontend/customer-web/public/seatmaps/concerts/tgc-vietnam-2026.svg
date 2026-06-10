@@ -1,0 +1,180 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 780" role="img" aria-label="Sơ đồ ghế">
+<g id="background" pointer-events="none" aria-hidden="true">
+<rect width="800" height="780" fill="#f8fafc"/>
+
+  <rect x="240" y="20" width="320" height="56" rx="10" fill="#1e293b"/>
+  <text x="400" y="53" text-anchor="middle" fill="white" font-size="16" font-weight="700" font-family="system-ui,sans-serif">SÂN KHẤU CHÍNH</text>
+  <line x1="80" y1="92" x2="720" y2="92" stroke="#94a3b8" stroke-width="2" stroke-dasharray="8 8"/>
+  <text x="400" y="112" text-anchor="middle" fill="#64748b" font-size="12" font-weight="600" font-family="system-ui,sans-serif">Lối kỹ thuật / khoảng cách an toàn</text>
+
+  <rect x="52" y="126" width="318" height="102" rx="8" fill="#FEF3C7" opacity="0.68" stroke="#F59E0B" stroke-width="1.5"/>
+  <rect x="430" y="126" width="318" height="102" rx="8" fill="#FEF3C7" opacity="0.68" stroke="#F59E0B" stroke-width="1.5"/>
+  <text x="70" y="146" fill="#92400e" font-size="12" font-weight="700" font-family="system-ui,sans-serif">FRONT LEFT / SVIP-1 / SKY</text>
+  <text x="448" y="146" fill="#92400e" font-size="12" font-weight="700" font-family="system-ui,sans-serif">FRONT RIGHT / SVIP-2 / GINZA</text>
+
+  <rect x="190" y="248" width="420" height="116" rx="8" fill="#FFEDD5" opacity="0.68" stroke="#F97316" stroke-width="1.5"/>
+  <text x="208" y="268" fill="#9a3412" font-size="12" font-weight="700" font-family="system-ui,sans-serif">VIP / PLATINUM / VIP 1</text>
+
+  <rect x="64" y="386" width="316" height="116" rx="8" fill="#DBEAFE" opacity="0.68" stroke="#3B82F6" stroke-width="1.5"/>
+  <rect x="420" y="386" width="316" height="116" rx="8" fill="#DBEAFE" opacity="0.68" stroke="#3B82F6" stroke-width="1.5"/>
+  <text x="82" y="406" fill="#1d4ed8" font-size="12" font-weight="700" font-family="system-ui,sans-serif">MID LEFT / PRE / SHIBUYA 1</text>
+  <text x="438" y="406" fill="#1d4ed8" font-size="12" font-weight="700" font-family="system-ui,sans-serif">MID RIGHT / GOLD / SHIBUYA 2</text>
+
+  <rect x="66" y="524" width="668" height="100" rx="8" fill="#E0E7FF" opacity="0.68" stroke="#6366F1" stroke-width="1.5"/>
+  <text x="84" y="544" fill="#3730a3" font-size="12" font-weight="700" font-family="system-ui,sans-serif">CAT1 / SILVER / HARAJUKU</text>
+
+  <rect x="46" y="632" width="708" height="132" rx="8" fill="#DCFCE7" opacity="0.68" stroke="#22C55E" stroke-width="1.5"/>
+  <text x="64" y="652" fill="#166534" font-size="12" font-weight="700" font-family="system-ui,sans-serif">GENERAL / CAT2 / CAT3</text>
+
+  <line x1="400" y1="120" x2="400" y2="752" stroke="#cbd5e1" stroke-width="1" stroke-dasharray="6 8"/>
+  <text x="400" y="770" text-anchor="middle" fill="#64748b" font-size="11" font-family="system-ui,sans-serif">Trục giữa sân khấu</text>
+</g>
+<g id="seats" aria-label="Ghế">
+  <rect data-seat="SKY-A1" data-ticket-type="SKY LOUNGE" data-row="A" data-column="1" x="89" y="153" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
+  <rect data-seat="SKY-A2" data-ticket-type="SKY LOUNGE" data-row="A" data-column="2" x="125" y="153" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
+  <rect data-seat="SKY-A3" data-ticket-type="SKY LOUNGE" data-row="A" data-column="3" x="161" y="153" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
+  <rect data-seat="SKY-A4" data-ticket-type="SKY LOUNGE" data-row="A" data-column="4" x="197" y="153" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
+  <rect data-seat="SKY-A5" data-ticket-type="SKY LOUNGE" data-row="A" data-column="5" x="233" y="153" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
+  <rect data-seat="SKY-B1" data-ticket-type="SKY LOUNGE" data-row="B" data-column="1" x="89" y="183" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
+  <rect data-seat="SKY-B2" data-ticket-type="SKY LOUNGE" data-row="B" data-column="2" x="125" y="183" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
+  <rect data-seat="SKY-B3" data-ticket-type="SKY LOUNGE" data-row="B" data-column="3" x="161" y="183" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
+  <rect data-seat="SKY-B4" data-ticket-type="SKY LOUNGE" data-row="B" data-column="4" x="197" y="183" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
+  <rect data-seat="SKY-B5" data-ticket-type="SKY LOUNGE" data-row="B" data-column="5" x="233" y="183" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
+  <rect data-seat="GNZ-A1" data-ticket-type="GINZA" data-row="A" data-column="1" x="444" y="153" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
+  <rect data-seat="GNZ-A2" data-ticket-type="GINZA" data-row="A" data-column="2" x="478" y="153" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
+  <rect data-seat="GNZ-A3" data-ticket-type="GINZA" data-row="A" data-column="3" x="512" y="153" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
+  <rect data-seat="GNZ-A4" data-ticket-type="GINZA" data-row="A" data-column="4" x="546" y="153" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
+  <rect data-seat="GNZ-A5" data-ticket-type="GINZA" data-row="A" data-column="5" x="580" y="153" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
+  <rect data-seat="GNZ-A6" data-ticket-type="GINZA" data-row="A" data-column="6" x="614" y="153" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
+  <rect data-seat="GNZ-B1" data-ticket-type="GINZA" data-row="B" data-column="1" x="444" y="183" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
+  <rect data-seat="GNZ-B2" data-ticket-type="GINZA" data-row="B" data-column="2" x="478" y="183" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
+  <rect data-seat="GNZ-B3" data-ticket-type="GINZA" data-row="B" data-column="3" x="512" y="183" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
+  <rect data-seat="GNZ-B4" data-ticket-type="GINZA" data-row="B" data-column="4" x="546" y="183" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
+  <rect data-seat="GNZ-B5" data-ticket-type="GINZA" data-row="B" data-column="5" x="580" y="183" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
+  <rect data-seat="GNZ-B6" data-ticket-type="GINZA" data-row="B" data-column="6" x="614" y="183" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
+  <rect data-seat="VIP-A1" data-ticket-type="VIP 1" data-row="A" data-column="1" x="261" y="266" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
+  <rect data-seat="VIP-A2" data-ticket-type="VIP 1" data-row="A" data-column="2" x="278" y="266" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
+  <rect data-seat="VIP-A3" data-ticket-type="VIP 1" data-row="A" data-column="3" x="295" y="266" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
+  <rect data-seat="VIP-A4" data-ticket-type="VIP 1" data-row="A" data-column="4" x="312" y="266" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
+  <rect data-seat="VIP-A5" data-ticket-type="VIP 1" data-row="A" data-column="5" x="329" y="266" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
+  <rect data-seat="VIP-A6" data-ticket-type="VIP 1" data-row="A" data-column="6" x="346" y="266" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
+  <rect data-seat="VIP-A7" data-ticket-type="VIP 1" data-row="A" data-column="7" x="363" y="266" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
+  <rect data-seat="VIP-A8" data-ticket-type="VIP 1" data-row="A" data-column="8" x="380" y="266" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
+  <rect data-seat="VIP-B1" data-ticket-type="VIP 1" data-row="B" data-column="1" x="261" y="286" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
+  <rect data-seat="VIP-B2" data-ticket-type="VIP 1" data-row="B" data-column="2" x="278" y="286" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
+  <rect data-seat="VIP-B3" data-ticket-type="VIP 1" data-row="B" data-column="3" x="295" y="286" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
+  <rect data-seat="VIP-B4" data-ticket-type="VIP 1" data-row="B" data-column="4" x="312" y="286" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
+  <rect data-seat="VIP-B5" data-ticket-type="VIP 1" data-row="B" data-column="5" x="329" y="286" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
+  <rect data-seat="VIP-B6" data-ticket-type="VIP 1" data-row="B" data-column="6" x="346" y="286" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
+  <rect data-seat="VIP-B7" data-ticket-type="VIP 1" data-row="B" data-column="7" x="363" y="286" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
+  <rect data-seat="VIP-B8" data-ticket-type="VIP 1" data-row="B" data-column="8" x="380" y="286" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
+  <rect data-seat="VIP-C1" data-ticket-type="VIP 1" data-row="C" data-column="1" x="261" y="306" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
+  <rect data-seat="VIP-C2" data-ticket-type="VIP 1" data-row="C" data-column="2" x="278" y="306" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
+  <rect data-seat="VIP-C3" data-ticket-type="VIP 1" data-row="C" data-column="3" x="295" y="306" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
+  <rect data-seat="VIP-C4" data-ticket-type="VIP 1" data-row="C" data-column="4" x="312" y="306" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
+  <rect data-seat="VIP-C5" data-ticket-type="VIP 1" data-row="C" data-column="5" x="329" y="306" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
+  <rect data-seat="VIP-C6" data-ticket-type="VIP 1" data-row="C" data-column="6" x="346" y="306" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
+  <rect data-seat="VIP-C7" data-ticket-type="VIP 1" data-row="C" data-column="7" x="363" y="306" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
+  <rect data-seat="VIP-C8" data-ticket-type="VIP 1" data-row="C" data-column="8" x="380" y="306" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
+  <rect data-seat="SH1-A1" data-ticket-type="SHIBUYA 1" data-row="A" data-column="1" x="83" y="408" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
+  <rect data-seat="SH1-A2" data-ticket-type="SHIBUYA 1" data-row="A" data-column="2" x="117" y="408" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
+  <rect data-seat="SH1-A3" data-ticket-type="SHIBUYA 1" data-row="A" data-column="3" x="151" y="408" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
+  <rect data-seat="SH1-A4" data-ticket-type="SHIBUYA 1" data-row="A" data-column="4" x="185" y="408" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
+  <rect data-seat="SH1-A5" data-ticket-type="SHIBUYA 1" data-row="A" data-column="5" x="219" y="408" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
+  <rect data-seat="SH1-A6" data-ticket-type="SHIBUYA 1" data-row="A" data-column="6" x="253" y="408" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
+  <rect data-seat="SH1-A7" data-ticket-type="SHIBUYA 1" data-row="A" data-column="7" x="287" y="408" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
+  <rect data-seat="SH1-A8" data-ticket-type="SHIBUYA 1" data-row="A" data-column="8" x="321" y="408" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
+  <rect data-seat="SH1-B1" data-ticket-type="SHIBUYA 1" data-row="B" data-column="1" x="83" y="430" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
+  <rect data-seat="SH1-B2" data-ticket-type="SHIBUYA 1" data-row="B" data-column="2" x="117" y="430" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
+  <rect data-seat="SH1-B3" data-ticket-type="SHIBUYA 1" data-row="B" data-column="3" x="151" y="430" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
+  <rect data-seat="SH1-B4" data-ticket-type="SHIBUYA 1" data-row="B" data-column="4" x="185" y="430" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
+  <rect data-seat="SH1-B5" data-ticket-type="SHIBUYA 1" data-row="B" data-column="5" x="219" y="430" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
+  <rect data-seat="SH1-B6" data-ticket-type="SHIBUYA 1" data-row="B" data-column="6" x="253" y="430" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
+  <rect data-seat="SH1-B7" data-ticket-type="SHIBUYA 1" data-row="B" data-column="7" x="287" y="430" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
+  <rect data-seat="SH1-B8" data-ticket-type="SHIBUYA 1" data-row="B" data-column="8" x="321" y="430" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
+  <rect data-seat="SH1-C1" data-ticket-type="SHIBUYA 1" data-row="C" data-column="1" x="83" y="452" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
+  <rect data-seat="SH1-C2" data-ticket-type="SHIBUYA 1" data-row="C" data-column="2" x="117" y="452" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
+  <rect data-seat="SH1-C3" data-ticket-type="SHIBUYA 1" data-row="C" data-column="3" x="151" y="452" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
+  <rect data-seat="SH1-C4" data-ticket-type="SHIBUYA 1" data-row="C" data-column="4" x="185" y="452" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
+  <rect data-seat="SH1-C5" data-ticket-type="SHIBUYA 1" data-row="C" data-column="5" x="219" y="452" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
+  <rect data-seat="SH1-C6" data-ticket-type="SHIBUYA 1" data-row="C" data-column="6" x="253" y="452" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
+  <rect data-seat="SH1-C7" data-ticket-type="SHIBUYA 1" data-row="C" data-column="7" x="287" y="452" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
+  <rect data-seat="SH1-C8" data-ticket-type="SHIBUYA 1" data-row="C" data-column="8" x="321" y="452" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
+  <rect data-seat="SH1-D1" data-ticket-type="SHIBUYA 1" data-row="D" data-column="1" x="83" y="474" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
+  <rect data-seat="SH1-D2" data-ticket-type="SHIBUYA 1" data-row="D" data-column="2" x="117" y="474" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
+  <rect data-seat="SH1-D3" data-ticket-type="SHIBUYA 1" data-row="D" data-column="3" x="151" y="474" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
+  <rect data-seat="SH1-D4" data-ticket-type="SHIBUYA 1" data-row="D" data-column="4" x="185" y="474" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
+  <rect data-seat="SH1-D5" data-ticket-type="SHIBUYA 1" data-row="D" data-column="5" x="219" y="474" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
+  <rect data-seat="SH1-D6" data-ticket-type="SHIBUYA 1" data-row="D" data-column="6" x="253" y="474" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
+  <rect data-seat="SH1-D7" data-ticket-type="SHIBUYA 1" data-row="D" data-column="7" x="287" y="474" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
+  <rect data-seat="SH1-D8" data-ticket-type="SHIBUYA 1" data-row="D" data-column="8" x="321" y="474" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
+  <rect data-seat="SHB-A1" data-ticket-type="SHIBUYA 2" data-row="A" data-column="1" x="439" y="408" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
+  <rect data-seat="SHB-A2" data-ticket-type="SHIBUYA 2" data-row="A" data-column="2" x="473" y="408" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
+  <rect data-seat="SHB-A3" data-ticket-type="SHIBUYA 2" data-row="A" data-column="3" x="507" y="408" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
+  <rect data-seat="SHB-A4" data-ticket-type="SHIBUYA 2" data-row="A" data-column="4" x="541" y="408" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
+  <rect data-seat="SHB-A5" data-ticket-type="SHIBUYA 2" data-row="A" data-column="5" x="575" y="408" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
+  <rect data-seat="SHB-A6" data-ticket-type="SHIBUYA 2" data-row="A" data-column="6" x="609" y="408" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
+  <rect data-seat="SHB-A7" data-ticket-type="SHIBUYA 2" data-row="A" data-column="7" x="643" y="408" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
+  <rect data-seat="SHB-A8" data-ticket-type="SHIBUYA 2" data-row="A" data-column="8" x="677" y="408" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
+  <rect data-seat="SHB-B1" data-ticket-type="SHIBUYA 2" data-row="B" data-column="1" x="439" y="430" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
+  <rect data-seat="SHB-B2" data-ticket-type="SHIBUYA 2" data-row="B" data-column="2" x="473" y="430" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
+  <rect data-seat="SHB-B3" data-ticket-type="SHIBUYA 2" data-row="B" data-column="3" x="507" y="430" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
+  <rect data-seat="SHB-B4" data-ticket-type="SHIBUYA 2" data-row="B" data-column="4" x="541" y="430" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
+  <rect data-seat="SHB-B5" data-ticket-type="SHIBUYA 2" data-row="B" data-column="5" x="575" y="430" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
+  <rect data-seat="SHB-B6" data-ticket-type="SHIBUYA 2" data-row="B" data-column="6" x="609" y="430" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
+  <rect data-seat="SHB-B7" data-ticket-type="SHIBUYA 2" data-row="B" data-column="7" x="643" y="430" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
+  <rect data-seat="SHB-B8" data-ticket-type="SHIBUYA 2" data-row="B" data-column="8" x="677" y="430" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
+  <rect data-seat="SHB-C1" data-ticket-type="SHIBUYA 2" data-row="C" data-column="1" x="439" y="452" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
+  <rect data-seat="SHB-C2" data-ticket-type="SHIBUYA 2" data-row="C" data-column="2" x="473" y="452" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
+  <rect data-seat="SHB-C3" data-ticket-type="SHIBUYA 2" data-row="C" data-column="3" x="507" y="452" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
+  <rect data-seat="SHB-C4" data-ticket-type="SHIBUYA 2" data-row="C" data-column="4" x="541" y="452" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
+  <rect data-seat="SHB-C5" data-ticket-type="SHIBUYA 2" data-row="C" data-column="5" x="575" y="452" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
+  <rect data-seat="SHB-C6" data-ticket-type="SHIBUYA 2" data-row="C" data-column="6" x="609" y="452" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
+  <rect data-seat="SHB-C7" data-ticket-type="SHIBUYA 2" data-row="C" data-column="7" x="643" y="452" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
+  <rect data-seat="SHB-C8" data-ticket-type="SHIBUYA 2" data-row="C" data-column="8" x="677" y="452" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
+  <rect data-seat="SHB-D1" data-ticket-type="SHIBUYA 2" data-row="D" data-column="1" x="439" y="474" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
+  <rect data-seat="SHB-D2" data-ticket-type="SHIBUYA 2" data-row="D" data-column="2" x="473" y="474" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
+  <rect data-seat="SHB-D3" data-ticket-type="SHIBUYA 2" data-row="D" data-column="3" x="507" y="474" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
+  <rect data-seat="SHB-D4" data-ticket-type="SHIBUYA 2" data-row="D" data-column="4" x="541" y="474" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
+  <rect data-seat="SHB-D5" data-ticket-type="SHIBUYA 2" data-row="D" data-column="5" x="575" y="474" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
+  <rect data-seat="SHB-D6" data-ticket-type="SHIBUYA 2" data-row="D" data-column="6" x="609" y="474" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
+  <rect data-seat="SHB-D7" data-ticket-type="SHIBUYA 2" data-row="D" data-column="7" x="643" y="474" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
+  <rect data-seat="SHB-D8" data-ticket-type="SHIBUYA 2" data-row="D" data-column="8" x="677" y="474" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
+  <rect data-seat="HRJ-A1" data-ticket-type="HARAJUKU 1" data-row="A" data-column="1" x="115" y="548" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
+  <rect data-seat="HRJ-A2" data-ticket-type="HARAJUKU 1" data-row="A" data-column="2" x="141" y="548" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
+  <rect data-seat="HRJ-A3" data-ticket-type="HARAJUKU 1" data-row="A" data-column="3" x="167" y="548" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
+  <rect data-seat="HRJ-A4" data-ticket-type="HARAJUKU 1" data-row="A" data-column="4" x="193" y="548" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
+  <rect data-seat="HRJ-A5" data-ticket-type="HARAJUKU 1" data-row="A" data-column="5" x="219" y="548" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
+  <rect data-seat="HRJ-A6" data-ticket-type="HARAJUKU 1" data-row="A" data-column="6" x="245" y="548" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
+  <rect data-seat="HRJ-A7" data-ticket-type="HARAJUKU 1" data-row="A" data-column="7" x="271" y="548" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
+  <rect data-seat="HRJ-A8" data-ticket-type="HARAJUKU 1" data-row="A" data-column="8" x="297" y="548" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
+  <rect data-seat="HRJ-A9" data-ticket-type="HARAJUKU 1" data-row="A" data-column="9" x="323" y="548" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
+  <rect data-seat="HRJ-A10" data-ticket-type="HARAJUKU 1" data-row="A" data-column="10" x="349" y="548" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
+  <rect data-seat="HRJ-A11" data-ticket-type="HARAJUKU 1" data-row="A" data-column="11" x="375" y="548" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
+  <rect data-seat="HRJ-A12" data-ticket-type="HARAJUKU 1" data-row="A" data-column="12" x="401" y="548" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
+  <rect data-seat="HRJ-B1" data-ticket-type="HARAJUKU 1" data-row="B" data-column="1" x="115" y="564" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
+  <rect data-seat="HRJ-B2" data-ticket-type="HARAJUKU 1" data-row="B" data-column="2" x="141" y="564" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
+  <rect data-seat="HRJ-B3" data-ticket-type="HARAJUKU 1" data-row="B" data-column="3" x="167" y="564" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
+  <rect data-seat="HRJ-B4" data-ticket-type="HARAJUKU 1" data-row="B" data-column="4" x="193" y="564" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
+  <rect data-seat="HRJ-B5" data-ticket-type="HARAJUKU 1" data-row="B" data-column="5" x="219" y="564" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
+  <rect data-seat="HRJ-B6" data-ticket-type="HARAJUKU 1" data-row="B" data-column="6" x="245" y="564" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
+  <rect data-seat="HRJ-B7" data-ticket-type="HARAJUKU 1" data-row="B" data-column="7" x="271" y="564" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
+  <rect data-seat="HRJ-B8" data-ticket-type="HARAJUKU 1" data-row="B" data-column="8" x="297" y="564" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
+  <rect data-seat="HRJ-B9" data-ticket-type="HARAJUKU 1" data-row="B" data-column="9" x="323" y="564" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
+  <rect data-seat="HRJ-B10" data-ticket-type="HARAJUKU 1" data-row="B" data-column="10" x="349" y="564" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
+  <rect data-seat="HRJ-B11" data-ticket-type="HARAJUKU 1" data-row="B" data-column="11" x="375" y="564" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
+  <rect data-seat="HRJ-B12" data-ticket-type="HARAJUKU 1" data-row="B" data-column="12" x="401" y="564" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
+  <rect data-seat="HRJ-C1" data-ticket-type="HARAJUKU 1" data-row="C" data-column="1" x="115" y="580" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
+  <rect data-seat="HRJ-C2" data-ticket-type="HARAJUKU 1" data-row="C" data-column="2" x="141" y="580" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
+  <rect data-seat="HRJ-C3" data-ticket-type="HARAJUKU 1" data-row="C" data-column="3" x="167" y="580" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
+  <rect data-seat="HRJ-C4" data-ticket-type="HARAJUKU 1" data-row="C" data-column="4" x="193" y="580" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
+  <rect data-seat="HRJ-C5" data-ticket-type="HARAJUKU 1" data-row="C" data-column="5" x="219" y="580" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
+  <rect data-seat="HRJ-C6" data-ticket-type="HARAJUKU 1" data-row="C" data-column="6" x="245" y="580" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
+  <rect data-seat="HRJ-C7" data-ticket-type="HARAJUKU 1" data-row="C" data-column="7" x="271" y="580" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
+  <rect data-seat="HRJ-C8" data-ticket-type="HARAJUKU 1" data-row="C" data-column="8" x="297" y="580" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
+  <rect data-seat="HRJ-C9" data-ticket-type="HARAJUKU 1" data-row="C" data-column="9" x="323" y="580" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
+  <rect data-seat="HRJ-C10" data-ticket-type="HARAJUKU 1" data-row="C" data-column="10" x="349" y="580" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
+  <rect data-seat="HRJ-C11" data-ticket-type="HARAJUKU 1" data-row="C" data-column="11" x="375" y="580" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
+  <rect data-seat="HRJ-C12" data-ticket-type="HARAJUKU 1" data-row="C" data-column="12" x="401" y="580" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
+</g>
+</svg>

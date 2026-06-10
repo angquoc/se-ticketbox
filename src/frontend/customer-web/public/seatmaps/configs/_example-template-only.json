@@ -1,12 +1,5 @@
 {
-  "slug": "your-concert-slug-here",
-  "title": "Tên concert mới",
-  "template": "festival-4-tier",
-  "seatMapUrl": "/seatmaps/backgrounds/theater-tiered.svg",
-  "zoneOverrides": [
-    { "zoneIndex": 0, "seatPrefix": "PLT" },
-    { "zoneIndex": 1, "seatPrefix": "GLD" },
-    { "zoneIndex": 2, "seatPrefix": "SLV" },
-    { "zoneIndex": 3, "seatPrefix": "GA" }
-  ]
+  "slug": "my-new-concert-2026",
+  "title": "MY NEW CONCERT 2026",
+  "seatMapUrl": "/seatmaps/concerts/my-new-concert-2026.svg"
 }

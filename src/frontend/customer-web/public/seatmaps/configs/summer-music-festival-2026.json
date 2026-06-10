@@ -1,55 +1,5 @@
 {
   "slug": "summer-music-festival-2026",
   "title": "SUMMER MUSIC FESTIVAL VIETNAM 2026",
-  "seatMapUrl": "/seatmaps/backgrounds/summer-music-festival-2026.svg",
-  "zones": [
-    {
-      "ticketTypeName": "PLATINUM PASS",
-      "seatPrefix": "PLT",
-      "layout": {
-        "rows": 3,
-        "cols": 8,
-        "startX": 300,
-        "startY": 160,
-        "colGap": 25,
-        "rowGap": 25
-      }
-    },
-    {
-      "ticketTypeName": "GOLD PASS",
-      "seatPrefix": "GLD",
-      "layout": {
-        "rows": 4,
-        "cols": 10,
-        "startX": 175,
-        "startY": 300,
-        "colGap": 25,
-        "rowGap": 25
-      }
-    },
-    {
-      "ticketTypeName": "SILVER PASS",
-      "seatPrefix": "SLV",
-      "layout": {
-        "rows": 4,
-        "cols": 10,
-        "startX": 420,
-        "startY": 300,
-        "colGap": 25,
-        "rowGap": 25
-      }
-    },
-    {
-      "ticketTypeName": "GENERAL ADMISSION",
-      "seatPrefix": "GA",
-      "layout": {
-        "rows": 3,
-        "cols": 14,
-        "startX": 200,
-        "startY": 450,
-        "colGap": 25,
-        "rowGap": 25
-      }
-    }
-  ]
+  "seatMapUrl": "/seatmaps/concerts/summer-music-festival-2026.svg"
 }

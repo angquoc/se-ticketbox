@@ -51,10 +51,9 @@ export function useSeatMap({ concertId }: UseSeatMapOptions) {
   const [activeTicketTypeId, setActiveTicketTypeId] = useState<string>(ALL_TICKET_TYPES);
   const [regionFilter, setRegionFilter] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState('');
-  const [hoveredSeat, setHoveredSeat] = useState<Seat | null>(null);
   const [limitWarning, setLimitWarning] = useState<string | null>(null);
   const [availabilityNotice, setAvailabilityNotice] = useState<string | null>(null);
-  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const lastToggleAtRef = useRef(0);
   const selectionTimestampsRef = useRef<number[]>([]);
   const restoredSelectionRef = useRef(false);
 
@@ -245,53 +244,54 @@ export function useSeatMap({ concertId }: UseSeatMapOptions) {
 
   const toggleSeat = useCallback(
     (seat: Seat) => {
-      if (debounceRef.current) clearTimeout(debounceRef.current);
+      const now = Date.now();
+      const msSinceLast = now - lastToggleAtRef.current;
+      if (msSinceLast < DEBOUNCE_MS) return;
 
-      debounceRef.current = setTimeout(() => {
-        if (seat.status !== 'AVAILABLE') return;
+      const tt = ticketTypeMap.get(seat.ticketTypeId);
+      if (!tt) return;
 
-        const tt = ticketTypeMap.get(seat.ticketTypeId);
-        if (!tt) return;
+      setSelectedSeats((prev) => {
+        const exists = prev.find((s) => s.seatNumber === seat.seatNumber);
+        if (!exists && seat.status !== 'AVAILABLE') return prev;
 
-        const now = Date.now();
+        if (exists) {
+          lastToggleAtRef.current = now;
+          setLimitWarning(null);
+          setAvailabilityNotice(null);
+          return prev.filter((s) => s.seatNumber !== seat.seatNumber);
+        }
+
         selectionTimestampsRef.current = selectionTimestampsRef.current.filter(
           (timestamp) => now - timestamp < SELECTION_RATE_WINDOW_MS,
         );
         if (selectionTimestampsRef.current.length >= SELECTION_RATE_LIMIT) {
           setLimitWarning('Quá nhiều thao tác chọn ghế (tối đa 10/phút). Vui lòng chờ một lát.');
-          return;
+          return prev;
         }
 
-        setSelectedSeats((prev) => {
-          const exists = prev.find((s) => s.seatNumber === seat.seatNumber);
-          if (exists) {
-            setLimitWarning(null);
-            setAvailabilityNotice(null);
-            return prev.filter((s) => s.seatNumber !== seat.seatNumber);
-          }
+        const currentCount = prev.filter((s) => s.ticketTypeId === seat.ticketTypeId).length;
+        if (currentCount >= tt.maxPerUser) {
+          setLimitWarning(`Tối đa ${tt.maxPerUser} ghế ${tt.name} mỗi người`);
+          return prev;
+        }
 
-          const currentCount = prev.filter((s) => s.ticketTypeId === seat.ticketTypeId).length;
-          if (currentCount >= tt.maxPerUser) {
-            setLimitWarning(`Tối đa ${tt.maxPerUser} ghế ${tt.name} mỗi người`);
-            return prev;
-          }
-
-          selectionTimestampsRef.current.push(now);
-          setLimitWarning(null);
-          setAvailabilityNotice(null);
-          return [
-            ...prev,
-            {
-              ticketTypeId: seat.ticketTypeId,
-              regionId: seat.regionId,
-              seatNumber: seat.seatNumber,
-              price: tt.price,
-              row: seat.row,
-              column: seat.column,
-            },
-          ];
-        });
-      }, DEBOUNCE_MS);
+        lastToggleAtRef.current = now;
+        selectionTimestampsRef.current.push(now);
+        setLimitWarning(null);
+        setAvailabilityNotice(null);
+        return [
+          ...prev,
+          {
+            ticketTypeId: seat.ticketTypeId,
+            regionId: seat.regionId,
+            seatNumber: seat.seatNumber,
+            price: tt.price,
+            row: seat.row,
+            column: seat.column,
+          },
+        ];
+      });
     },
     [ticketTypeMap],
   );
@@ -301,11 +301,10 @@ export function useSeatMap({ concertId }: UseSeatMapOptions) {
     [selectedSeats],
   );
 
-  useEffect(() => {
-    return () => {
-      if (debounceRef.current) clearTimeout(debounceRef.current);
-    };
-  }, []);
+  const selectedSeatNumbers = useMemo(
+    () => new Set(selectedSeats.map((seat) => seat.seatNumber)),
+    [selectedSeats],
+  );
 
   return {
     data,
@@ -322,8 +321,7 @@ export function useSeatMap({ concertId }: UseSeatMapOptions) {
     setRegionFilter,
     searchQuery,
     setSearchQuery,
-    hoveredSeat,
-    setHoveredSeat,
+    selectedSeatNumbers,
     limitWarning,
     filteredSeats,
     regions,

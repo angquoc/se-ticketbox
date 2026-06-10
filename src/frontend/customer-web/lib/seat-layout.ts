@@ -1,9 +1,7 @@
-import {
-  resolveSeatMapUrl,
-  resolveZoneLayout,
-  type ResolvedSeatmapConfig,
-} from '@/lib/seatmap-config';
-import { slugPrefixFromName, type TicketTypeZoneLayout } from '@/lib/seat-layout-helpers';
+import { resolveSeatMapUrl, type ResolvedSeatmapConfig } from '@/lib/seatmap-config';
+import { normalizeTicketTypeName } from '@/lib/seat-layout-helpers';
+import { loadParsedSvgSeats } from '@/lib/seatmap-svg.server';
+import type { ParsedSvgSeat } from '@/lib/svg-seatmap';
 import type { Seat, SeatMapData, SeatStatus, TicketType } from '@/types/seatmap';
 
 import { MAX_SEATS_PER_TYPE } from '@/lib/seat-layout-helpers';
@@ -77,78 +75,57 @@ export function assignSeatStatuses(
   return statusMap;
 }
 
-function generateSeatsForLayout(
+function groupSvgSeatsByTicketType(seats: ParsedSvgSeat[]): Map<string, ParsedSvgSeat[]> {
+  const grouped = new Map<string, ParsedSvgSeat[]>();
+  for (const seat of seats) {
+    const key = normalizeTicketTypeName(seat.ticketTypeName);
+    const list = grouped.get(key) ?? [];
+    list.push(seat);
+    grouped.set(key, list);
+  }
+  return grouped;
+}
+
+function toSeat(
+  parsed: ParsedSvgSeat,
   ticketTypeId: string,
   regionId: string,
-  seatPrefix: string,
-  layout: TicketTypeZoneLayout,
-  seatCount: number,
-  statusMap: Map<string, SeatStatus>,
-): Seat[] {
-  const seats: Seat[] = [];
-  let generated = 0;
-
-  for (let r = 0; r < layout.rows && generated < seatCount; r++) {
-    for (let c = 0; c < layout.cols && generated < seatCount; c++) {
-      const row = String.fromCharCode(65 + r);
-      const col = c + 1;
-      const seatNumber = `${seatPrefix}-${row}${col}`;
-
-      seats.push({
-        seatNumber,
-        regionId,
-        ticketTypeId,
-        row,
-        column: col,
-        status: statusMap.get(seatNumber) ?? 'AVAILABLE',
-        coords: {
-          x: layout.startX + c * layout.colGap,
-          y: layout.startY + r * layout.rowGap,
-        },
-      });
-      generated += 1;
-    }
-  }
-
-  return seats;
+  status: SeatStatus,
+): Seat {
+  return {
+    seatNumber: parsed.seatNumber,
+    regionId,
+    ticketTypeId,
+    row: parsed.row,
+    column: parsed.column,
+    status,
+    coords: parsed.coords,
+  };
 }
 
-function countLayoutCapacity(layout: TicketTypeZoneLayout): number {
-  return layout.rows * layout.cols;
-}
-
-export function buildSeatMapData(options: BuildSeatMapOptions): SeatMapData | null {
+export async function buildSeatMapData(options: BuildSeatMapOptions): Promise<SeatMapData | null> {
   if (options.ticketTypes.length === 0) return null;
 
+  const seatMapUrl = resolveSeatMapUrl(options.seatMapUrl, options.seatmapConfig ?? null);
+  const svgData = await loadParsedSvgSeats(seatMapUrl);
+  if (!svgData || svgData.seats.length === 0) return null;
+
+  const seatsByTicketType = groupSvgSeatsByTicketType(svgData.seats);
   const seats: Seat[] = [];
   const ticketTypes: TicketType[] = [];
 
-  options.ticketTypes.forEach((ticketType, zoneIndex) => {
-    const layout = resolveZoneLayout(
-      options.seatmapConfig ?? null,
-      ticketType.name,
-      zoneIndex,
-      ticketType.totalQty,
-    );
-    const layoutCapacity = countLayoutCapacity(layout);
+  for (const ticketType of options.ticketTypes) {
+    const svgSeats = seatsByTicketType.get(normalizeTicketTypeName(ticketType.name)) ?? [];
+    if (svgSeats.length === 0) continue;
+
     const seatCount = Math.min(
       Math.max(ticketType.totalQty, 1),
-      layoutCapacity,
+      svgSeats.length,
       MAX_SEATS_PER_TYPE,
     );
+    const selectedSeats = svgSeats.slice(0, seatCount);
     const regionId = `zone-${ticketType.id}`;
-    const seatPrefix = layout.seatPrefix ?? slugPrefixFromName(ticketType.name);
-
-    const seatNumbers: string[] = [];
-    let generated = 0;
-    for (let r = 0; r < layout.rows && generated < seatCount; r++) {
-      for (let c = 0; c < layout.cols && generated < seatCount; c++) {
-        const row = String.fromCharCode(65 + r);
-        const col = c + 1;
-        seatNumbers.push(`${seatPrefix}-${row}${col}`);
-        generated += 1;
-      }
-    }
+    const seatNumbers = selectedSeats.map((seat) => seat.seatNumber);
 
     const statusMap = assignSeatStatuses(
       seatNumbers,
@@ -158,13 +135,8 @@ export function buildSeatMapData(options: BuildSeatMapOptions): SeatMapData | nu
       ticketType.reservedQty,
     );
 
-    const zoneSeats = generateSeatsForLayout(
-      ticketType.id,
-      regionId,
-      seatPrefix,
-      layout,
-      seatCount,
-      statusMap,
+    const zoneSeats = selectedSeats.map((parsed) =>
+      toSeat(parsed, ticketType.id, regionId, statusMap.get(parsed.seatNumber) ?? 'AVAILABLE'),
     );
 
     seats.push(...zoneSeats);
@@ -188,12 +160,14 @@ export function buildSeatMapData(options: BuildSeatMapOptions): SeatMapData | nu
         },
       ],
     });
-  });
+  }
+
+  if (seats.length === 0) return null;
 
   return {
     concertId: options.concertId,
     concertName: options.concertName,
-    seatMapUrl: resolveSeatMapUrl(options.seatMapUrl, options.seatmapConfig ?? null),
+    seatMapUrl,
     ticketTypes,
     seats,
   };

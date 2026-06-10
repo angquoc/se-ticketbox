@@ -1,5 +1,8 @@
+import { DEFAULT_SEATMAP_URL } from '@/lib/seatmap-config';
 import { loadSeatmapConfig } from '@/lib/seatmap-config.server';
 import { buildSeatMapData } from '@/lib/seat-layout';
+import { loadParsedSvgSeats } from '@/lib/seatmap-svg.server';
+import { normalizeTicketTypeName } from '@/lib/seat-layout-helpers';
 import type { SeatMapData } from '@/types/seatmap';
 
 interface MockSeatMapOptions {
@@ -23,34 +26,31 @@ export async function getMockSeatMap(
     ? await loadSeatmapConfig(options.concertSlug)
     : null;
 
+  const seatMapUrl = seatmapConfig?.seatMapUrl ?? DEFAULT_SEATMAP_URL;
+  const svgData = await loadParsedSvgSeats(seatMapUrl);
+
   const ticketTypeInputs = [];
 
-  if (seatmapConfig && seatmapConfig.zonesByTicketTypeName.size > 0) {
-    for (const zone of seatmapConfig.zonesByTicketTypeName.values()) {
-      if (!zone.ticketTypeName) continue;
-      const capacity = zone.layout.rows * zone.layout.cols;
-      const inventory = estimateMockInventory(capacity);
-      ticketTypeInputs.push({
-        id: zone.ticketTypeName,
-        name: zone.ticketTypeName,
-        price: 1_000_000,
-        maxPerUser: 4,
-        ...inventory,
-      });
+  if (svgData && svgData.seats.length > 0) {
+    const counts = new Map<string, number>();
+    for (const seat of svgData.seats) {
+      const key = normalizeTicketTypeName(seat.ticketTypeName);
+      counts.set(key, (counts.get(key) ?? 0) + 1);
     }
-  } else if (seatmapConfig && seatmapConfig.templateZones.length > 0) {
-    seatmapConfig.templateZones.forEach((zone, index) => {
-      const capacity = zone.layout.rows * zone.layout.cols;
-      const inventory = estimateMockInventory(capacity);
-      const name = zone.seatPrefix ? `Zone ${zone.seatPrefix}` : `Zone ${index + 1}`;
+
+    for (const [normalizedName, capacity] of counts.entries()) {
+      const sample = svgData.seats.find(
+        (seat) => normalizeTicketTypeName(seat.ticketTypeName) === normalizedName,
+      );
+      const name = sample?.ticketTypeName ?? normalizedName;
       ticketTypeInputs.push({
         id: name,
         name,
         price: 1_000_000,
         maxPerUser: 4,
-        ...inventory,
+        ...estimateMockInventory(capacity),
       });
-    });
+    }
   } else {
     ticketTypeInputs.push({
       id: 'VIP',
@@ -63,7 +63,7 @@ export async function getMockSeatMap(
     });
   }
 
-  const seatMap = buildSeatMapData({
+  const seatMap = await buildSeatMapData({
     concertId,
     concertName: options.concertName ?? seatmapConfig?.title ?? 'Concert Demo',
     seatMapUrl: null,

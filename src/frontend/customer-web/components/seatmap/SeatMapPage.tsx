@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { ALL_TICKET_TYPES, useSeatMap } from '@/hooks/useSeatMap';
 import { requestPurchaseAccess } from '@/lib/waiting-room-access';
@@ -68,8 +68,7 @@ export default function SeatMapPage({ concertId }: SeatMapPageProps) {
     setRegionFilter,
     searchQuery,
     setSearchQuery,
-    hoveredSeat,
-    setHoveredSeat,
+    selectedSeatNumbers,
     limitWarning,
     availabilityNotice,
     filteredSeats,
@@ -80,6 +79,7 @@ export default function SeatMapPage({ concertId }: SeatMapPageProps) {
 
   const [showFallback, setShowFallback] = useState(false);
   const [mapReady, setMapReady] = useState(false);
+  const handleBackgroundLoaded = useCallback(() => setMapReady(true), []);
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -221,11 +221,9 @@ export default function SeatMapPage({ concertId }: SeatMapPageProps) {
           <InteractiveSeatMap
             data={data}
             seats={filteredSeats}
-            isSelected={isSelected}
+            selectedSeatNumbers={selectedSeatNumbers}
             onToggleSeat={toggleSeat}
-            hoveredSeat={hoveredSeat}
-            onHoverSeat={setHoveredSeat}
-            onBackgroundLoaded={() => setMapReady(true)}
+            onBackgroundLoaded={handleBackgroundLoaded}
           />
         </div>
 
