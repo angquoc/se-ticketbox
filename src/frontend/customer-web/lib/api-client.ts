@@ -62,10 +62,14 @@ export const authApi = {
 };
 
 export const orderApi = {
-  create(payload: { concertId: string; items: Array<{ ticketTypeId: string; quantity: number }> }) {
+  create(
+    payload: { concertId: string; items: Array<{ ticketTypeId: string; quantity: number }> },
+    idempotencyKey: string,
+  ) {
     return clientFetch<CreateOrderResponse>('/api/orders', {
       method: 'POST',
       body: JSON.stringify(payload),
+      idempotencyKey,
     });
   },
   getById(orderId: string) {

@@ -8,7 +8,9 @@ import { usePaymentStatus } from '@/hooks/usePaymentStatus';
 import { clearPendingOrder } from '@/lib/checkout-storage';
 import { getConcertName } from '@/lib/concert-names';
 import { formatVnd } from '@/lib/format';
-import { orderApi } from '@/lib/api-client';
+import { orderApi, paymentApi } from '@/lib/api-client';
+import { createIdempotencyKey } from '@/lib/idempotency';
+import { normalizeMockPaymentUrl } from '@/lib/normalize-payment-url';
 import type { Order } from '@/types/order';
 
 interface PaymentWaitingPageProps {
@@ -34,6 +36,8 @@ export default function PaymentWaitingPage({ orderId }: PaymentWaitingPageProps)
   const [order, setOrder] = useState<Order | null>(null);
   const [countdown, setCountdown] = useState('--:--');
   const [cancelling, setCancelling] = useState(false);
+  const [creatingPaymentUrl, setCreatingPaymentUrl] = useState(false);
+  const [localPaymentUrl, setLocalPaymentUrl] = useState<string | null>(null);
 
   const { status, loading, error, refresh } = usePaymentStatus({
     orderId,
@@ -62,10 +66,26 @@ export default function PaymentWaitingPage({ orderId }: PaymentWaitingPageProps)
   }, [order?.expiresAt]);
 
   const resolvedPaymentUrl = useMemo(() => {
-    if (paymentUrl) return paymentUrl;
-    const initiated = status?.payments.find((payment) => payment.paymentUrl);
-    return initiated?.paymentUrl ?? null;
-  }, [paymentUrl, status?.payments]);
+    const raw =
+      localPaymentUrl ??
+      paymentUrl ??
+      status?.payments.find((payment) => payment.paymentUrl)?.paymentUrl ??
+      null;
+    return raw ? normalizeMockPaymentUrl(raw) : null;
+  }, [localPaymentUrl, paymentUrl, status?.payments]);
+
+  async function handleCreatePaymentUrl() {
+    setCreatingPaymentUrl(true);
+    try {
+      const response = await paymentApi.create(orderId, createIdempotencyKey());
+      setLocalPaymentUrl(response.paymentUrl);
+      await refresh();
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'Không thể tạo payment URL');
+    } finally {
+      setCreatingPaymentUrl(false);
+    }
+  }
 
   async function handleCancel() {
     setCancelling(true);
@@ -132,9 +152,19 @@ export default function PaymentWaitingPage({ orderId }: PaymentWaitingPageProps)
                   Mở cổng thanh toán
                 </a>
               ) : (
-                <p className="mt-3 text-sm text-indigo-700">
-                  Chưa có payment URL. Thử tải lại trạng thái.
-                </p>
+                <div className="mt-3 space-y-2">
+                  <p className="text-sm text-indigo-700">
+                    Chưa có payment URL. Tạo lại liên kết thanh toán hoặc tải lại trạng thái.
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => void handleCreatePaymentUrl()}
+                    disabled={creatingPaymentUrl}
+                    className="inline-flex rounded-lg border border-indigo-300 bg-white px-4 py-2 text-sm font-medium text-indigo-800 hover:bg-indigo-100 disabled:opacity-50"
+                  >
+                    {creatingPaymentUrl ? 'Đang tạo...' : 'Tạo lại payment URL'}
+                  </button>
+                </div>
               )}
             </div>
           )}

@@ -14,12 +14,23 @@ export async function POST(request: Request) {
     return NextResponse.json({ success: false, message: 'Chưa đăng nhập' }, { status: 401 });
   }
 
+  const idempotencyKey = request.headers.get('idempotency-key');
+  if (!idempotencyKey) {
+    return NextResponse.json(
+      { success: false, message: 'Thiếu header Idempotency-Key' },
+      { status: 400 },
+    );
+  }
+
   try {
     const body = await request.json();
     const data = await backendFetch<CreateOrderResponse>('/orders', {
       method: 'POST',
       token,
       body,
+      headers: {
+        'Idempotency-Key': idempotencyKey,
+      },
     });
     return NextResponse.json({ success: true, data }, { status: 201 });
   } catch (error) {

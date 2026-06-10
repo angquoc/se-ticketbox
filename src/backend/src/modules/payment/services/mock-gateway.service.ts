@@ -11,11 +11,11 @@ export class MockGatewayService {
   createPaymentUrl(orderId: string, amount: number): Promise<string> {
     const baseUrl = this.config.get<string>(
       'BACKEND_BASE_URL',
-      'http://localhost:3001',
+      'http://localhost:3000',
     );
 
     return Promise.resolve(
-      `${baseUrl}/payment/mock-page?orderId=${orderId}&amount=${amount}`,
+      `${baseUrl}/payments/mock-page?orderId=${orderId}&amount=${amount}`,
     );
   }
 

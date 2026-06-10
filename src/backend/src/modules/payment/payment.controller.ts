@@ -104,7 +104,7 @@ export class PaymentController {
 
           <script>
             async function sendWebhook(result, signature) {
-              const response = await fetch('/payment/mock-callback', {
+              const response = await fetch('/payments/mock-callback', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({

@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import CustomerHeader from '@/components/layout/CustomerHeader';
 import { useAuth } from '@/hooks/useAuth';
-import { concertApi, orderApi, paymentApi } from '@/lib/api-client';
+import { concertApi, orderApi } from '@/lib/api-client';
 import {
   clearCheckoutIdempotencyKey,
   getCheckoutIdempotencyKey,
@@ -66,13 +66,21 @@ export default function CheckoutPage({ concertId }: CheckoutPageProps) {
       const grouped = groupSeatsByTicketType(seats);
       const items = mapToBackendOrderItems(grouped, ticketTypesResponse.data);
 
-      const orderResponse = await orderApi.create({
-        concertId: backendConcertId,
-        items,
-      });
-
       const idempotencyKey = getCheckoutIdempotencyKey(concertId);
-      const paymentResponse = await paymentApi.create(orderResponse.order.id, idempotencyKey);
+
+      const orderResponse = await orderApi.create(
+        {
+          concertId: backendConcertId,
+          items,
+        },
+        idempotencyKey,
+      );
+
+      const paymentUrl =
+        orderResponse.paymentUrl ?? orderResponse.order.paymentUrl ?? null;
+      if (!paymentUrl) {
+        throw new Error('Không nhận được payment URL từ hệ thống');
+      }
 
       clearCheckoutIdempotencyKey(concertId);
       clearSeatSelection(concertId);
@@ -80,7 +88,7 @@ export default function CheckoutPage({ concertId }: CheckoutPageProps) {
       setOrder(orderResponse.order);
 
       router.push(
-        `/orders/${orderResponse.order.id}/payment?concertId=${encodeURIComponent(concertId)}&paymentUrl=${encodeURIComponent(paymentResponse.paymentUrl)}`,
+        `/orders/${orderResponse.order.id}/payment?concertId=${encodeURIComponent(concertId)}&paymentUrl=${encodeURIComponent(paymentUrl)}`,
       );
     } catch (err) {
       setStep('error');
