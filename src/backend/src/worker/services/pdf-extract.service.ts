@@ -1,11 +1,16 @@
 import { Injectable } from '@nestjs/common';
 
-const pdfParse = require('pdf-parse');
-
 @Injectable()
 export class PdfExtractService {
   async extractText(buffer: Buffer): Promise<string> {
-    const result = await pdfParse(buffer);
+    const pdf = require('pdf-parse');
+    const parseFunc = typeof pdf === 'function' ? pdf : pdf.default;
+
+    if (!parseFunc) {
+      throw new Error('Không thể khởi tạo thư viện pdf-parse');
+    }
+
+    const result = await parseFunc(buffer);
     return this.cleanText(result.text || '');
   }
 

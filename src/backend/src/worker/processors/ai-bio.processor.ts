@@ -48,8 +48,13 @@ export class AiBioProcessor extends WorkerHost {
         },
       });
 
+      this.logger.log('1. Đã cập nhật DB PROCESSING. Đang tải file từ MinIO...');
       const fileBuffer = await this.storage.downloadFile(objectKey);
+
+      this.logger.log('2. Tải file MinIO thành công. Đang bóc tách PDF...');
       const extractedText = await this.pdfExtract.extractText(fileBuffer);
+
+      this.logger.log(`3. Bóc tách PDF xong (${extractedText.length} ký tự). Đang gọi AI...`);
 
       if (!extractedText || extractedText.length < 20) {
         throw new Error('PDF_TEXT_EXTRACTION_FAILED');
@@ -57,6 +62,8 @@ export class AiBioProcessor extends WorkerHost {
 
       const limitedText = extractedText.slice(0, 8000);
       const artistBio = await this.aiService.generateArtistBio(limitedText);
+
+      this.logger.log('4. AI sinh nội dung thành công. Đang lưu DB...');
 
       if (!artistBio || artistBio.trim().length < 20) {
         throw new Error('AI_BIO_EMPTY');
