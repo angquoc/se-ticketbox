@@ -108,7 +108,10 @@ export class TicketService {
    * GET /tickets/:id
    * Customer: Get ticket detail. Only the ticket owner can view.
    */
-  async getTicket(ticketId: string, userId: string): Promise<TicketResponseDto> {
+  async getTicket(
+    ticketId: string,
+    userId: string,
+  ): Promise<TicketResponseDto> {
     const ticket = await this.prisma.ticket.findUnique({
       where: { id: ticketId },
       include: {
@@ -122,7 +125,9 @@ export class TicketService {
     }
 
     if (ticket.userId !== userId) {
-      throw new ForbiddenException('You do not have permission to view this ticket');
+      throw new ForbiddenException(
+        'You do not have permission to view this ticket',
+      );
     }
 
     return {
@@ -144,10 +149,20 @@ export class TicketService {
    * Returns the raw QR token (in production this would be a signed JWT or
    * similar). The frontend uses this to render the QR code.
    */
-  async getTicketQrData(ticketId: string, userId: string): Promise<{ qrToken: string }> {
+  async getTicketQrData(
+    ticketId: string,
+    userId: string,
+  ): Promise<{ qrToken: string }> {
     const ticket = await this.prisma.ticket.findUnique({
       where: { id: ticketId },
-      select: { id: true, userId: true, qrTokenHash: true, qrSignature: true, status: true, createdAt: true },
+      select: {
+        id: true,
+        userId: true,
+        qrTokenHash: true,
+        qrSignature: true,
+        status: true,
+        createdAt: true,
+      },
     });
 
     if (!ticket) {
@@ -155,7 +170,9 @@ export class TicketService {
     }
 
     if (ticket.userId !== userId) {
-      throw new ForbiddenException('You do not have permission to view this ticket');
+      throw new ForbiddenException(
+        'You do not have permission to view this ticket',
+      );
     }
 
     if (ticket.status !== TicketStatus.ISSUED) {

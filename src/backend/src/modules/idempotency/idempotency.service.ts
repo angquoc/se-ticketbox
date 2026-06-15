@@ -1,7 +1,4 @@
-import {
-  ConflictException,
-  Injectable,
-} from '@nestjs/common';
+import { ConflictException, Injectable } from '@nestjs/common';
 import { createHash } from 'crypto';
 import Redis from 'ioredis';
 import { ConfigService } from '@nestjs/config';
@@ -32,7 +29,7 @@ export class IdempotencyService {
     if (value === null || value === undefined) return undefined;
     if (Array.isArray(value)) return value.map((v) => this.normalizePayload(v));
     if (typeof value === 'object') {
-      const sorted = Object.keys(value as Record<string, unknown>)
+      const sorted = Object.keys(value)
         .sort()
         .reduce<Record<string, unknown>>((acc, key) => {
           const normalized = this.normalizePayload(
@@ -127,7 +124,12 @@ export class IdempotencyService {
       responseBody: params.responseBody,
     };
 
-    await this.redis.set(redisKey, JSON.stringify(record), 'EX', this.ttlSeconds);
+    await this.redis.set(
+      redisKey,
+      JSON.stringify(record),
+      'EX',
+      this.ttlSeconds,
+    );
   }
 
   async fail(params: {
@@ -142,6 +144,11 @@ export class IdempotencyService {
       requestHash: params.requestHash,
     };
 
-    await this.redis.set(redisKey, JSON.stringify(record), 'EX', this.ttlSeconds);
+    await this.redis.set(
+      redisKey,
+      JSON.stringify(record),
+      'EX',
+      this.ttlSeconds,
+    );
   }
 }

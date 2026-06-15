@@ -31,7 +31,10 @@ import { MockPaymentResult, MockWebhookDto } from './dto/mock-webhook.dto';
  *
  * The QR payload format: {ticketId}:{qrTokenHash}:{timestamp}:{qrSignature}
  */
-function generateQrToken(ticketId: string, secret: string): {
+function generateQrToken(
+  ticketId: string,
+  secret: string,
+): {
   rawToken: string;
   qrTokenHash: string;
   qrSignature: string;
@@ -471,8 +474,9 @@ export class PaymentService {
             orderId: order.id,
             orderItemId: plan.orderItemId,
             concertId: order.concertId,
-            ticketTypeId: order.items.find((item) => item.id === plan.orderItemId)!
-              .ticketTypeId,
+            ticketTypeId: order.items.find(
+              (item) => item.id === plan.orderItemId,
+            )!.ticketTypeId,
             userId: order.userId,
             qrTokenHash: plan.qrTokenHash,
             qrSignature: plan.qrSignature,

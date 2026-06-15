@@ -24,6 +24,7 @@ import { OrderModule } from './modules/order/order.module';
 import { TicketModule } from './modules/ticket/ticket.module';
 import { NotificationModule } from './modules/notification/notification.module';
 import { WorkerModule } from './worker/worker.module';
+import { UploadsModule } from './modules/uploads/uploads.module';
 
 @Module({
   imports: [
@@ -54,6 +55,7 @@ import { WorkerModule } from './worker/worker.module';
         },
       }),
     }),
+    UploadsModule,
   ],
   controllers: [AppController],
   providers: [AppService],

@@ -30,10 +30,22 @@ export interface LuaScriptResult {
  */
 export interface RedisClient {
   script(cmd: 'LOAD', body: string): Promise<string>;
-  evalsha(sha: string, numKeys: number, ...args: (string | number)[]): Promise<unknown>;
-  eval(body: string, numKeys: number, ...args: (string | number)[]): Promise<unknown>;
+  evalsha(
+    sha: string,
+    numKeys: number,
+    ...args: (string | number)[]
+  ): Promise<unknown>;
+  eval(
+    body: string,
+    numKeys: number,
+    ...args: (string | number)[]
+  ): Promise<unknown>;
   get(key: string): Promise<string | null>;
-  set(key: string, value: string, ...args: (string | number)[]): Promise<unknown>;
+  set(
+    key: string,
+    value: string,
+    ...args: (string | number)[]
+  ): Promise<unknown>;
   del(key: string): Promise<number>;
   exists(key: string): Promise<number>;
   ping(): Promise<string>;
@@ -68,7 +80,9 @@ export class RedisService implements OnModuleDestroy, OnModuleInit {
       });
 
       redis.on('connect', () => this.logger.log('Connected to Redis'));
-      redis.on('error', (error) => this.logger.error('Redis connection error', error));
+      redis.on('error', (error) =>
+        this.logger.error('Redis connection error', error),
+      );
 
       this.client = redis as unknown as RedisClient;
     }
@@ -100,7 +114,7 @@ export class RedisService implements OnModuleDestroy, OnModuleInit {
       try {
         const scriptPath = this.getScriptPath(filename);
         const scriptBody = readFileSync(scriptPath, 'utf8');
-        const sha = (await this.client.script('LOAD', scriptBody)) as string;
+        const sha = await this.client.script('LOAD', scriptBody);
         this.scriptCache.set(filename, sha);
         this.logger.log(`Loaded Lua script: ${filename} (SHA: ${sha})`);
       } catch (err) {
@@ -118,7 +132,7 @@ export class RedisService implements OnModuleDestroy, OnModuleInit {
     keys: string[],
     args: (string | number)[],
   ): Promise<LuaScriptResult> {
-      const sha = this.scriptCache.get(filename);
+    const sha = this.scriptCache.get(filename);
 
     let raw: unknown;
 
@@ -129,10 +143,17 @@ export class RedisService implements OnModuleDestroy, OnModuleInit {
       } catch (err) {
         // NOSCRIPT: Redis restarted and script cache was flushed → fall back to EVAL
         if (err instanceof Error && err.message.includes('NOSCRIPT')) {
-          this.logger.warn(`EVALSHA NOSCRIPT for "${filename}", falling back to EVAL`);
+          this.logger.warn(
+            `EVALSHA NOSCRIPT for "${filename}", falling back to EVAL`,
+          );
           const scriptPath = this.getScriptPath(filename);
           const scriptBody = readFileSync(scriptPath, 'utf8');
-          raw = await this.client.eval(scriptBody, keys.length, ...keys, ...args);
+          raw = await this.client.eval(
+            scriptBody,
+            keys.length,
+            ...keys,
+            ...args,
+          );
         } else {
           throw err;
         }
@@ -171,7 +192,9 @@ export class RedisService implements OnModuleDestroy, OnModuleInit {
     ttlSeconds?: number,
   ): Promise<'OK' | null> {
     if (ttlSeconds) {
-      return this.client.set(key, value, 'EX', ttlSeconds) as Promise<'OK' | null>;
+      return this.client.set(key, value, 'EX', ttlSeconds) as Promise<
+        'OK' | null
+      >;
     }
 
     return this.client.set(key, value) as Promise<'OK' | null>;

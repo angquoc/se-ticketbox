@@ -45,7 +45,9 @@ export class NotificationProcessor extends WorkerHost {
 
     if (job.name === 'send-order-paid-email') {
       // Build a map from ticketId → rawToken for QR payload construction
-      const tokenMap = new Map(ticketTokens.map((t) => [t.ticketId, t.rawToken]));
+      const tokenMap = new Map(
+        ticketTokens.map((t) => [t.ticketId, t.rawToken]),
+      );
 
       const qrPayloads = order.tickets.map((ticket) => {
         const rawToken = tokenMap.get(ticket.id) ?? '';

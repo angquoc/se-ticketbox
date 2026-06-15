@@ -5,6 +5,8 @@ import {
   TICKET_ISSUE_QUEUE,
   NOTIFICATION_QUEUE,
   ORDER_EXPIRE_QUEUE,
+  AI_BIO_QUEUE,
+  CSV_IMPORT_QUEUE,
 } from './queue.constants';
 
 @Module({
@@ -33,6 +35,8 @@ import {
           removeOnFail: false,
         },
       },
+      { name: AI_BIO_QUEUE },
+      { name: CSV_IMPORT_QUEUE },
     ),
   ],
   exports: [BullModule],

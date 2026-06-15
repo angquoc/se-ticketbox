@@ -122,12 +122,19 @@ export class IdempotencyInterceptor implements NestInterceptor {
           let orderId: string | undefined;
           if (typeof responseBody === 'object' && responseBody !== null) {
             const body = responseBody as Record<string, unknown>;
-            const id = body['orderId'] ?? (body['order'] as Record<string, unknown> | undefined)?.['id'];
+            const id =
+              body['orderId'] ??
+              (body['order'] as Record<string, unknown> | undefined)?.['id'];
             if (typeof id === 'string') {
               orderId = id;
             }
           }
-          void this.persistCompletedKey(userId, idempotencyKey, responseBody, orderId);
+          void this.persistCompletedKey(
+            userId,
+            idempotencyKey,
+            responseBody,
+            orderId,
+          );
         },
         error: () => {
           void this.markFailed(userId, idempotencyKey);
@@ -151,12 +158,10 @@ export class IdempotencyInterceptor implements NestInterceptor {
     if (value === null || value === undefined) return undefined;
     if (Array.isArray(value)) return value.map((v) => this.normalize(v));
     if (typeof value === 'object') {
-      return Object.keys(value as Record<string, unknown>)
+      return Object.keys(value)
         .sort()
         .reduce<Record<string, unknown>>((acc, key) => {
-          const n = this.normalize(
-            (value as Record<string, unknown>)[key],
-          );
+          const n = this.normalize((value as Record<string, unknown>)[key]);
           if (n !== undefined) acc[key] = n;
           return acc;
         }, {});

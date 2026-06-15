@@ -8,11 +8,7 @@ import { QueueModule } from '../queue/queue.module';
 import { IdempotencyInterceptor } from '../../common/interceptors/idempotency.interceptor';
 
 @Module({
-  imports: [
-    RedisModule,
-    PaymentModule,
-    QueueModule,
-  ],
+  imports: [RedisModule, PaymentModule, QueueModule],
   controllers: [OrderController],
   providers: [OrderService, OrderExpireProcessor, IdempotencyInterceptor],
   exports: [OrderService],

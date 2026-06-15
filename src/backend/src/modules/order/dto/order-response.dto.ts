@@ -1,4 +1,9 @@
-import { OrderStatus, PaymentProvider, PaymentStatus, TicketStatus } from '@prisma/client';
+import {
+  OrderStatus,
+  PaymentProvider,
+  PaymentStatus,
+  TicketStatus,
+} from '@prisma/client';
 
 export class OrderTicketResponseDto {
   id!: string;
