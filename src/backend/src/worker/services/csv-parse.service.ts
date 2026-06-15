@@ -8,28 +8,34 @@ export interface CsvRowResult {
   sponsorName: string | null;
 }
 
+// Khai báo kiểu dữ liệu cho một dòng CSV thô
+type RawCsvRow = Record<string, string | undefined>;
+
 @Injectable()
 export class CsvParseService {
   private readonly logger = new Logger(CsvParseService.name);
 
   parseBuffer(buffer: Buffer) {
     this.logger.log('Bắt đầu parse nội dung CSV...');
-    
-    // Ép kiểu (cast type) để TypeScript hiểu cấu trúc dữ liệu trả về
-    const records = parse(buffer, {
+
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-assignment
+    const parsedData = parse(buffer, {
       columns: true,
       skip_empty_lines: true,
       trim: true,
-    }) as Record<string, string>[];
+    });
+
+    // Ép kiểu chặt chẽ để vượt qua strict mode của ESLint
+    const records = parsedData as RawCsvRow[];
 
     const validRecords: CsvRowResult[] = [];
     const errors: string[] = [];
 
     for (let i = 0; i < records.length; i++) {
       const row = records[i];
-      
+
       const fullName = row.fullName || row.name || '';
-      
+
       if (!fullName) {
         errors.push(`Dòng ${i + 2}: Thiếu thông tin bắt buộc (Họ Tên)`);
         continue;
