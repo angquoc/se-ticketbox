@@ -29,42 +29,72 @@ export class CsvImportProcessor extends WorkerHost {
     this.logger.log(`Bắt đầu Import CSV cho file: ${uploadedFileId}`);
 
     try {
-      // 1. Cập nhật status
       await this.prisma.uploadedFile.update({
         where: { id: uploadedFileId },
         data: { status: 'PROCESSING', errorMessage: null },
       });
 
-      // 2. Tải file từ MinIO
       const fileBuffer = await this.storage.downloadFile(objectKey);
-
-      // 3. Parse và Validate dữ liệu
       const { total, validRecords, errors } = this.csvParse.parseBuffer(fileBuffer);
 
       if (total === 0) {
-        throw new Error('File CSV rỗng hoặc không đúng định dạng cột (cần fullName).');
+        throw new Error('File CSV rỗng hoặc không đúng định dạng cột.');
       }
 
-      // 4. Lưu dữ liệu hợp lệ vào Database
+      let insertedCount = 0;
+      let duplicateCount = 0;
+
       if (validRecords.length > 0) {
-        const dataToInsert = validRecords.map((record) => ({
-          concertId,
-          fullName: record.fullName,
-          email: record.email,
-          phone: record.phone,
-          sponsorName: record.sponsorName,
-          sourceFile: objectKey, // Lưu vết từ file nào
-        }));
+        // Lấy danh sách email hợp lệ trong mảng (loại bỏ null)
+        const emailsToCheck = validRecords
+          .map((r) => r.email)
+          .filter((e) => e !== null) as string[];
 
-        await this.prisma.guestListEntry.createMany({
-          data: dataToInsert,
-          skipDuplicates: true, // Prisma hỗ trợ bỏ qua nếu dính Unique Key (nếu có set)
+        // Truy vấn CSDL xem email nào đã tồn tại trong Concert này
+        const existingEntries = await this.prisma.guestListEntry.findMany({
+          where: {
+            concertId,
+            email: { in: emailsToCheck },
+          },
+          select: { email: true },
         });
+
+        // Tạo Set để check trùng nhanh (O(1))
+        const existingEmailsSet = new Set(
+          existingEntries.map((e) => e.email).filter(Boolean),
+        );
+
+        // Lọc mảng validRecords: Chỉ lấy những người không có email, hoặc email CHƯA CÓ trong Set
+        const recordsToInsert = validRecords.filter((row) => {
+          if (row.email && existingEmailsSet.has(row.email)) {
+            duplicateCount++;
+            errors.push(`Bỏ qua: Email ${row.email} đã tồn tại trong danh sách.`);
+            return false;
+          }
+          return true;
+        });
+
+        // Insert vào DB
+        if (recordsToInsert.length > 0) {
+          const dataToInsert = recordsToInsert.map((record) => ({
+            concertId,
+            fullName: record.fullName,
+            email: record.email,
+            phone: record.phone,
+            sponsorName: record.sponsorName,
+            sourceFile: objectKey,
+          }));
+
+          await this.prisma.guestListEntry.createMany({
+            data: dataToInsert,
+          });
+          insertedCount = recordsToInsert.length;
+        }
       }
 
-      // 5. Xác định trạng thái hoàn tất
       const finalStatus = errors.length > 0 ? 'COMPLETED_WITH_ERRORS' : 'COMPLETED';
-      const errorMsg = errors.length > 0 ? JSON.stringify(errors.slice(0, 50)) : null; // Lưu log 50 lỗi đầu tiên
+      // Lưu log lỗi tối đa 50 dòng để không làm phình cột DB
+      const errorMsg = errors.length > 0 ? JSON.stringify(errors.slice(0, 50)) : null;
 
       await this.prisma.uploadedFile.update({
         where: { id: uploadedFileId },
@@ -74,11 +104,11 @@ export class CsvImportProcessor extends WorkerHost {
         },
       });
 
-      this.logger.log(`Import xong! Tổng: ${total}, Thành công: ${validRecords.length}, Lỗi: ${errors.length}`);
-      
-      // Ở đây có thể kích hoạt Queue bắn Notification Email báo cho Admin
-      
-      return { status: finalStatus, successCount: validRecords.length, errorCount: errors.length };
+      this.logger.log(
+        `Import xong! Tổng: ${total}, Đã thêm mới: ${insertedCount}, Trùng lặp: ${duplicateCount}, Lỗi data: ${errors.length - duplicateCount}`,
+      );
+
+      return { status: finalStatus, insertedCount, duplicateCount };
 
     } catch (error) {
       const maxAttempts = job.opts.attempts || 1;
@@ -94,7 +124,6 @@ export class CsvImportProcessor extends WorkerHost {
         });
       }
 
-      this.logger.error('Lỗi khi Import CSV:', error);
       throw error;
     }
   }

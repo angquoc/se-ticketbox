@@ -15,23 +15,19 @@ export class CsvParseService {
   parseBuffer(buffer: Buffer) {
     this.logger.log('Bắt đầu parse nội dung CSV...');
     
-    // Đọc CSV bỏ qua dòng tiêu đề, tự động trim khoảng trắng
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call
+    // Ép kiểu (cast type) để TypeScript hiểu cấu trúc dữ liệu trả về
     const records = parse(buffer, {
       columns: true,
       skip_empty_lines: true,
       trim: true,
-    });
+    }) as Record<string, string>[];
 
     const validRecords: CsvRowResult[] = [];
     const errors: string[] = [];
 
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
     for (let i = 0; i < records.length; i++) {
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
       const row = records[i];
       
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
       const fullName = row.fullName || row.name || '';
       
       if (!fullName) {
@@ -41,11 +37,8 @@ export class CsvParseService {
 
       validRecords.push({
         fullName,
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
         email: row.email || null,
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
         phone: row.phone || null,
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
         sponsorName: row.sponsorName || row.sponsor || null,
       });
     }
