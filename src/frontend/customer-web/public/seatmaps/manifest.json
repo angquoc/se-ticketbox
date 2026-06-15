@@ -1,6 +1,6 @@
 {
-  "version": 2,
-  "description": "Mỗi concert có một SVG đầy đủ tại public/seatmaps/concerts/{slug}.svg (background + ghế data-seat). Config JSON chỉ trỏ seatMapUrl.",
+  "version": 3,
+  "description": "Mỗi concert có SVG khu vực tại public/seatmaps/concerts/{slug}.svg (background + vùng data-zone). Config JSON chỉ trỏ seatMapUrl.",
   "configs": [
     "tgc-vietnam-2026",
     "2026-kangin-fan-meeting-in-ho-chi-minh",

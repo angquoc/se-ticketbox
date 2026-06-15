@@ -1,7 +1,7 @@
 export interface ConcertSeatmapConfigFile {
   slug: string;
   title?: string;
-  /** SVG đầy đủ (background + ghế) tại public/seatmaps/concerts/{slug}.svg */
+  /** SVG đầy đủ (background + khu vực data-zone) tại public/seatmaps/concerts/{slug}.svg */
   seatMapUrl?: string;
 }
 

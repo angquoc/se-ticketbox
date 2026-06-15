@@ -12,13 +12,12 @@ import {
 } from '@/lib/idempotency';
 import {
   clearPendingOrder,
-  clearSeatSelection,
-  readSeatSelection,
+  clearZoneSelection,
+  readZoneSelection,
   savePendingOrder,
 } from '@/lib/checkout-storage';
 import {
-  groupSeatsByTicketType,
-  mapToBackendOrderItems,
+  mapZoneSelectionToOrderItems,
   resolveBackendConcertId,
 } from '@/lib/concert-backend-mapping';
 import { getConcertName } from '@/lib/concert-names';
@@ -38,9 +37,9 @@ export default function CheckoutPage({ concertId }: CheckoutPageProps) {
   const [error, setError] = useState<string | null>(null);
   const [order, setOrder] = useState<Order | null>(null);
 
-  const seats = useMemo(() => readSeatSelection(concertId), [concertId]);
+  const selection = useMemo(() => readZoneSelection(concertId), [concertId]);
   const concertName = getConcertName(concertId);
-  const totalPrice = seats?.reduce((sum, seat) => sum + seat.price, 0) ?? 0;
+  const totalPrice = selection ? selection.unitPrice * selection.quantity : 0;
 
   useEffect(() => {
     if (!authLoading && !isAuthenticated) {
@@ -49,13 +48,13 @@ export default function CheckoutPage({ concertId }: CheckoutPageProps) {
   }, [authLoading, isAuthenticated, concertId, router]);
 
   useEffect(() => {
-    if (!seats || seats.length === 0) {
+    if (!selection) {
       router.replace(`/concerts/${concertId}/seats`);
     }
-  }, [seats, concertId, router]);
+  }, [selection, concertId, router]);
 
   async function handleCheckout() {
-    if (!seats || seats.length === 0) return;
+    if (!selection) return;
 
     setStep('processing');
     setError(null);
@@ -63,8 +62,7 @@ export default function CheckoutPage({ concertId }: CheckoutPageProps) {
     try {
       const backendConcertId = resolveBackendConcertId(concertId);
       const ticketTypesResponse = await concertApi.getTicketTypes(concertId);
-      const grouped = groupSeatsByTicketType(seats);
-      const items = mapToBackendOrderItems(grouped, ticketTypesResponse.data);
+      const items = mapZoneSelectionToOrderItems(selection, ticketTypesResponse.data);
 
       const idempotencyKey = getCheckoutIdempotencyKey(concertId);
 
@@ -83,7 +81,7 @@ export default function CheckoutPage({ concertId }: CheckoutPageProps) {
       }
 
       clearCheckoutIdempotencyKey(concertId);
-      clearSeatSelection(concertId);
+      clearZoneSelection(concertId);
       savePendingOrder(concertId, orderResponse.order.id);
       setOrder(orderResponse.order);
 
@@ -96,7 +94,7 @@ export default function CheckoutPage({ concertId }: CheckoutPageProps) {
     }
   }
 
-  if (authLoading || !seats?.length) {
+  if (authLoading || !selection) {
     return (
       <div className="flex min-h-screen flex-col bg-slate-50">
         <CustomerHeader concertName={concertName} />
@@ -117,20 +115,15 @@ export default function CheckoutPage({ concertId }: CheckoutPageProps) {
 
         <div className="mt-6 rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
           <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-500">
-            Ghế đã chọn
+            Vé đã chọn
           </h2>
           <ul className="mt-3 space-y-2">
-            {seats.map((seat) => (
-              <li
-                key={seat.seatNumber}
-                className="flex items-center justify-between text-sm text-slate-700"
-              >
-                <span>
-                  Ghế {seat.seatNumber} · Hàng {seat.row}
-                </span>
-                <span className="font-medium">{formatVnd(seat.price)}</span>
-              </li>
-            ))}
+            <li className="flex items-center justify-between text-sm text-slate-700">
+              <span>
+                {selection.ticketTypeName} · {selection.zoneName} · {selection.quantity} vé
+              </span>
+              <span className="font-medium">{formatVnd(totalPrice)}</span>
+            </li>
           </ul>
 
           <div className="mt-4 flex items-center justify-between border-t border-slate-100 pt-4">
@@ -155,7 +148,7 @@ export default function CheckoutPage({ concertId }: CheckoutPageProps) {
             href={`/concerts/${concertId}/seats`}
             className="inline-flex items-center justify-center rounded-lg border border-slate-300 px-5 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50"
           >
-            Quay lại chọn ghế
+            Quay lại chọn khu vực
           </Link>
           <button
             type="button"

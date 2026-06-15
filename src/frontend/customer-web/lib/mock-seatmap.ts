@@ -1,8 +1,7 @@
 import { DEFAULT_SEATMAP_URL } from '@/lib/seatmap-config';
 import { loadSeatmapConfig } from '@/lib/seatmap-config.server';
-import { buildSeatMapData } from '@/lib/seat-layout';
-import { loadParsedSvgSeats } from '@/lib/seatmap-svg.server';
-import { normalizeTicketTypeName } from '@/lib/seat-layout-helpers';
+import { buildSeatMapData } from '@/lib/seatmap-data.server';
+import { loadParsedSvgZones } from '@/lib/seatmap-svg.server';
 import type { SeatMapData } from '@/types/seatmap';
 
 interface MockSeatMapOptions {
@@ -18,6 +17,10 @@ function estimateMockInventory(capacity: number) {
   };
 }
 
+function normalizeName(name: string): string {
+  return name.trim().toLowerCase();
+}
+
 export async function getMockSeatMap(
   concertId: string,
   options: MockSeatMapOptions = {},
@@ -27,39 +30,34 @@ export async function getMockSeatMap(
     : null;
 
   const seatMapUrl = seatmapConfig?.seatMapUrl ?? DEFAULT_SEATMAP_URL;
-  const svgData = await loadParsedSvgSeats(seatMapUrl);
+  const svgData = await loadParsedSvgZones(seatMapUrl);
 
   const ticketTypeInputs = [];
 
-  if (svgData && svgData.seats.length > 0) {
-    const counts = new Map<string, number>();
-    for (const seat of svgData.seats) {
-      const key = normalizeTicketTypeName(seat.ticketTypeName);
-      counts.set(key, (counts.get(key) ?? 0) + 1);
-    }
+  if (svgData && svgData.zones.length > 0) {
+    const seen = new Set<string>();
+    for (const zone of svgData.zones) {
+      const key = normalizeName(zone.ticketTypeName);
+      if (seen.has(key)) continue;
+      seen.add(key);
 
-    for (const [normalizedName, capacity] of counts.entries()) {
-      const sample = svgData.seats.find(
-        (seat) => normalizeTicketTypeName(seat.ticketTypeName) === normalizedName,
-      );
-      const name = sample?.ticketTypeName ?? normalizedName;
       ticketTypeInputs.push({
-        id: name,
-        name,
+        id: zone.zoneId,
+        name: zone.ticketTypeName,
         price: 1_000_000,
         maxPerUser: 4,
-        ...estimateMockInventory(capacity),
+        ...estimateMockInventory(100),
       });
     }
   } else {
     ticketTypeInputs.push({
-      id: 'VIP',
+      id: 'vip',
       name: 'VIP',
       price: 1_000_000,
       maxPerUser: 4,
-      totalQty: 24,
-      soldQty: 8,
-      reservedQty: 2,
+      totalQty: 100,
+      soldQty: 35,
+      reservedQty: 8,
     });
   }
 

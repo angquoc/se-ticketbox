@@ -1,10 +1,10 @@
-import { SEAT_COLORS } from '@/lib/seat-colors';
+import { ZONE_COLORS } from '@/lib/seat-colors';
 
 const LEGEND_ITEMS = [
-  { label: 'Còn trống', color: SEAT_COLORS.available },
-  { label: 'Đang giữ chỗ', color: SEAT_COLORS.reserved },
-  { label: 'Đã bán', color: SEAT_COLORS.sold },
-  { label: 'Đã chọn', color: SEAT_COLORS.selected },
+  { label: 'Còn trống', color: ZONE_COLORS.available },
+  { label: 'Đang giữ chỗ', color: ZONE_COLORS.reserved },
+  { label: 'Hết vé', color: ZONE_COLORS.soldOut },
+  { label: 'Đã chọn', color: ZONE_COLORS.selected },
 ] as const;
 
 export default function SeatLegend() {

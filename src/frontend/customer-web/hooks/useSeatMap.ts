@@ -2,21 +2,21 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { cacheConcertName } from '@/lib/concert-names';
-import { readSeatSelection, saveSeatSelection } from '@/lib/checkout-storage';
+import { readZoneSelection, saveZoneSelection } from '@/lib/checkout-storage';
+import { applyZoneAvailabilityUpdates } from '@/lib/seatmap-data';
 import type {
-  Seat,
   SeatMapData,
-  SeatSelectionState,
-  SeatStatus,
-  SelectedSeat,
   TicketType,
+  Zone,
+  ZoneAvailabilityUpdate,
+  ZoneSelection,
+  ZoneSelectionState,
+  ZoneStatus,
 } from '@/types/seatmap';
 
-const DEBOUNCE_MS = 250;
 const POLL_INTERVAL_MS = 30_000;
-const SELECTION_RATE_LIMIT = 10;
-const SELECTION_RATE_WINDOW_MS = 60_000;
 export const ALL_TICKET_TYPES = 'all';
+export const ALL_ZONES = 'all';
 
 interface UseSeatMapOptions {
   concertId: string;
@@ -31,11 +31,10 @@ interface SeatMapApiResponse {
   message?: string;
 }
 
-interface SeatAvailabilityResponse {
+interface ZoneAvailabilityResponse {
   success: boolean;
   data?: {
-    availability: Record<string, SeatStatus>;
-    timestamp: string;
+    updates: ZoneAvailabilityUpdate[];
   };
   message?: string;
 }
@@ -47,14 +46,11 @@ export function useSeatMap({ concertId }: UseSeatMapOptions) {
   const [source, setSource] = useState<'backend' | 'mock' | null>(null);
   const [backendError, setBackendError] = useState<string | null>(null);
   const [warning, setWarning] = useState<string | null>(null);
-  const [selectedSeats, setSelectedSeats] = useState<SelectedSeat[]>([]);
-  const [activeTicketTypeId, setActiveTicketTypeId] = useState<string>(ALL_TICKET_TYPES);
-  const [regionFilter, setRegionFilter] = useState<string>('all');
-  const [searchQuery, setSearchQuery] = useState('');
+  const [selection, setSelection] = useState<ZoneSelection | null>(null);
+  const [ticketTypeFilter, setTicketTypeFilter] = useState<string>(ALL_TICKET_TYPES);
+  const [zoneFilter, setZoneFilter] = useState<string>(ALL_ZONES);
   const [limitWarning, setLimitWarning] = useState<string | null>(null);
   const [availabilityNotice, setAvailabilityNotice] = useState<string | null>(null);
-  const lastToggleAtRef = useRef(0);
-  const selectionTimestampsRef = useRef<number[]>([]);
   const restoredSelectionRef = useRef(false);
 
   useEffect(() => {
@@ -81,7 +77,8 @@ export function useSeatMap({ concertId }: UseSeatMapOptions) {
           setBackendError(json.backendError ?? null);
           setWarning(json.warning ?? null);
           cacheConcertName(json.data.concertId, json.data.concertName);
-          setActiveTicketTypeId(ALL_TICKET_TYPES);
+          setTicketTypeFilter(ALL_TICKET_TYPES);
+          setZoneFilter(ALL_ZONES);
         }
       } catch (e) {
         if (!cancelled) {
@@ -104,206 +101,184 @@ export function useSeatMap({ concertId }: UseSeatMapOptions) {
     return map;
   }, [data]);
 
+  const zoneLookup = useMemo(() => {
+    const map = new Map<string, { ticketType: TicketType; zone: Zone }>();
+    data?.ticketTypes.forEach((ticketType) => {
+      ticketType.zones.forEach((zone) => {
+        map.set(`${ticketType.id}:${zone.zoneId}`, { ticketType, zone });
+      });
+    });
+    return map;
+  }, [data]);
+
   useEffect(() => {
     if (!data || restoredSelectionRef.current) return;
 
-    const saved = readSeatSelection(concertId);
-    if (!saved?.length) {
+    const saved = readZoneSelection(concertId);
+    if (!saved) {
       restoredSelectionRef.current = true;
       return;
     }
 
-    const seatByNumber = new Map(data.seats.map((seat) => [seat.seatNumber, seat]));
-    const restored = saved.filter((selected) => {
-      const seat = seatByNumber.get(selected.seatNumber);
-      return seat?.status === 'AVAILABLE';
-    });
-
-    if (restored.length > 0) {
-      setSelectedSeats(restored);
+    const entry = zoneLookup.get(`${saved.ticketTypeId}:${saved.zoneId}`);
+    if (entry && entry.zone.status === 'AVAILABLE' && entry.zone.availableCount >= saved.quantity) {
+      setSelection(saved);
     }
     restoredSelectionRef.current = true;
-  }, [data, concertId]);
+  }, [data, concertId, zoneLookup]);
 
   useEffect(() => {
-    if (selectedSeats.length === 0) return;
-    saveSeatSelection(concertId, selectedSeats);
-  }, [selectedSeats, concertId]);
+    if (!selection) return;
+    saveZoneSelection(concertId, selection);
+  }, [selection, concertId]);
 
-  const selection: SeatSelectionState = useMemo(() => {
-    const ticketTypeCount: Record<string, number> = {};
-    let totalPrice = 0;
-    for (const seat of selectedSeats) {
-      ticketTypeCount[seat.ticketTypeId] = (ticketTypeCount[seat.ticketTypeId] ?? 0) + 1;
-      totalPrice += seat.price;
+  const selectionState: ZoneSelectionState = useMemo(() => {
+    if (!selection) {
+      return { selection: null, totalPrice: 0 };
     }
-    return { selectedSeats, totalPrice, ticketTypeCount };
-  }, [selectedSeats]);
+    return {
+      selection,
+      totalPrice: selection.unitPrice * selection.quantity,
+    };
+  }, [selection]);
 
-  const filteredSeats = useMemo(() => {
+  const zones = useMemo(() => {
     if (!data) return [];
-    let seats = data.seats;
-
-    if (activeTicketTypeId !== ALL_TICKET_TYPES) {
-      seats = seats.filter((s) => s.ticketTypeId === activeTicketTypeId);
-    }
-    if (regionFilter !== 'all') {
-      seats = seats.filter((s) => s.regionId === regionFilter);
-    }
-    if (searchQuery.trim()) {
-      const q = searchQuery.trim().toUpperCase();
-      seats = seats.filter((s) => s.seatNumber.toUpperCase().includes(q));
-    }
-    return seats;
-  }, [data, activeTicketTypeId, regionFilter, searchQuery]);
-
-  const regions = useMemo(() => {
-    if (!data) return [];
-    const seen = new Map<string, string>();
-    for (const tt of data.ticketTypes) {
-      for (const r of tt.seatRegions) {
-        seen.set(r.regionId, r.regionName);
+    const items: Array<{ ticketType: TicketType; zone: Zone }> = [];
+    for (const ticketType of data.ticketTypes) {
+      for (const zone of ticketType.zones) {
+        items.push({ ticketType, zone });
       }
     }
-    return Array.from(seen.entries()).map(([regionId, regionName]) => ({
-      regionId,
-      regionName,
-    }));
+    return items;
   }, [data]);
 
-  const updateSeatStatus = useCallback((seatNumber: string, status: SeatStatus) => {
-    setData((prev) => {
-      if (!prev) return prev;
-      return {
-        ...prev,
-        seats: prev.seats.map((s) => (s.seatNumber === seatNumber ? { ...s, status } : s)),
-      };
+  const filteredZones = useMemo(() => {
+    return zones.filter(({ ticketType, zone }) => {
+      if (ticketTypeFilter !== ALL_TICKET_TYPES && ticketType.id !== ticketTypeFilter) {
+        return false;
+      }
+      if (zoneFilter !== ALL_ZONES && zone.zoneId !== zoneFilter) {
+        return false;
+      }
+      return true;
     });
+  }, [zones, ticketTypeFilter, zoneFilter]);
 
-    if (status !== 'AVAILABLE') {
-      setSelectedSeats((prev) => prev.filter((s) => s.seatNumber !== seatNumber));
+  const zoneOptions = useMemo(() => {
+    const seen = new Map<string, string>();
+    for (const { zone } of zones) {
+      seen.set(zone.zoneId, zone.zoneName);
     }
-  }, []);
+    return Array.from(seen.entries()).map(([zoneId, zoneName]) => ({ zoneId, zoneName }));
+  }, [zones]);
 
-  const pollSeatAvailability = useCallback(async () => {
+  const pollAvailability = useCallback(async () => {
     if (!data) return;
 
-    const seatNumbers = [
-      ...new Set([
-        ...selectedSeats.map((seat) => seat.seatNumber),
-        ...data.seats.map((seat) => seat.seatNumber),
-      ]),
-    ].slice(0, 200);
-
-    if (seatNumbers.length === 0) return;
-
     try {
-      const res = await fetch(`/api/concerts/${concertId}/seat-availability`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ seatNumbers }),
-      });
-      const json = (await res.json()) as SeatAvailabilityResponse;
+      const res = await fetch(`/api/concerts/${concertId}/seatmap/availability`);
+      const json = (await res.json()) as ZoneAvailabilityResponse;
       if (!res.ok || !json.success || !json.data) return;
 
-      const lostSelections: string[] = [];
+      const updates = json.data.updates;
+      setData((prev) => (prev ? applyZoneAvailabilityUpdates(prev, updates) : prev));
 
-      for (const [seatNumber, status] of Object.entries(json.data.availability)) {
-        const current = data.seats.find((seat) => seat.seatNumber === seatNumber);
-        if (!current || current.status === status) continue;
+      if (!selection) return;
 
-        updateSeatStatus(seatNumber, status);
+      const current = updates.find(
+        (update) =>
+          update.ticketTypeId === selection.ticketTypeId && update.zoneId === selection.zoneId,
+      );
+      if (!current) return;
 
-        if (
-          selectedSeats.some((seat) => seat.seatNumber === seatNumber) &&
-          status !== 'AVAILABLE'
-        ) {
-          lostSelections.push(seatNumber);
-        }
-      }
-
-      if (lostSelections.length > 0) {
+      if (
+        current.status === 'SOLD_OUT' ||
+        current.availableCount < selection.quantity
+      ) {
+        setSelection(null);
         setAvailabilityNotice(
-          `Ghế ${lostSelections.join(', ')} vừa không còn trống. Vui lòng chọn ghế khác.`,
+          current.status === 'SOLD_OUT'
+            ? 'Khu vực này vừa hết chỗ. Vui lòng chọn khu vực khác.'
+            : 'Số vé còn lại đã thay đổi. Vui lòng kiểm tra lại số lượng.',
         );
       }
     } catch {
       // Polling thất bại âm thầm — spec cho phép retry ở lần poll sau
     }
-  }, [concertId, data, selectedSeats, updateSeatStatus]);
+  }, [concertId, data, selection]);
 
   useEffect(() => {
     if (!data) return undefined;
 
     const interval = setInterval(() => {
-      void pollSeatAvailability();
+      void pollAvailability();
     }, POLL_INTERVAL_MS);
 
     return () => clearInterval(interval);
-  }, [data, pollSeatAvailability]);
+  }, [data, pollAvailability]);
 
-  const toggleSeat = useCallback(
-    (seat: Seat) => {
-      const now = Date.now();
-      const msSinceLast = now - lastToggleAtRef.current;
-      if (msSinceLast < DEBOUNCE_MS) return;
+  const selectZone = useCallback(
+    (ticketTypeId: string, zoneId: string) => {
+      const entry = zoneLookup.get(`${ticketTypeId}:${zoneId}`);
+      if (!entry) return;
 
-      const tt = ticketTypeMap.get(seat.ticketTypeId);
-      if (!tt) return;
+      const { ticketType, zone } = entry;
+      if (zone.status === 'SOLD_OUT') {
+        setLimitWarning('Khu vực này đã hết vé');
+        return;
+      }
 
-      setSelectedSeats((prev) => {
-        const exists = prev.find((s) => s.seatNumber === seat.seatNumber);
-        if (!exists && seat.status !== 'AVAILABLE') return prev;
+      setLimitWarning(null);
+      setAvailabilityNotice(null);
 
-        if (exists) {
-          lastToggleAtRef.current = now;
-          setLimitWarning(null);
-          setAvailabilityNotice(null);
-          return prev.filter((s) => s.seatNumber !== seat.seatNumber);
-        }
+      if (selection?.ticketTypeId === ticketTypeId && selection.zoneId === zoneId) {
+        setSelection(null);
+        return;
+      }
 
-        selectionTimestampsRef.current = selectionTimestampsRef.current.filter(
-          (timestamp) => now - timestamp < SELECTION_RATE_WINDOW_MS,
-        );
-        if (selectionTimestampsRef.current.length >= SELECTION_RATE_LIMIT) {
-          setLimitWarning('Quá nhiều thao tác chọn ghế (tối đa 10/phút). Vui lòng chờ một lát.');
-          return prev;
-        }
-
-        const currentCount = prev.filter((s) => s.ticketTypeId === seat.ticketTypeId).length;
-        if (currentCount >= tt.maxPerUser) {
-          setLimitWarning(`Tối đa ${tt.maxPerUser} ghế ${tt.name} mỗi người`);
-          return prev;
-        }
-
-        lastToggleAtRef.current = now;
-        selectionTimestampsRef.current.push(now);
-        setLimitWarning(null);
-        setAvailabilityNotice(null);
-        return [
-          ...prev,
-          {
-            ticketTypeId: seat.ticketTypeId,
-            regionId: seat.regionId,
-            seatNumber: seat.seatNumber,
-            price: tt.price,
-            row: seat.row,
-            column: seat.column,
-          },
-        ];
+      setSelection({
+        ticketTypeId: ticketType.id,
+        zoneId: zone.zoneId,
+        ticketTypeName: ticketType.name,
+        zoneName: zone.zoneName,
+        quantity: 1,
+        unitPrice: ticketType.price,
       });
     },
-    [ticketTypeMap],
+    [zoneLookup, selection],
   );
 
-  const isSelected = useCallback(
-    (seatNumber: string) => selectedSeats.some((s) => s.seatNumber === seatNumber),
-    [selectedSeats],
+  const setQuantity = useCallback(
+    (quantity: number) => {
+      if (!selection) return;
+
+      const entry = zoneLookup.get(`${selection.ticketTypeId}:${selection.zoneId}`);
+      if (!entry) return;
+
+      const { ticketType, zone } = entry;
+      const nextQuantity = Math.max(1, Math.min(quantity, zone.availableCount, ticketType.maxPerUser));
+
+      if (nextQuantity > ticketType.maxPerUser) {
+        setLimitWarning(`Tối đa ${ticketType.maxPerUser} vé ${ticketType.name} mỗi người`);
+        return;
+      }
+
+      if (nextQuantity > zone.availableCount) {
+        setLimitWarning(`Chỉ còn ${zone.availableCount} vé trong khu vực này`);
+        return;
+      }
+
+      setLimitWarning(null);
+      setSelection({ ...selection, quantity: nextQuantity });
+    },
+    [selection, zoneLookup],
   );
 
-  const selectedSeatNumbers = useMemo(
-    () => new Set(selectedSeats.map((seat) => seat.seatNumber)),
-    [selectedSeats],
+  const isZoneSelected = useCallback(
+    (ticketTypeId: string, zoneId: string) =>
+      selection?.ticketTypeId === ticketTypeId && selection.zoneId === zoneId,
+    [selection],
   );
 
   return {
@@ -314,19 +289,18 @@ export function useSeatMap({ concertId }: UseSeatMapOptions) {
     backendError,
     warning,
     availabilityNotice,
-    selection,
-    activeTicketTypeId,
-    setActiveTicketTypeId,
-    regionFilter,
-    setRegionFilter,
-    searchQuery,
-    setSearchQuery,
-    selectedSeatNumbers,
+    selectionState,
+    ticketTypeFilter,
+    setTicketTypeFilter,
+    zoneFilter,
+    setZoneFilter,
     limitWarning,
-    filteredSeats,
-    regions,
-    toggleSeat,
-    isSelected,
-    updateSeatStatus,
+    filteredZones,
+    zoneOptions,
+    selectZone,
+    setQuantity,
+    isZoneSelected,
   };
 }
+
+export type { ZoneStatus };

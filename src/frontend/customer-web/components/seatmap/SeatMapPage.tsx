@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { ALL_TICKET_TYPES, useSeatMap } from '@/hooks/useSeatMap';
 import { requestPurchaseAccess } from '@/lib/waiting-room-access';
@@ -8,10 +8,10 @@ import CustomerHeader from '@/components/layout/CustomerHeader';
 import BackendNotice from '@/components/ui/BackendNotice';
 import SeatFilters from './SeatFilters';
 import InteractiveSeatMap from './InteractiveSeatMap';
-import TextSeatFallback from './TextSeatFallback';
+import ZoneListFallback from './ZoneListFallback';
 import SeatLegend from './SeatLegend';
 import SeatSummaryBar from './SeatSummaryBar';
-import { saveSeatSelection } from '@/lib/checkout-storage';
+import { saveZoneSelection } from '@/lib/checkout-storage';
 import { formatVnd } from '@/lib/format';
 
 interface SeatMapPageProps {
@@ -61,20 +61,18 @@ export default function SeatMapPage({ concertId }: SeatMapPageProps) {
     source,
     backendError,
     warning,
-    selection,
-    activeTicketTypeId,
-    setActiveTicketTypeId,
-    regionFilter,
-    setRegionFilter,
-    searchQuery,
-    setSearchQuery,
-    selectedSeatNumbers,
+    selectionState,
+    ticketTypeFilter,
+    setTicketTypeFilter,
+    zoneFilter,
+    setZoneFilter,
     limitWarning,
     availabilityNotice,
-    filteredSeats,
-    regions,
-    toggleSeat,
-    isSelected,
+    filteredZones,
+    zoneOptions,
+    selectZone,
+    setQuantity,
+    isZoneSelected,
   } = useSeatMap({ concertId });
 
   const [showFallback, setShowFallback] = useState(false);
@@ -88,9 +86,20 @@ export default function SeatMapPage({ concertId }: SeatMapPageProps) {
     return () => clearTimeout(timer);
   }, [mapReady, loading]);
 
+  const maxQuantity = useMemo(() => {
+    const selection = selectionState.selection;
+    if (!selection || !data) return 1;
+
+    const ticketType = data.ticketTypes.find((tt) => tt.id === selection.ticketTypeId);
+    const zone = ticketType?.zones.find((z) => z.zoneId === selection.zoneId);
+    if (!ticketType || !zone) return 1;
+
+    return Math.min(zone.availableCount, ticketType.maxPerUser);
+  }, [selectionState.selection, data]);
+
   const handleProceed = () => {
-    if (selection.selectedSeats.length === 0) return;
-    saveSeatSelection(concertId, selection.selectedSeats);
+    if (!selectionState.selection) return;
+    saveZoneSelection(concertId, selectionState.selection);
     router.push(`/concerts/${concertId}/checkout`);
   };
 
@@ -141,12 +150,12 @@ export default function SeatMapPage({ concertId }: SeatMapPageProps) {
     );
   }
 
-  const isAllTicketTypes = activeTicketTypeId === ALL_TICKET_TYPES;
+  const isAllTicketTypes = ticketTypeFilter === ALL_TICKET_TYPES;
   const activeTicketType = isAllTicketTypes
     ? null
-    : data.ticketTypes.find((tt) => tt.id === activeTicketTypeId);
+    : data.ticketTypes.find((tt) => tt.id === ticketTypeFilter);
   const availableTotal = data.ticketTypes.reduce(
-    (sum, tt) => sum + tt.seatRegions.reduce((s, r) => s + r.availableCount, 0),
+    (sum, tt) => sum + tt.zones.reduce((s, z) => s + z.availableCount, 0),
     0,
   );
 
@@ -156,21 +165,24 @@ export default function SeatMapPage({ concertId }: SeatMapPageProps) {
 
       <main className="mx-auto w-full max-w-7xl flex-1 px-4 py-6 pb-32 sm:px-6">
         <div className="mb-6">
-          <h1 className="text-2xl font-bold text-slate-900">Chọn ghế</h1>
+          <h1 className="text-2xl font-bold text-slate-900">Tổng quan khu vực ghế</h1>
           <p className="mt-1 text-slate-600">{data.concertName}</p>
+          {data.venueName && (
+            <p className="mt-1 text-sm text-slate-500">{data.venueName}</p>
+          )}
           <div className="mt-3">
             <BackendNotice backendError={backendError} warning={warning} source={source} />
           </div>
           <p className="mt-2 text-sm text-slate-500">
-            Còn {availableTotal} ghế trống
+            Còn {availableTotal} vé trống
             {isAllTicketTypes ? (
               <> · {data.ticketTypes.map((tt) => tt.name).join(', ')}</>
             ) : (
               activeTicketType && (
                 <>
                   {' '}
-                  · {activeTicketType.name}: tối đa {activeTicketType.maxPerUser} ghế/người (
-                  {formatVnd(activeTicketType.price)}/ghế)
+                  · {activeTicketType.name}: tối đa {activeTicketType.maxPerUser} vé/người (
+                  {formatVnd(activeTicketType.price)}/vé)
                 </>
               )
             )}
@@ -180,13 +192,11 @@ export default function SeatMapPage({ concertId }: SeatMapPageProps) {
         <div className="mb-4">
           <SeatFilters
             ticketTypes={data.ticketTypes}
-            activeTicketTypeId={activeTicketTypeId}
-            onTicketTypeChange={setActiveTicketTypeId}
-            regions={regions}
-            regionFilter={regionFilter}
-            onRegionChange={setRegionFilter}
-            searchQuery={searchQuery}
-            onSearchChange={setSearchQuery}
+            ticketTypeFilter={ticketTypeFilter}
+            onTicketTypeChange={setTicketTypeFilter}
+            zones={zoneOptions}
+            zoneFilter={zoneFilter}
+            onZoneChange={setZoneFilter}
           />
         </div>
 
@@ -204,11 +214,10 @@ export default function SeatMapPage({ concertId }: SeatMapPageProps) {
 
         {showFallback && !mapReady && (
           <div className="mb-4">
-            <TextSeatFallback
-              data={data}
-              seats={filteredSeats}
-              isSelected={isSelected}
-              onToggleSeat={toggleSeat}
+            <ZoneListFallback
+              zones={filteredZones}
+              isZoneSelected={isZoneSelected}
+              onSelectZone={selectZone}
               onRetry={() => {
                 setShowFallback(false);
                 setMapReady(true);
@@ -219,10 +228,10 @@ export default function SeatMapPage({ concertId }: SeatMapPageProps) {
 
         <div className={showFallback && !mapReady ? 'hidden' : 'mb-4'}>
           <InteractiveSeatMap
-            data={data}
-            seats={filteredSeats}
-            selectedSeatNumbers={selectedSeatNumbers}
-            onToggleSeat={toggleSeat}
+            seatMapUrl={data.seatMapUrl}
+            zones={filteredZones}
+            isZoneSelected={isZoneSelected}
+            onSelectZone={selectZone}
             onBackgroundLoaded={handleBackgroundLoaded}
           />
         </div>
@@ -230,7 +239,12 @@ export default function SeatMapPage({ concertId }: SeatMapPageProps) {
         <SeatLegend />
       </main>
 
-      <SeatSummaryBar selection={selection} onProceed={handleProceed} />
+      <SeatSummaryBar
+        selectionState={selectionState}
+        maxQuantity={maxQuantity}
+        onQuantityChange={setQuantity}
+        onProceed={handleProceed}
+      />
     </div>
   );
 }

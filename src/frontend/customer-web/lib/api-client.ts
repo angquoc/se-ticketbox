@@ -99,8 +99,11 @@ export const ticketApi = {
   getByOrderId(orderId: string) {
     return clientFetch<TicketListResponse>(`/api/orders/${orderId}/tickets`);
   },
-  getMine(orderId?: string) {
-    const query = orderId ? `?orderId=${encodeURIComponent(orderId)}` : '';
+  getMine(params?: { page?: number; limit?: number }) {
+    const search = new URLSearchParams();
+    if (params?.page) search.set('page', String(params.page));
+    if (params?.limit) search.set('limit', String(params.limit));
+    const query = search.toString() ? `?${search}` : '';
     return clientFetch<TicketListResponse>(`/api/tickets/me${query}`);
   },
 };

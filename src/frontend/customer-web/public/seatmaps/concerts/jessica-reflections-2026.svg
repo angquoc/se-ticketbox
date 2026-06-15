@@ -1,5 +1,4 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 780" role="img" aria-label="Sơ đồ ghế">
-<g id="background" pointer-events="none" aria-hidden="true">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 780" role="img" aria-label="Sơ đồ khu vực ghế">
 <rect width="800" height="780" fill="#f8fafc"/>
 
   <rect x="240" y="20" width="320" height="56" rx="10" fill="#1e293b"/>
@@ -20,195 +19,21 @@
   <text x="82" y="406" fill="#1d4ed8" font-size="12" font-weight="700" font-family="system-ui,sans-serif">MID LEFT / PRE / SHIBUYA 1</text>
   <text x="438" y="406" fill="#1d4ed8" font-size="12" font-weight="700" font-family="system-ui,sans-serif">MID RIGHT / GOLD / SHIBUYA 2</text>
 
-  <rect x="66" y="524" width="668" height="100" rx="8" fill="#E0E7FF" opacity="0.68" stroke="#6366F1" stroke-width="1.5"/>
+  <rect x="66" y="524" width="668" height="96" rx="8" fill="#E0E7FF" opacity="0.68" stroke="#6366F1" stroke-width="1.5"/>
   <text x="84" y="544" fill="#3730a3" font-size="12" font-weight="700" font-family="system-ui,sans-serif">CAT1 / SILVER / HARAJUKU</text>
 
-  <rect x="46" y="632" width="708" height="132" rx="8" fill="#DCFCE7" opacity="0.68" stroke="#22C55E" stroke-width="1.5"/>
+  <rect x="46" y="632" width="708" height="124" rx="8" fill="#DCFCE7" opacity="0.68" stroke="#22C55E" stroke-width="1.5"/>
   <text x="64" y="652" fill="#166534" font-size="12" font-weight="700" font-family="system-ui,sans-serif">GENERAL / CAT2 / CAT3</text>
 
-  <line x1="400" y1="120" x2="400" y2="752" stroke="#cbd5e1" stroke-width="1" stroke-dasharray="6 8"/>
+  <line x1="400" y1="120" x2="400" y2="744" stroke="#cbd5e1" stroke-width="1" stroke-dasharray="6 8"/>
   <text x="400" y="770" text-anchor="middle" fill="#64748b" font-size="11" font-family="system-ui,sans-serif">Trục giữa sân khấu</text>
-</g>
-<g id="seats" aria-label="Ghế">
-  <rect data-seat="S1-A1" data-ticket-type="SVIP-1" data-row="A" data-column="1" x="66" y="153" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
-  <rect data-seat="S1-A2" data-ticket-type="SVIP-1" data-row="A" data-column="2" x="100" y="153" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
-  <rect data-seat="S1-A3" data-ticket-type="SVIP-1" data-row="A" data-column="3" x="134" y="153" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
-  <rect data-seat="S1-A4" data-ticket-type="SVIP-1" data-row="A" data-column="4" x="168" y="153" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
-  <rect data-seat="S1-A5" data-ticket-type="SVIP-1" data-row="A" data-column="5" x="202" y="153" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
-  <rect data-seat="S1-A6" data-ticket-type="SVIP-1" data-row="A" data-column="6" x="236" y="153" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
-  <rect data-seat="S1-B1" data-ticket-type="SVIP-1" data-row="B" data-column="1" x="66" y="183" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
-  <rect data-seat="S1-B2" data-ticket-type="SVIP-1" data-row="B" data-column="2" x="100" y="183" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
-  <rect data-seat="S1-B3" data-ticket-type="SVIP-1" data-row="B" data-column="3" x="134" y="183" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
-  <rect data-seat="S1-B4" data-ticket-type="SVIP-1" data-row="B" data-column="4" x="168" y="183" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
-  <rect data-seat="S1-B5" data-ticket-type="SVIP-1" data-row="B" data-column="5" x="202" y="183" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
-  <rect data-seat="S1-B6" data-ticket-type="SVIP-1" data-row="B" data-column="6" x="236" y="183" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
-  <rect data-seat="S2-A1" data-ticket-type="SVIP-2" data-row="A" data-column="1" x="444" y="153" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
-  <rect data-seat="S2-A2" data-ticket-type="SVIP-2" data-row="A" data-column="2" x="478" y="153" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
-  <rect data-seat="S2-A3" data-ticket-type="SVIP-2" data-row="A" data-column="3" x="512" y="153" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
-  <rect data-seat="S2-A4" data-ticket-type="SVIP-2" data-row="A" data-column="4" x="546" y="153" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
-  <rect data-seat="S2-A5" data-ticket-type="SVIP-2" data-row="A" data-column="5" x="580" y="153" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
-  <rect data-seat="S2-A6" data-ticket-type="SVIP-2" data-row="A" data-column="6" x="614" y="153" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
-  <rect data-seat="S2-B1" data-ticket-type="SVIP-2" data-row="B" data-column="1" x="444" y="183" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
-  <rect data-seat="S2-B2" data-ticket-type="SVIP-2" data-row="B" data-column="2" x="478" y="183" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
-  <rect data-seat="S2-B3" data-ticket-type="SVIP-2" data-row="B" data-column="3" x="512" y="183" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
-  <rect data-seat="S2-B4" data-ticket-type="SVIP-2" data-row="B" data-column="4" x="546" y="183" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
-  <rect data-seat="S2-B5" data-ticket-type="SVIP-2" data-row="B" data-column="5" x="580" y="183" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
-  <rect data-seat="S2-B6" data-ticket-type="SVIP-2" data-row="B" data-column="6" x="614" y="183" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
-  <rect data-seat="VIP-A1" data-ticket-type="VIP" data-row="A" data-column="1" x="261" y="266" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
-  <rect data-seat="VIP-A2" data-ticket-type="VIP" data-row="A" data-column="2" x="278" y="266" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
-  <rect data-seat="VIP-A3" data-ticket-type="VIP" data-row="A" data-column="3" x="295" y="266" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
-  <rect data-seat="VIP-A4" data-ticket-type="VIP" data-row="A" data-column="4" x="312" y="266" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
-  <rect data-seat="VIP-A5" data-ticket-type="VIP" data-row="A" data-column="5" x="329" y="266" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
-  <rect data-seat="VIP-A6" data-ticket-type="VIP" data-row="A" data-column="6" x="346" y="266" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
-  <rect data-seat="VIP-A7" data-ticket-type="VIP" data-row="A" data-column="7" x="363" y="266" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
-  <rect data-seat="VIP-A8" data-ticket-type="VIP" data-row="A" data-column="8" x="380" y="266" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
-  <rect data-seat="VIP-B1" data-ticket-type="VIP" data-row="B" data-column="1" x="261" y="286" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
-  <rect data-seat="VIP-B2" data-ticket-type="VIP" data-row="B" data-column="2" x="278" y="286" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
-  <rect data-seat="VIP-B3" data-ticket-type="VIP" data-row="B" data-column="3" x="295" y="286" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
-  <rect data-seat="VIP-B4" data-ticket-type="VIP" data-row="B" data-column="4" x="312" y="286" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
-  <rect data-seat="VIP-B5" data-ticket-type="VIP" data-row="B" data-column="5" x="329" y="286" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
-  <rect data-seat="VIP-B6" data-ticket-type="VIP" data-row="B" data-column="6" x="346" y="286" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
-  <rect data-seat="VIP-B7" data-ticket-type="VIP" data-row="B" data-column="7" x="363" y="286" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
-  <rect data-seat="VIP-B8" data-ticket-type="VIP" data-row="B" data-column="8" x="380" y="286" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
-  <rect data-seat="VIP-C1" data-ticket-type="VIP" data-row="C" data-column="1" x="261" y="306" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
-  <rect data-seat="VIP-C2" data-ticket-type="VIP" data-row="C" data-column="2" x="278" y="306" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
-  <rect data-seat="VIP-C3" data-ticket-type="VIP" data-row="C" data-column="3" x="295" y="306" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
-  <rect data-seat="VIP-C4" data-ticket-type="VIP" data-row="C" data-column="4" x="312" y="306" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
-  <rect data-seat="VIP-C5" data-ticket-type="VIP" data-row="C" data-column="5" x="329" y="306" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
-  <rect data-seat="VIP-C6" data-ticket-type="VIP" data-row="C" data-column="6" x="346" y="306" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
-  <rect data-seat="VIP-C7" data-ticket-type="VIP" data-row="C" data-column="7" x="363" y="306" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
-  <rect data-seat="VIP-C8" data-ticket-type="VIP" data-row="C" data-column="8" x="380" y="306" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
-  <rect data-seat="PRE-A1" data-ticket-type="PRE" data-row="A" data-column="1" x="147" y="408" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
-  <rect data-seat="PRE-A2" data-ticket-type="PRE" data-row="A" data-column="2" x="181" y="408" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
-  <rect data-seat="PRE-A3" data-ticket-type="PRE" data-row="A" data-column="3" x="215" y="408" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
-  <rect data-seat="PRE-A4" data-ticket-type="PRE" data-row="A" data-column="4" x="249" y="408" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
-  <rect data-seat="PRE-A5" data-ticket-type="PRE" data-row="A" data-column="5" x="283" y="408" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
-  <rect data-seat="PRE-A6" data-ticket-type="PRE" data-row="A" data-column="6" x="317" y="408" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
-  <rect data-seat="PRE-A7" data-ticket-type="PRE" data-row="A" data-column="7" x="351" y="408" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
-  <rect data-seat="PRE-A8" data-ticket-type="PRE" data-row="A" data-column="8" x="385" y="408" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
-  <rect data-seat="PRE-A9" data-ticket-type="PRE" data-row="A" data-column="9" x="419" y="408" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
-  <rect data-seat="PRE-A10" data-ticket-type="PRE" data-row="A" data-column="10" x="453" y="408" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
-  <rect data-seat="PRE-B1" data-ticket-type="PRE" data-row="B" data-column="1" x="147" y="430" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
-  <rect data-seat="PRE-B2" data-ticket-type="PRE" data-row="B" data-column="2" x="181" y="430" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
-  <rect data-seat="PRE-B3" data-ticket-type="PRE" data-row="B" data-column="3" x="215" y="430" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
-  <rect data-seat="PRE-B4" data-ticket-type="PRE" data-row="B" data-column="4" x="249" y="430" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
-  <rect data-seat="PRE-B5" data-ticket-type="PRE" data-row="B" data-column="5" x="283" y="430" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
-  <rect data-seat="PRE-B6" data-ticket-type="PRE" data-row="B" data-column="6" x="317" y="430" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
-  <rect data-seat="PRE-B7" data-ticket-type="PRE" data-row="B" data-column="7" x="351" y="430" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
-  <rect data-seat="PRE-B8" data-ticket-type="PRE" data-row="B" data-column="8" x="385" y="430" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
-  <rect data-seat="PRE-B9" data-ticket-type="PRE" data-row="B" data-column="9" x="419" y="430" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
-  <rect data-seat="PRE-B10" data-ticket-type="PRE" data-row="B" data-column="10" x="453" y="430" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
-  <rect data-seat="PRE-C1" data-ticket-type="PRE" data-row="C" data-column="1" x="147" y="452" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
-  <rect data-seat="PRE-C2" data-ticket-type="PRE" data-row="C" data-column="2" x="181" y="452" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
-  <rect data-seat="PRE-C3" data-ticket-type="PRE" data-row="C" data-column="3" x="215" y="452" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
-  <rect data-seat="PRE-C4" data-ticket-type="PRE" data-row="C" data-column="4" x="249" y="452" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
-  <rect data-seat="PRE-C5" data-ticket-type="PRE" data-row="C" data-column="5" x="283" y="452" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
-  <rect data-seat="PRE-C6" data-ticket-type="PRE" data-row="C" data-column="6" x="317" y="452" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
-  <rect data-seat="PRE-C7" data-ticket-type="PRE" data-row="C" data-column="7" x="351" y="452" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
-  <rect data-seat="PRE-C8" data-ticket-type="PRE" data-row="C" data-column="8" x="385" y="452" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
-  <rect data-seat="PRE-C9" data-ticket-type="PRE" data-row="C" data-column="9" x="419" y="452" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
-  <rect data-seat="PRE-C10" data-ticket-type="PRE" data-row="C" data-column="10" x="453" y="452" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
-  <rect data-seat="PRE-D1" data-ticket-type="PRE" data-row="D" data-column="1" x="147" y="474" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
-  <rect data-seat="PRE-D2" data-ticket-type="PRE" data-row="D" data-column="2" x="181" y="474" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
-  <rect data-seat="PRE-D3" data-ticket-type="PRE" data-row="D" data-column="3" x="215" y="474" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
-  <rect data-seat="PRE-D4" data-ticket-type="PRE" data-row="D" data-column="4" x="249" y="474" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
-  <rect data-seat="PRE-D5" data-ticket-type="PRE" data-row="D" data-column="5" x="283" y="474" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
-  <rect data-seat="PRE-D6" data-ticket-type="PRE" data-row="D" data-column="6" x="317" y="474" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
-  <rect data-seat="PRE-D7" data-ticket-type="PRE" data-row="D" data-column="7" x="351" y="474" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
-  <rect data-seat="PRE-D8" data-ticket-type="PRE" data-row="D" data-column="8" x="385" y="474" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
-  <rect data-seat="PRE-D9" data-ticket-type="PRE" data-row="D" data-column="9" x="419" y="474" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
-  <rect data-seat="PRE-D10" data-ticket-type="PRE" data-row="D" data-column="10" x="453" y="474" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
-  <rect data-seat="C1-A1" data-ticket-type="CAT1" data-row="A" data-column="1" x="115" y="548" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
-  <rect data-seat="C1-A2" data-ticket-type="CAT1" data-row="A" data-column="2" x="141" y="548" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
-  <rect data-seat="C1-A3" data-ticket-type="CAT1" data-row="A" data-column="3" x="167" y="548" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
-  <rect data-seat="C1-A4" data-ticket-type="CAT1" data-row="A" data-column="4" x="193" y="548" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
-  <rect data-seat="C1-A5" data-ticket-type="CAT1" data-row="A" data-column="5" x="219" y="548" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
-  <rect data-seat="C1-A6" data-ticket-type="CAT1" data-row="A" data-column="6" x="245" y="548" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
-  <rect data-seat="C1-A7" data-ticket-type="CAT1" data-row="A" data-column="7" x="271" y="548" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
-  <rect data-seat="C1-A8" data-ticket-type="CAT1" data-row="A" data-column="8" x="297" y="548" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
-  <rect data-seat="C1-A9" data-ticket-type="CAT1" data-row="A" data-column="9" x="323" y="548" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
-  <rect data-seat="C1-A10" data-ticket-type="CAT1" data-row="A" data-column="10" x="349" y="548" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
-  <rect data-seat="C1-A11" data-ticket-type="CAT1" data-row="A" data-column="11" x="375" y="548" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
-  <rect data-seat="C1-A12" data-ticket-type="CAT1" data-row="A" data-column="12" x="401" y="548" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
-  <rect data-seat="C1-B1" data-ticket-type="CAT1" data-row="B" data-column="1" x="115" y="564" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
-  <rect data-seat="C1-B2" data-ticket-type="CAT1" data-row="B" data-column="2" x="141" y="564" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
-  <rect data-seat="C1-B3" data-ticket-type="CAT1" data-row="B" data-column="3" x="167" y="564" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
-  <rect data-seat="C1-B4" data-ticket-type="CAT1" data-row="B" data-column="4" x="193" y="564" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
-  <rect data-seat="C1-B5" data-ticket-type="CAT1" data-row="B" data-column="5" x="219" y="564" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
-  <rect data-seat="C1-B6" data-ticket-type="CAT1" data-row="B" data-column="6" x="245" y="564" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
-  <rect data-seat="C1-B7" data-ticket-type="CAT1" data-row="B" data-column="7" x="271" y="564" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
-  <rect data-seat="C1-B8" data-ticket-type="CAT1" data-row="B" data-column="8" x="297" y="564" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
-  <rect data-seat="C1-B9" data-ticket-type="CAT1" data-row="B" data-column="9" x="323" y="564" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
-  <rect data-seat="C1-B10" data-ticket-type="CAT1" data-row="B" data-column="10" x="349" y="564" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
-  <rect data-seat="C1-B11" data-ticket-type="CAT1" data-row="B" data-column="11" x="375" y="564" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
-  <rect data-seat="C1-B12" data-ticket-type="CAT1" data-row="B" data-column="12" x="401" y="564" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
-  <rect data-seat="C1-C1" data-ticket-type="CAT1" data-row="C" data-column="1" x="115" y="580" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
-  <rect data-seat="C1-C2" data-ticket-type="CAT1" data-row="C" data-column="2" x="141" y="580" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
-  <rect data-seat="C1-C3" data-ticket-type="CAT1" data-row="C" data-column="3" x="167" y="580" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
-  <rect data-seat="C1-C4" data-ticket-type="CAT1" data-row="C" data-column="4" x="193" y="580" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
-  <rect data-seat="C1-C5" data-ticket-type="CAT1" data-row="C" data-column="5" x="219" y="580" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
-  <rect data-seat="C1-C6" data-ticket-type="CAT1" data-row="C" data-column="6" x="245" y="580" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
-  <rect data-seat="C1-C7" data-ticket-type="CAT1" data-row="C" data-column="7" x="271" y="580" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
-  <rect data-seat="C1-C8" data-ticket-type="CAT1" data-row="C" data-column="8" x="297" y="580" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
-  <rect data-seat="C1-C9" data-ticket-type="CAT1" data-row="C" data-column="9" x="323" y="580" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
-  <rect data-seat="C1-C10" data-ticket-type="CAT1" data-row="C" data-column="10" x="349" y="580" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
-  <rect data-seat="C1-C11" data-ticket-type="CAT1" data-row="C" data-column="11" x="375" y="580" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
-  <rect data-seat="C1-C12" data-ticket-type="CAT1" data-row="C" data-column="12" x="401" y="580" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
-  <rect data-seat="C2-A1" data-ticket-type="CAT2" data-row="A" data-column="1" x="79" y="654" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
-  <rect data-seat="C2-A2" data-ticket-type="CAT2" data-row="A" data-column="2" x="97" y="654" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
-  <rect data-seat="C2-A3" data-ticket-type="CAT2" data-row="A" data-column="3" x="115" y="654" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
-  <rect data-seat="C2-A4" data-ticket-type="CAT2" data-row="A" data-column="4" x="133" y="654" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
-  <rect data-seat="C2-A5" data-ticket-type="CAT2" data-row="A" data-column="5" x="151" y="654" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
-  <rect data-seat="C2-A6" data-ticket-type="CAT2" data-row="A" data-column="6" x="169" y="654" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
-  <rect data-seat="C2-A7" data-ticket-type="CAT2" data-row="A" data-column="7" x="187" y="654" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
-  <rect data-seat="C2-A8" data-ticket-type="CAT2" data-row="A" data-column="8" x="205" y="654" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
-  <rect data-seat="C2-A9" data-ticket-type="CAT2" data-row="A" data-column="9" x="223" y="654" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
-  <rect data-seat="C2-A10" data-ticket-type="CAT2" data-row="A" data-column="10" x="241" y="654" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
-  <rect data-seat="C2-A11" data-ticket-type="CAT2" data-row="A" data-column="11" x="259" y="654" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
-  <rect data-seat="C2-A12" data-ticket-type="CAT2" data-row="A" data-column="12" x="277" y="654" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
-  <rect data-seat="C2-A13" data-ticket-type="CAT2" data-row="A" data-column="13" x="295" y="654" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
-  <rect data-seat="C2-A14" data-ticket-type="CAT2" data-row="A" data-column="14" x="313" y="654" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
-  <rect data-seat="C2-B1" data-ticket-type="CAT2" data-row="B" data-column="1" x="79" y="674" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
-  <rect data-seat="C2-B2" data-ticket-type="CAT2" data-row="B" data-column="2" x="97" y="674" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
-  <rect data-seat="C2-B3" data-ticket-type="CAT2" data-row="B" data-column="3" x="115" y="674" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
-  <rect data-seat="C2-B4" data-ticket-type="CAT2" data-row="B" data-column="4" x="133" y="674" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
-  <rect data-seat="C2-B5" data-ticket-type="CAT2" data-row="B" data-column="5" x="151" y="674" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
-  <rect data-seat="C2-B6" data-ticket-type="CAT2" data-row="B" data-column="6" x="169" y="674" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
-  <rect data-seat="C2-B7" data-ticket-type="CAT2" data-row="B" data-column="7" x="187" y="674" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
-  <rect data-seat="C2-B8" data-ticket-type="CAT2" data-row="B" data-column="8" x="205" y="674" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
-  <rect data-seat="C2-B9" data-ticket-type="CAT2" data-row="B" data-column="9" x="223" y="674" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
-  <rect data-seat="C2-B10" data-ticket-type="CAT2" data-row="B" data-column="10" x="241" y="674" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
-  <rect data-seat="C2-B11" data-ticket-type="CAT2" data-row="B" data-column="11" x="259" y="674" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
-  <rect data-seat="C2-B12" data-ticket-type="CAT2" data-row="B" data-column="12" x="277" y="674" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
-  <rect data-seat="C2-B13" data-ticket-type="CAT2" data-row="B" data-column="13" x="295" y="674" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
-  <rect data-seat="C2-B14" data-ticket-type="CAT2" data-row="B" data-column="14" x="313" y="674" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
-  <rect data-seat="C3-A1" data-ticket-type="CAT3" data-row="A" data-column="1" x="79" y="710" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
-  <rect data-seat="C3-A2" data-ticket-type="CAT3" data-row="A" data-column="2" x="97" y="710" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
-  <rect data-seat="C3-A3" data-ticket-type="CAT3" data-row="A" data-column="3" x="115" y="710" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
-  <rect data-seat="C3-A4" data-ticket-type="CAT3" data-row="A" data-column="4" x="133" y="710" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
-  <rect data-seat="C3-A5" data-ticket-type="CAT3" data-row="A" data-column="5" x="151" y="710" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
-  <rect data-seat="C3-A6" data-ticket-type="CAT3" data-row="A" data-column="6" x="169" y="710" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
-  <rect data-seat="C3-A7" data-ticket-type="CAT3" data-row="A" data-column="7" x="187" y="710" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
-  <rect data-seat="C3-A8" data-ticket-type="CAT3" data-row="A" data-column="8" x="205" y="710" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
-  <rect data-seat="C3-A9" data-ticket-type="CAT3" data-row="A" data-column="9" x="223" y="710" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
-  <rect data-seat="C3-A10" data-ticket-type="CAT3" data-row="A" data-column="10" x="241" y="710" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
-  <rect data-seat="C3-A11" data-ticket-type="CAT3" data-row="A" data-column="11" x="259" y="710" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
-  <rect data-seat="C3-A12" data-ticket-type="CAT3" data-row="A" data-column="12" x="277" y="710" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
-  <rect data-seat="C3-A13" data-ticket-type="CAT3" data-row="A" data-column="13" x="295" y="710" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
-  <rect data-seat="C3-A14" data-ticket-type="CAT3" data-row="A" data-column="14" x="313" y="710" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
-  <rect data-seat="C3-B1" data-ticket-type="CAT3" data-row="B" data-column="1" x="79" y="730" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
-  <rect data-seat="C3-B2" data-ticket-type="CAT3" data-row="B" data-column="2" x="97" y="730" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
-  <rect data-seat="C3-B3" data-ticket-type="CAT3" data-row="B" data-column="3" x="115" y="730" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
-  <rect data-seat="C3-B4" data-ticket-type="CAT3" data-row="B" data-column="4" x="133" y="730" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
-  <rect data-seat="C3-B5" data-ticket-type="CAT3" data-row="B" data-column="5" x="151" y="730" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
-  <rect data-seat="C3-B6" data-ticket-type="CAT3" data-row="B" data-column="6" x="169" y="730" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
-  <rect data-seat="C3-B7" data-ticket-type="CAT3" data-row="B" data-column="7" x="187" y="730" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
-  <rect data-seat="C3-B8" data-ticket-type="CAT3" data-row="B" data-column="8" x="205" y="730" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
-  <rect data-seat="C3-B9" data-ticket-type="CAT3" data-row="B" data-column="9" x="223" y="730" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
-  <rect data-seat="C3-B10" data-ticket-type="CAT3" data-row="B" data-column="10" x="241" y="730" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
-  <rect data-seat="C3-B11" data-ticket-type="CAT3" data-row="B" data-column="11" x="259" y="730" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
-  <rect data-seat="C3-B12" data-ticket-type="CAT3" data-row="B" data-column="12" x="277" y="730" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
-  <rect data-seat="C3-B13" data-ticket-type="CAT3" data-row="B" data-column="13" x="295" y="730" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
-  <rect data-seat="C3-B14" data-ticket-type="CAT3" data-row="B" data-column="14" x="313" y="730" width="20" height="20" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
+<g id="zones" aria-label="Khu vực ghế">
+  <rect data-zone="svip-1" data-zone-name="SVIP-1" data-ticket-type="SVIP-1" x="52" y="126" width="318" height="102" rx="8" fill="#4CAF50" stroke="transparent" stroke-width="2" class="zone"/>
+  <rect data-zone="svip-2" data-zone-name="SVIP-2" data-ticket-type="SVIP-2" x="430" y="126" width="318" height="102" rx="8" fill="#4CAF50" stroke="transparent" stroke-width="2" class="zone"/>
+  <rect data-zone="vip" data-zone-name="VIP" data-ticket-type="VIP" x="190" y="248" width="420" height="116" rx="8" fill="#4CAF50" stroke="transparent" stroke-width="2" class="zone"/>
+  <rect data-zone="pre" data-zone-name="PRE" data-ticket-type="PRE" x="64" y="386" width="672" height="116" rx="8" fill="#4CAF50" stroke="transparent" stroke-width="2" class="zone"/>
+  <rect data-zone="cat1" data-zone-name="CAT1" data-ticket-type="CAT1" x="66" y="524" width="668" height="96" rx="8" fill="#4CAF50" stroke="transparent" stroke-width="2" class="zone"/>
+  <rect data-zone="cat2" data-zone-name="CAT2" data-ticket-type="CAT2" x="46" y="632" width="708" height="62" rx="8" fill="#4CAF50" stroke="transparent" stroke-width="2" class="zone"/>
+  <rect data-zone="cat3" data-zone-name="CAT3" data-ticket-type="CAT3" x="46" y="694" width="708" height="62" rx="8" fill="#4CAF50" stroke="transparent" stroke-width="2" class="zone"/>
 </g>
 </svg>

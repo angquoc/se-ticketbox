@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
-import { backendFetch } from '@/lib/api/backend-fetch';
 import { fetchConcertByIdFromBackend, getBackendErrorMessage } from '@/lib/fetch-concerts';
-import { getSeatAvailability } from '@/lib/seat-layout';
+import { backendFetch } from '@/lib/api/backend-fetch';
+import { collectZoneAvailabilityUpdates } from '@/lib/seatmap-data';
 import { getMockSeatMap } from '@/lib/mock-seatmap';
 import { buildSeatMapFromBackend } from '@/lib/seatmap-builder';
 import type { TicketTypeAvailability } from '@/types/order';
@@ -9,10 +9,6 @@ import type { TicketTypeAvailability } from '@/types/order';
 interface TicketTypeListResponse {
   data: TicketTypeAvailability[];
   total: number;
-}
-
-interface SeatAvailabilityRequest {
-  seatNumbers?: string[];
 }
 
 async function resolveSeatMap(concertId: string) {
@@ -43,46 +39,19 @@ async function resolveSeatMap(concertId: string) {
   });
 }
 
-export async function POST(
-  request: Request,
+export async function GET(
+  _request: Request,
   { params }: { params: Promise<{ concertId: string }> },
 ) {
   const { concertId } = await params;
 
-  let body: SeatAvailabilityRequest;
-  try {
-    body = (await request.json()) as SeatAvailabilityRequest;
-  } catch {
-    return NextResponse.json(
-      { success: false, message: 'Payload không hợp lệ' },
-      { status: 400 },
-    );
-  }
-
-  const seatNumbers = body.seatNumbers?.filter(Boolean) ?? [];
-  if (seatNumbers.length === 0) {
-    return NextResponse.json(
-      { success: false, message: 'seatNumbers là bắt buộc' },
-      { status: 400 },
-    );
-  }
-
-  if (seatNumbers.length > 200) {
-    return NextResponse.json(
-      { success: false, message: 'Tối đa 200 ghế mỗi lần truy vấn' },
-      { status: 400 },
-    );
-  }
-
   try {
     const seatMap = await resolveSeatMap(concertId);
-    const availability = getSeatAvailability(seatMap.seats, seatNumbers);
 
     return NextResponse.json({
       success: true,
       data: {
-        availability,
-        timestamp: new Date().toISOString(),
+        updates: collectZoneAvailabilityUpdates(seatMap),
       },
     });
   } catch (error) {

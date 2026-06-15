@@ -9,8 +9,7 @@ const LAYOUTS_DIR = path.join(SEATMAPS_ROOT, 'configs', '_layouts');
 const BACKGROUNDS_DIR = path.join(SEATMAPS_ROOT, 'backgrounds');
 const OUTPUT_DIR = path.join(SEATMAPS_ROOT, 'concerts');
 
-const SEAT_SIZE = 20;
-const DEFAULT_SEAT_FILL = '#4CAF50';
+const DEFAULT_ZONE_FILL = '#4CAF50';
 
 function escapeXml(value) {
   return value
@@ -18,6 +17,14 @@ function escapeXml(value) {
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;');
+}
+
+function slugify(value) {
+  return value
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '');
 }
 
 function parseViewBox(svgText) {
@@ -35,55 +42,45 @@ function stripSvgWrapper(svgText) {
   return svgText.slice(openTagEnd + 1, closeTagStart).trim();
 }
 
-function generateSeatRects(zone) {
-  const { layout, seatPrefix, ticketTypeName } = zone;
-  const lines = [];
+function generateZoneRect(zone) {
+  const zoneId = zone.zoneId ?? slugify(zone.ticketTypeName);
+  const zoneName = zone.zoneName ?? zone.ticketTypeName;
+  const { x, y, width, height, rx = 8 } = zone.rect;
 
-  for (let r = 0; r < layout.rows; r++) {
-    for (let c = 0; c < layout.cols; c++) {
-      const row = String.fromCharCode(65 + r);
-      const column = c + 1;
-      const seatNumber = `${seatPrefix}-${row}${column}`;
-      const x = layout.startX + c * layout.colGap;
-      const y = layout.startY + r * layout.rowGap;
-      lines.push(
-        `  <rect data-seat="${escapeXml(seatNumber)}" data-ticket-type="${escapeXml(ticketTypeName)}" data-row="${row}" data-column="${column}" x="${x}" y="${y}" width="${SEAT_SIZE}" height="${SEAT_SIZE}" rx="3" fill="${DEFAULT_SEAT_FILL}" stroke="transparent" stroke-width="0" class="seat"/>`,
-      );
-    }
-  }
-
-  return lines.join('\n');
+  return `  <rect data-zone="${escapeXml(zoneId)}" data-zone-name="${escapeXml(zoneName)}" data-ticket-type="${escapeXml(zone.ticketTypeName)}" x="${x}" y="${y}" width="${width}" height="${height}" rx="${rx}" fill="${DEFAULT_ZONE_FILL}" stroke="transparent" stroke-width="2" class="zone"/>`;
 }
 
 function buildSeatmapSvg(backgroundSvg, zones) {
   const viewBox = parseViewBox(backgroundSvg);
   const background = stripSvgWrapper(backgroundSvg);
-  const seatLayer = zones
-    .filter((zone) => zone.ticketTypeName && zone.layout)
-    .map(generateSeatRects)
+  const zoneLayer = zones
+    .filter((zone) => zone.ticketTypeName && zone.rect)
+    .map(generateZoneRect)
     .join('\n');
 
-  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${viewBox.width} ${viewBox.height}" role="img" aria-label="Sơ đồ ghế">
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${viewBox.width} ${viewBox.height}" role="img" aria-label="Sơ đồ khu vực ghế">
 ${background}
-<g id="seats" aria-label="Ghế">
-${seatLayer}
+<g id="zones" aria-label="Khu vực ghế">
+${zoneLayer}
 </g>
 </svg>
 `;
 }
 
 const SUMMER_FESTIVAL_BACKGROUND = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 580" role="img" aria-label="Summer festival seat map">
-  <rect width="800" height="580" fill="#f8fafc"/>
-  <rect x="275" y="20" width="250" height="48" rx="8" fill="#1e293b"/>
-  <text x="400" y="50" text-anchor="middle" fill="white" font-size="14" font-weight="600" font-family="system-ui,sans-serif">MAIN STAGE</text>
-  <rect x="260" y="120" width="280" height="90" rx="8" fill="#FEF3C7" opacity="0.68" stroke="#F59E0B" stroke-width="1.5"/>
-  <text x="278" y="140" fill="#92400e" font-size="12" font-weight="700" font-family="system-ui,sans-serif">PLATINUM PASS</text>
-  <rect x="120" y="260" width="250" height="130" rx="8" fill="#FFEDD5" opacity="0.68" stroke="#F97316" stroke-width="1.5"/>
-  <text x="138" y="280" fill="#9a3412" font-size="12" font-weight="700" font-family="system-ui,sans-serif">GOLD PASS</text>
-  <rect x="430" y="260" width="250" height="130" rx="8" fill="#DBEAFE" opacity="0.68" stroke="#3B82F6" stroke-width="1.5"/>
-  <text x="448" y="280" fill="#1d4ed8" font-size="12" font-weight="700" font-family="system-ui,sans-serif">SILVER PASS</text>
-  <rect x="160" y="420" width="480" height="120" rx="8" fill="#DCFCE7" opacity="0.68" stroke="#22C55E" stroke-width="1.5"/>
-  <text x="178" y="440" fill="#166534" font-size="12" font-weight="700" font-family="system-ui,sans-serif">GENERAL ADMISSION</text>
+  <g id="background" pointer-events="none" aria-hidden="true">
+    <rect width="800" height="580" fill="#f8fafc"/>
+    <rect x="275" y="20" width="250" height="48" rx="8" fill="#1e293b"/>
+    <text x="400" y="50" text-anchor="middle" fill="white" font-size="14" font-weight="600" font-family="system-ui,sans-serif">MAIN STAGE</text>
+    <rect x="275" y="115" width="250" height="120" rx="8" fill="#FEF3C7" opacity="0.68" stroke="#F59E0B" stroke-width="1.5"/>
+    <text x="293" y="135" fill="#92400e" font-size="12" font-weight="700" font-family="system-ui,sans-serif">PLATINUM PASS</text>
+    <rect x="95" y="260" width="290" height="150" rx="8" fill="#FFEDD5" opacity="0.68" stroke="#F97316" stroke-width="1.5"/>
+    <text x="113" y="280" fill="#9a3412" font-size="12" font-weight="700" font-family="system-ui,sans-serif">GOLD PASS</text>
+    <rect x="415" y="260" width="290" height="150" rx="8" fill="#DBEAFE" opacity="0.68" stroke="#3B82F6" stroke-width="1.5"/>
+    <text x="433" y="280" fill="#1d4ed8" font-size="12" font-weight="700" font-family="system-ui,sans-serif">SILVER PASS</text>
+    <rect x="130" y="425" width="540" height="120" rx="8" fill="#DCFCE7" opacity="0.68" stroke="#22C55E" stroke-width="1.5"/>
+    <text x="148" y="445" fill="#166534" font-size="12" font-weight="700" font-family="system-ui,sans-serif">GENERAL ADMISSION</text>
+  </g>
 </svg>`;
 
 async function readJson(filePath) {
@@ -102,11 +99,7 @@ async function main() {
 
   for (const slug of manifest.configs) {
     const layout = await readJson(path.join(LAYOUTS_DIR, `${slug}.json`));
-    const zones = (layout?.zones ?? []).map((zone) => ({
-      ticketTypeName: zone.ticketTypeName,
-      seatPrefix: zone.seatPrefix,
-      layout: zone.layout,
-    }));
+    const zones = layout?.zones ?? [];
 
     if (zones.length === 0) {
       console.warn(`Skip ${slug}: no zones defined in _layouts`);

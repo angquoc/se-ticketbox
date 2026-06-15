@@ -1,59 +1,53 @@
-export type SeatStatus = 'AVAILABLE' | 'RESERVED' | 'SOLD';
+export type ZoneStatus = 'AVAILABLE' | 'RESERVED' | 'SOLD_OUT';
 
-export interface SeatRegion {
-  regionId: string;
-  regionName: string;
-  seatCount: number;
+export interface Zone {
+  zoneId: string;
+  zoneName: string;
   availableCount: number;
   reservedCount: number;
   soldCount: number;
+  status: ZoneStatus;
 }
 
 export interface TicketType {
   id: string;
   name: string;
   price: number;
-  seatRegions: SeatRegion[];
+  zones: Zone[];
   maxPerUser: number;
   totalQty: number;
   soldQty: number;
   reservedQty: number;
 }
 
-export interface SeatCoords {
-  x: number;
-  y: number;
-}
-
-export interface Seat {
-  seatNumber: string;
-  regionId: string;
-  ticketTypeId: string;
-  row: string;
-  column: number;
-  status: SeatStatus;
-  coords: SeatCoords;
-}
-
 export interface SeatMapData {
   concertId: string;
   concertName: string;
+  venueName?: string;
   seatMapUrl: string;
   ticketTypes: TicketType[];
-  seats: Seat[];
 }
 
-export interface SelectedSeat {
+export interface ZoneSelection {
   ticketTypeId: string;
-  regionId: string;
-  seatNumber: string;
-  price: number;
-  row: string;
-  column: number;
+  zoneId: string;
+  ticketTypeName: string;
+  zoneName: string;
+  quantity: number;
+  unitPrice: number;
 }
 
-export interface SeatSelectionState {
-  selectedSeats: SelectedSeat[];
+export interface ZoneSelectionState {
+  selection: ZoneSelection | null;
   totalPrice: number;
-  ticketTypeCount: Record<string, number>;
+}
+
+export interface ZoneAvailabilityUpdate {
+  ticketTypeId: string;
+  zoneId: string;
+  status: ZoneStatus;
+  availableCount: number;
+  reservedCount?: number;
+  soldCount?: number;
+  updatedAt: string;
 }

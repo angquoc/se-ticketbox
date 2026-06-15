@@ -1,23 +1,23 @@
-import type { SelectedSeat } from '@/types/seatmap';
+import type { ZoneSelection } from '@/types/seatmap';
 
-const SELECTION_PREFIX = 'seat-selection:';
+const SELECTION_PREFIX = 'zone-selection:';
 const PENDING_ORDER_PREFIX = 'pending-order:';
 
-export function saveSeatSelection(concertId: string, seats: SelectedSeat[]): void {
-  sessionStorage.setItem(`${SELECTION_PREFIX}${concertId}`, JSON.stringify(seats));
+export function saveZoneSelection(concertId: string, selection: ZoneSelection): void {
+  sessionStorage.setItem(`${SELECTION_PREFIX}${concertId}`, JSON.stringify(selection));
 }
 
-export function readSeatSelection(concertId: string): SelectedSeat[] | null {
+export function readZoneSelection(concertId: string): ZoneSelection | null {
   const raw = sessionStorage.getItem(`${SELECTION_PREFIX}${concertId}`);
   if (!raw) return null;
   try {
-    return JSON.parse(raw) as SelectedSeat[];
+    return JSON.parse(raw) as ZoneSelection;
   } catch {
     return null;
   }
 }
 
-export function clearSeatSelection(concertId: string): void {
+export function clearZoneSelection(concertId: string): void {
   sessionStorage.removeItem(`${SELECTION_PREFIX}${concertId}`);
 }
 

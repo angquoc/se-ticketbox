@@ -1,5 +1,6 @@
 import { loadSeatmapConfig } from '@/lib/seatmap-config.server';
-import { buildSeatMapData, type TicketTypeInput } from '@/lib/seat-layout';
+import { buildSeatMapData } from '@/lib/seatmap-data.server';
+import type { TicketTypeInput } from '@/lib/seatmap-data';
 import type { SeatMapData } from '@/types/seatmap';
 import type { TicketTypeAvailability } from '@/types/order';
 
@@ -7,6 +8,7 @@ interface BuildSeatMapInput {
   concertId: string;
   concertName: string;
   concertSlug?: string;
+  venueName?: string;
   seatMapUrl: string | null;
   ticketTypes: TicketTypeAvailability[];
 }
@@ -34,6 +36,7 @@ export async function buildSeatMapFromBackend(
   return buildSeatMapData({
     concertId: input.concertId,
     concertName: input.concertName,
+    venueName: input.venueName,
     seatMapUrl: input.seatMapUrl,
     ticketTypes: input.ticketTypes.map(toTicketTypeInput),
     seatmapConfig,

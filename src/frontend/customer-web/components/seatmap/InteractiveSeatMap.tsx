@@ -1,104 +1,99 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import type { Seat, SeatMapData } from '@/types/seatmap';
-import { SEAT_COLORS } from '@/lib/seat-colors';
+import type { TicketType, Zone } from '@/types/seatmap';
+import { ZONE_COLORS } from '@/lib/seat-colors';
 import { DEFAULT_SEATMAP_URL } from '@/lib/seatmap-config';
 import { parseSvgViewBox } from '@/lib/svg-seatmap';
-import SeatTooltip from './SeatTooltip';
+import ZoneTooltip from './ZoneTooltip';
+
+interface ZoneEntry {
+  ticketType: TicketType;
+  zone: Zone;
+}
 
 interface InteractiveSeatMapProps {
-  data: SeatMapData;
-  seats: Seat[];
-  selectedSeatNumbers: ReadonlySet<string>;
-  onToggleSeat: (seat: Seat) => void;
+  seatMapUrl: string;
+  zones: ZoneEntry[];
+  isZoneSelected: (ticketTypeId: string, zoneId: string) => boolean;
+  onSelectZone: (ticketTypeId: string, zoneId: string) => void;
   onBackgroundLoaded?: () => void;
 }
 
-function resolveSeatElement(target: EventTarget | null, host: HTMLElement): SVGGraphicsElement | null {
-  const element = (target as Element | null)?.closest('[data-seat]');
+function resolveZoneElement(
+  target: EventTarget | null,
+  host: HTMLElement,
+): SVGGraphicsElement | null {
+  const element = (target as Element | null)?.closest('[data-zone]');
   if (!element || !host.contains(element)) return null;
   return element as SVGGraphicsElement;
 }
 
 const SEATMAP_HOST_STYLES = `
-.seatmap-host [data-seat] { transition: none; cursor: default; }
-.seatmap-host [data-seat][data-visible="false"] {
-  fill: ${SEAT_COLORS.sold} !important;
-  stroke: transparent !important;
-  stroke-width: 0 !important;
-  opacity: 0.2;
+.seatmap-host [data-zone] { transition: fill 0.15s ease, stroke 0.15s ease; cursor: pointer; }
+.seatmap-host [data-zone][data-visible="false"] {
+  opacity: 0.15;
   pointer-events: none;
 }
-.seatmap-host [data-seat][data-status="SOLD"] {
-  fill: ${SEAT_COLORS.sold} !important;
-  stroke: transparent !important;
-  opacity: 0.7;
-  pointer-events: none;
+.seatmap-host [data-zone][data-status="SOLD_OUT"] {
+  fill: ${ZONE_COLORS.soldOut} !important;
+  stroke: #9e9e9e !important;
+  opacity: 0.85;
+  cursor: not-allowed;
 }
-.seatmap-host [data-seat][data-status="RESERVED"] {
-  fill: ${SEAT_COLORS.reserved} !important;
-  stroke: transparent !important;
-  pointer-events: none;
+.seatmap-host [data-zone][data-status="RESERVED"] {
+  fill: ${ZONE_COLORS.reserved} !important;
+  stroke: #f9a825 !important;
 }
-.seatmap-host [data-seat][data-status="AVAILABLE"][data-selected="false"][data-hovered="false"] {
-  fill: ${SEAT_COLORS.available} !important;
-  stroke: transparent !important;
-  stroke-width: 0 !important;
+.seatmap-host [data-zone][data-status="AVAILABLE"][data-selected="false"][data-hovered="false"] {
+  fill: ${ZONE_COLORS.available} !important;
+  stroke: #388e3c !important;
 }
-.seatmap-host [data-seat][data-status="AVAILABLE"][data-hovered="true"][data-selected="false"] {
-  fill: ${SEAT_COLORS.hover} !important;
-  stroke: transparent !important;
-  stroke-width: 0 !important;
+.seatmap-host [data-zone][data-status="AVAILABLE"][data-hovered="true"][data-selected="false"] {
+  fill: ${ZONE_COLORS.hover} !important;
+  stroke: #ef6c00 !important;
 }
-.seatmap-host [data-seat][data-selected="true"] {
-  fill: ${SEAT_COLORS.selected} !important;
+.seatmap-host [data-zone][data-selected="true"] {
+  fill: ${ZONE_COLORS.selected} !important;
   stroke: #1565C0 !important;
-  stroke-width: 2 !important;
+  stroke-width: 3 !important;
 }
-.seatmap-host [data-seat][data-clickable="true"] { pointer-events: all; cursor: pointer; }
 `;
 
-function applySeatDataset(
+function applyZoneDataset(
   element: SVGGraphicsElement,
-  seat: Seat,
+  zone: Zone,
   options: { isVisible: boolean; selected: boolean; hovered: boolean },
 ) {
   const { isVisible, selected, hovered } = options;
-  const clickable = seat.status === 'AVAILABLE' || selected;
 
   element.dataset.visible = isVisible ? 'true' : 'false';
-  element.dataset.status = seat.status;
+  element.dataset.status = zone.status;
   element.dataset.selected = selected ? 'true' : 'false';
   element.dataset.hovered = hovered ? 'true' : 'false';
-  element.dataset.clickable = isVisible && clickable ? 'true' : 'false';
-  element.style.opacity = '';
-  element.style.pointerEvents = '';
-  element.style.cursor = '';
 }
 
 export default function InteractiveSeatMap({
-  data,
-  seats,
-  selectedSeatNumbers,
-  onToggleSeat,
+  seatMapUrl,
+  zones,
+  isZoneSelected,
+  onSelectZone,
   onBackgroundLoaded,
 }: InteractiveSeatMapProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const svgHostRef = useRef<HTMLDivElement>(null);
-  const seatElementsRef = useRef<Map<string, SVGGraphicsElement>>(new Map());
-  const hoveredSeatNumberRef = useRef<string | null>(null);
-  const seatByNumberRef = useRef<Map<string, Seat>>(new Map());
-  const visibleSeatNumbersRef = useRef<Set<string>>(new Set());
-  const selectedSeatNumbersRef = useRef(selectedSeatNumbers);
-  const onToggleSeatRef = useRef(onToggleSeat);
+  const zoneElementsRef = useRef<Map<string, SVGGraphicsElement>>(new Map());
+  const hoveredZoneKeyRef = useRef<string | null>(null);
+  const zoneByKeyRef = useRef<Map<string, ZoneEntry>>(new Map());
+  const visibleZoneKeysRef = useRef<Set<string>>(new Set());
+  const isZoneSelectedRef = useRef(isZoneSelected);
+  const onSelectZoneRef = useRef(onSelectZone);
   const onBackgroundLoadedRef = useRef(onBackgroundLoaded);
   const tooltipRafRef = useRef<number | null>(null);
   const hoverProbeRafRef = useRef<number | null>(null);
   const pendingTooltipPosRef = useRef<{ x: number; y: number } | null>(null);
-  const optimisticSelectionRef = useRef<Set<string>>(new Set());
 
-  const [hoveredSeat, setHoveredSeat] = useState<Seat | null>(null);
+  const [hoveredZone, setHoveredZone] = useState<ZoneEntry | null>(null);
   const [tooltipPos, setTooltipPos] = useState<{ x: number; y: number } | null>(null);
   const [scale, setScale] = useState(1);
   const [pan, setPan] = useState({ x: 0, y: 0 });
@@ -115,33 +110,38 @@ export default function InteractiveSeatMap({
   }, [onBackgroundLoaded]);
 
   useEffect(() => {
-    onToggleSeatRef.current = onToggleSeat;
-  }, [onToggleSeat]);
+    onSelectZoneRef.current = onSelectZone;
+  }, [onSelectZone]);
 
   useEffect(() => {
-    selectedSeatNumbersRef.current = selectedSeatNumbers;
-  }, [selectedSeatNumbers]);
+    isZoneSelectedRef.current = isZoneSelected;
+  }, [isZoneSelected]);
 
-  const backgroundUrl = data.seatMapUrl || DEFAULT_SEATMAP_URL;
+  const backgroundUrl = seatMapUrl || DEFAULT_SEATMAP_URL;
   const viewBox = useMemo(
     () => (svgMarkup ? parseSvgViewBox(svgMarkup) : { width: 800, height: 580 }),
     [svgMarkup],
   );
 
-  const seatByNumber = useMemo(
-    () => new Map(data.seats.map((seat) => [seat.seatNumber, seat])),
-    [data.seats],
-  );
+  const zoneKey = (ticketTypeId: string, zoneId: string) => `${ticketTypeId}:${zoneId}`;
 
-  const visibleSeatNumbers = useMemo(
-    () => new Set(seats.map((seat) => seat.seatNumber)),
-    [seats],
+  const zoneByKey = useMemo(() => {
+    const map = new Map<string, ZoneEntry>();
+    for (const entry of zones) {
+      map.set(zoneKey(entry.ticketType.id, entry.zone.zoneId), entry);
+    }
+    return map;
+  }, [zones]);
+
+  const visibleZoneKeys = useMemo(
+    () => new Set(zones.map((entry) => zoneKey(entry.ticketType.id, entry.zone.zoneId))),
+    [zones],
   );
 
   useEffect(() => {
-    seatByNumberRef.current = seatByNumber;
-    visibleSeatNumbersRef.current = visibleSeatNumbers;
-  }, [seatByNumber, visibleSeatNumbers]);
+    zoneByKeyRef.current = zoneByKey;
+    visibleZoneKeysRef.current = visibleZoneKeys;
+  }, [zoneByKey, visibleZoneKeys]);
 
   useEffect(() => {
     let cancelled = false;
@@ -171,55 +171,32 @@ export default function InteractiveSeatMap({
     };
   }, [backgroundUrl]);
 
-  const regionNameMap = useMemo(() => {
-    const map = new Map<string, string>();
-    for (const tt of data.ticketTypes) {
-      for (const r of tt.seatRegions) {
-        map.set(r.regionId, r.regionName);
-      }
-    }
-    return map;
-  }, [data.ticketTypes]);
-
-  const priceMap = useMemo(
-    () => new Map(data.ticketTypes.map((tt) => [tt.id, tt.price])),
-    [data.ticketTypes],
-  );
-
-  const styleSeat = useCallback((seatNumber: string, hoveredOverride?: boolean) => {
-    const element = seatElementsRef.current.get(seatNumber);
+  const styleZone = useCallback((key: string, hoveredOverride?: boolean) => {
+    const element = zoneElementsRef.current.get(key);
     if (!element) return;
 
-    const seat = seatByNumberRef.current.get(seatNumber);
-    const isVisible = Boolean(seat && visibleSeatNumbersRef.current.has(seatNumber));
-    const hovered =
-      hoveredOverride ?? hoveredSeatNumberRef.current === seatNumber;
-    const selected =
-      selectedSeatNumbersRef.current.has(seatNumber) ||
-      optimisticSelectionRef.current.has(seatNumber);
+    const entry = zoneByKeyRef.current.get(key);
+    const isVisible = Boolean(entry && visibleZoneKeysRef.current.has(key));
+    const hovered = hoveredOverride ?? hoveredZoneKeyRef.current === key;
+    const selected = entry
+      ? isZoneSelectedRef.current(entry.ticketType.id, entry.zone.zoneId)
+      : false;
 
-    if (!seat || !isVisible) {
+    if (!entry || !isVisible) {
       element.dataset.visible = 'false';
       element.dataset.hovered = 'false';
       element.dataset.selected = 'false';
-      element.dataset.clickable = 'false';
       return;
     }
 
-    applySeatDataset(element, seat, { isVisible, selected, hovered });
+    applyZoneDataset(element, entry.zone, { isVisible, selected, hovered });
   }, []);
 
-  const setSeatHovered = useCallback((seatNumber: string, hovered: boolean) => {
-    const element = seatElementsRef.current.get(seatNumber);
-    if (!element) return;
-    element.dataset.hovered = hovered ? 'true' : 'false';
-  }, []);
-
-  const syncAllSeats = useCallback(() => {
-    for (const seatNumber of seatElementsRef.current.keys()) {
-      styleSeat(seatNumber);
+  const syncAllZones = useCallback(() => {
+    for (const key of zoneElementsRef.current.keys()) {
+      styleZone(key);
     }
-  }, [styleSeat]);
+  }, [styleZone]);
 
   const updateTooltipPosition = useCallback((clientX: number, clientY: number) => {
     const rect = containerRef.current?.getBoundingClientRect();
@@ -235,47 +212,40 @@ export default function InteractiveSeatMap({
     });
   }, []);
 
-  const setHoveredSeatNumber = useCallback(
-    (seatNumber: string | null, clientX: number, clientY: number) => {
-      if (seatNumber === hoveredSeatNumberRef.current) {
-        if (seatNumber) updateTooltipPosition(clientX, clientY);
+  const setHoveredZoneKey = useCallback(
+    (key: string | null, clientX: number, clientY: number) => {
+      if (key === hoveredZoneKeyRef.current) {
+        if (key) updateTooltipPosition(clientX, clientY);
         return;
       }
 
-      const previous = hoveredSeatNumberRef.current;
-      if (previous) setSeatHovered(previous, false);
+      hoveredZoneKeyRef.current = key;
 
-      if (!seatNumber) {
-        hoveredSeatNumberRef.current = null;
-        setHoveredSeat(null);
+      if (!key) {
+        setHoveredZone(null);
         setTooltipPos(null);
+        syncAllZones();
         return;
       }
 
-      const seat = seatByNumberRef.current.get(seatNumber);
-      if (!seat || !visibleSeatNumbersRef.current.has(seatNumber)) {
-        hoveredSeatNumberRef.current = null;
-        setHoveredSeat(null);
+      const entry = zoneByKeyRef.current.get(key);
+      if (!entry || !visibleZoneKeysRef.current.has(key)) {
+        setHoveredZone(null);
         setTooltipPos(null);
+        syncAllZones();
         return;
       }
 
-      hoveredSeatNumberRef.current = seatNumber;
-      setSeatHovered(seatNumber, true);
-      setHoveredSeat(seat);
+      setHoveredZone(entry);
       updateTooltipPosition(clientX, clientY);
+      syncAllZones();
     },
-    [setSeatHovered, updateTooltipPosition],
+    [syncAllZones, updateTooltipPosition],
   );
 
   const clearHover = useCallback(() => {
-    const previous = hoveredSeatNumberRef.current;
-    if (!previous) return;
-    hoveredSeatNumberRef.current = null;
-    setSeatHovered(previous, false);
-    setHoveredSeat(null);
-    setTooltipPos(null);
-  }, [setSeatHovered]);
+    setHoveredZoneKey(null, 0, 0);
+  }, [setHoveredZoneKey]);
 
   useEffect(() => {
     return () => {
@@ -292,20 +262,45 @@ export default function InteractiveSeatMap({
 
     host.innerHTML = svgMarkup;
 
-    const seatMap = new Map<string, SVGGraphicsElement>();
-    host.querySelectorAll<SVGGraphicsElement>('[data-seat]').forEach((element) => {
-      const seatNumber = element.getAttribute('data-seat');
-      if (seatNumber) seatMap.set(seatNumber, element);
-    });
-    seatElementsRef.current = seatMap;
+    const elementMap = new Map<string, SVGGraphicsElement>();
+    host.querySelectorAll<SVGGraphicsElement>('[data-zone]').forEach((element) => {
+      const zoneId = element.getAttribute('data-zone');
+      if (!zoneId) return;
 
-    syncAllSeats();
+      const ticketTypeName = element.getAttribute('data-ticket-type')?.trim().toLowerCase();
+      const entry = Array.from(zoneByKeyRef.current.values()).find(
+        (item) =>
+          item.zone.zoneId === zoneId ||
+          item.ticketType.name.trim().toLowerCase() === ticketTypeName,
+      );
+      if (!entry) return;
+
+      elementMap.set(zoneKey(entry.ticketType.id, entry.zone.zoneId), element);
+    });
+    zoneElementsRef.current = elementMap;
+    syncAllZones();
 
     const probeHover = (clientX: number, clientY: number) => {
       const hit = document.elementFromPoint(clientX, clientY);
-      const seatElement = hit ? resolveSeatElement(hit, host) : null;
-      const seatNumber = seatElement?.getAttribute('data-seat') ?? null;
-      setHoveredSeatNumber(seatNumber, clientX, clientY);
+      const zoneElement = hit ? resolveZoneElement(hit, host) : null;
+      const zoneId = zoneElement?.getAttribute('data-zone');
+      if (!zoneId) {
+        setHoveredZoneKey(null, clientX, clientY);
+        return;
+      }
+
+      const ticketTypeName = zoneElement?.getAttribute('data-ticket-type')?.trim().toLowerCase();
+      const entry = Array.from(zoneByKeyRef.current.values()).find(
+        (item) =>
+          item.zone.zoneId === zoneId ||
+          item.ticketType.name.trim().toLowerCase() === ticketTypeName,
+      );
+      if (!entry) {
+        setHoveredZoneKey(null, clientX, clientY);
+        return;
+      }
+
+      setHoveredZoneKey(zoneKey(entry.ticketType.id, entry.zone.zoneId), clientX, clientY);
     };
 
     const handleMouseMove = (event: MouseEvent) => {
@@ -319,32 +314,33 @@ export default function InteractiveSeatMap({
     };
 
     const handleMouseLeave = () => {
-      setHoveredSeatNumber(null, 0, 0);
+      setHoveredZoneKey(null, 0, 0);
     };
 
     const handleClick = (event: MouseEvent) => {
-      const seatElement = resolveSeatElement(event.target, host);
-      if (!seatElement) return;
+      const zoneElement = resolveZoneElement(event.target, host);
+      if (!zoneElement) return;
 
       event.stopPropagation();
       event.preventDefault();
-      const seatNumber = seatElement.getAttribute('data-seat');
-      if (!seatNumber) return;
 
-      const seat = seatByNumberRef.current.get(seatNumber);
-      if (!seat || !visibleSeatNumbersRef.current.has(seatNumber)) return;
+      const zoneId = zoneElement.getAttribute('data-zone');
+      if (!zoneId) return;
 
-      const selected =
-        selectedSeatNumbersRef.current.has(seatNumber) ||
-        optimisticSelectionRef.current.has(seatNumber);
-      const clickable = seat.status === 'AVAILABLE' || selected;
-      if (!clickable) return;
+      const ticketTypeName = zoneElement.getAttribute('data-ticket-type')?.trim().toLowerCase();
+      const entry = Array.from(zoneByKeyRef.current.values()).find(
+        (item) =>
+          item.zone.zoneId === zoneId ||
+          item.ticketType.name.trim().toLowerCase() === ticketTypeName,
+      );
+      if (!entry || !visibleZoneKeysRef.current.has(zoneKey(entry.ticketType.id, entry.zone.zoneId))) {
+        return;
+      }
 
-      if (selected) optimisticSelectionRef.current.delete(seatNumber);
-      else optimisticSelectionRef.current.add(seatNumber);
+      if (entry.zone.status === 'SOLD_OUT') return;
 
-      styleSeat(seatNumber);
-      onToggleSeatRef.current(seat);
+      onSelectZoneRef.current(entry.ticketType.id, entry.zone.zoneId);
+      syncAllZones();
     };
 
     host.addEventListener('mousemove', handleMouseMove);
@@ -355,25 +351,15 @@ export default function InteractiveSeatMap({
       host.removeEventListener('mousemove', handleMouseMove);
       host.removeEventListener('mouseleave', handleMouseLeave);
       host.removeEventListener('click', handleClick);
-      seatElementsRef.current.clear();
-      hoveredSeatNumberRef.current = null;
+      zoneElementsRef.current.clear();
+      hoveredZoneKeyRef.current = null;
     };
-  }, [svgLoaded, svgMarkup, setHoveredSeatNumber, styleSeat, syncAllSeats]);
+  }, [svgLoaded, svgMarkup, setHoveredZoneKey, syncAllZones]);
 
   useEffect(() => {
-    if (!svgLoaded || seatElementsRef.current.size === 0) return;
-
-    for (const seatNumber of optimisticSelectionRef.current) {
-      if (!selectedSeatNumbers.has(seatNumber)) {
-        optimisticSelectionRef.current.delete(seatNumber);
-      }
-    }
-    for (const seatNumber of selectedSeatNumbers) {
-      optimisticSelectionRef.current.delete(seatNumber);
-    }
-
-    syncAllSeats();
-  }, [svgLoaded, selectedSeatNumbers, visibleSeatNumbers, seatByNumber, syncAllSeats]);
+    if (!svgLoaded || zoneElementsRef.current.size === 0) return;
+    syncAllZones();
+  }, [svgLoaded, zones, isZoneSelected, syncAllZones]);
 
   useEffect(() => {
     const container = containerRef.current;
@@ -392,7 +378,7 @@ export default function InteractiveSeatMap({
   }, [clearHover]);
 
   const handlePointerDown = (e: React.PointerEvent) => {
-    if ((e.target as Element).closest('[data-seat]')) return;
+    if ((e.target as Element).closest('[data-zone]')) return;
     clearHover();
     dragging.current = true;
     setIsDragging(true);
@@ -464,8 +450,7 @@ export default function InteractiveSeatMap({
         style={{
           transform: `translate(${pan.x}px, ${pan.y}px) scale(${scale})`,
           transformOrigin: 'center center',
-          transition:
-            isDragging || !animateTransform ? 'none' : 'transform 0.15s ease',
+          transition: isDragging || !animateTransform ? 'none' : 'transform 0.15s ease',
         }}
       >
         {svgLoaded ? (
@@ -475,7 +460,7 @@ export default function InteractiveSeatMap({
               ref={svgHostRef}
               className="[&_svg]:mx-auto [&_svg]:h-auto [&_svg]:w-full"
               role="img"
-              aria-label="Sơ đồ ghế"
+              aria-label="Sơ đồ khu vực ghế"
             />
           </div>
         ) : (
@@ -483,7 +468,7 @@ export default function InteractiveSeatMap({
             viewBox={`0 0 ${viewBox.width} ${viewBox.height}`}
             className="mx-auto w-full max-w-4xl"
             role="img"
-            aria-label="Sơ đồ ghế"
+            aria-label="Sơ đồ khu vực ghế"
           >
             <rect x={275} y={20} width={250} height={48} rx={8} fill="#1e293b" />
             <text
@@ -501,11 +486,10 @@ export default function InteractiveSeatMap({
         )}
       </div>
 
-      {hoveredSeat && tooltipPos && (
-        <SeatTooltip
-          seat={hoveredSeat}
-          price={priceMap.get(hoveredSeat.ticketTypeId) ?? 0}
-          regionName={regionNameMap.get(hoveredSeat.regionId) ?? hoveredSeat.regionId}
+      {hoveredZone && tooltipPos && (
+        <ZoneTooltip
+          ticketType={hoveredZone.ticketType}
+          zone={hoveredZone.zone}
           x={tooltipPos.x}
           y={tooltipPos.y}
         />

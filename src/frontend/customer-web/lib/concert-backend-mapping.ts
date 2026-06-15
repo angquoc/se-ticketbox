@@ -1,4 +1,4 @@
-import type { SelectedSeat } from '@/types/seatmap';
+import type { ZoneSelection } from '@/types/seatmap';
 import type { TicketTypeAvailability } from '@/types/order';
 
 function parseConcertMap(): Record<string, string> {
@@ -17,21 +17,8 @@ export function resolveBackendConcertId(frontendConcertId: string): string {
   return map[frontendConcertId] ?? frontendConcertId;
 }
 
-export function groupSeatsByTicketType(
-  seats: SelectedSeat[],
-): Array<{ ticketTypeId: string; quantity: number }> {
-  const counts = new Map<string, number>();
-  for (const seat of seats) {
-    counts.set(seat.ticketTypeId, (counts.get(seat.ticketTypeId) ?? 0) + 1);
-  }
-  return Array.from(counts.entries()).map(([ticketTypeId, quantity]) => ({
-    ticketTypeId,
-    quantity,
-  }));
-}
-
-export function mapToBackendOrderItems(
-  groupedSeats: Array<{ ticketTypeId: string; quantity: number }>,
+export function mapZoneSelectionToOrderItems(
+  selection: ZoneSelection,
   backendTicketTypes: TicketTypeAvailability[],
 ): Array<{ ticketTypeId: string; quantity: number }> {
   const byId = new Map(backendTicketTypes.map((ticketType) => [ticketType.id, ticketType]));
@@ -39,20 +26,17 @@ export function mapToBackendOrderItems(
     backendTicketTypes.map((ticketType) => [ticketType.name.toLowerCase(), ticketType]),
   );
 
-  return groupedSeats.map(({ ticketTypeId, quantity }) => {
-    const direct = byId.get(ticketTypeId);
-    if (direct) {
-      return { ticketTypeId: direct.id, quantity };
-    }
+  const direct = byId.get(selection.ticketTypeId);
+  if (direct) {
+    return [{ ticketTypeId: direct.id, quantity: selection.quantity }];
+  }
 
-    const byNameDirect = byName.get(ticketTypeId.toLowerCase());
-    if (byNameDirect) {
-      return { ticketTypeId: byNameDirect.id, quantity };
-    }
+  const byNameDirect = byName.get(selection.ticketTypeName.toLowerCase());
+  if (byNameDirect) {
+    return [{ ticketTypeId: byNameDirect.id, quantity: selection.quantity }];
+  }
 
-    const label = ticketTypeId;
-    throw new Error(
-      `Không tìm thấy loại vé "${label}" trên backend. Kiểm tra dữ liệu concert và loại vé cho khớp.`,
-    );
-  });
+  throw new Error(
+    `Không tìm thấy loại vé "${selection.ticketTypeName}" trên backend. Kiểm tra dữ liệu concert và loại vé cho khớp.`,
+  );
 }

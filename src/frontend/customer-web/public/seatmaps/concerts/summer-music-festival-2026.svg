@@ -1,170 +1,21 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 580" role="img" aria-label="Sơ đồ ghế">
-  <style>
-    .zone-label { font-family: system-ui, sans-serif; font-size: 12px; font-weight: 700; }
-    .stage-label { font-family: system-ui, sans-serif; font-size: 14px; font-weight: 600; }
-  </style>
-  <g id="background" pointer-events="none" aria-hidden="true">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 580" role="img" aria-label="Sơ đồ khu vực ghế">
+<g id="background" pointer-events="none" aria-hidden="true">
     <rect width="800" height="580" fill="#f8fafc"/>
     <rect x="275" y="20" width="250" height="48" rx="8" fill="#1e293b"/>
-    <text x="400" y="50" text-anchor="middle" fill="white" class="stage-label">MAIN STAGE</text>
+    <text x="400" y="50" text-anchor="middle" fill="white" font-size="14" font-weight="600" font-family="system-ui,sans-serif">MAIN STAGE</text>
     <rect x="275" y="115" width="250" height="120" rx="8" fill="#FEF3C7" opacity="0.68" stroke="#F59E0B" stroke-width="1.5"/>
-    <text x="293" y="135" fill="#92400e" class="zone-label">PLATINUM PASS</text>
+    <text x="293" y="135" fill="#92400e" font-size="12" font-weight="700" font-family="system-ui,sans-serif">PLATINUM PASS</text>
     <rect x="95" y="260" width="290" height="150" rx="8" fill="#FFEDD5" opacity="0.68" stroke="#F97316" stroke-width="1.5"/>
-    <text x="113" y="280" fill="#9a3412" class="zone-label">GOLD PASS</text>
+    <text x="113" y="280" fill="#9a3412" font-size="12" font-weight="700" font-family="system-ui,sans-serif">GOLD PASS</text>
     <rect x="415" y="260" width="290" height="150" rx="8" fill="#DBEAFE" opacity="0.68" stroke="#3B82F6" stroke-width="1.5"/>
-    <text x="433" y="280" fill="#1d4ed8" class="zone-label">SILVER PASS</text>
+    <text x="433" y="280" fill="#1d4ed8" font-size="12" font-weight="700" font-family="system-ui,sans-serif">SILVER PASS</text>
     <rect x="130" y="425" width="540" height="120" rx="8" fill="#DCFCE7" opacity="0.68" stroke="#22C55E" stroke-width="1.5"/>
-    <text x="148" y="445" fill="#166534" class="zone-label">GENERAL ADMISSION</text>
+    <text x="148" y="445" fill="#166534" font-size="12" font-weight="700" font-family="system-ui,sans-serif">GENERAL ADMISSION</text>
   </g>
-  <g id="seats" aria-label="Ghế">
-    <rect data-seat="PLT-A1" data-ticket-type="PLATINUM PASS" data-row="A" data-column="1" x="300" y="155" width="18" height="18" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
-    <rect data-seat="PLT-A2" data-ticket-type="PLATINUM PASS" data-row="A" data-column="2" x="326" y="155" width="18" height="18" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
-    <rect data-seat="PLT-A3" data-ticket-type="PLATINUM PASS" data-row="A" data-column="3" x="352" y="155" width="18" height="18" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
-    <rect data-seat="PLT-A4" data-ticket-type="PLATINUM PASS" data-row="A" data-column="4" x="378" y="155" width="18" height="18" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
-    <rect data-seat="PLT-A5" data-ticket-type="PLATINUM PASS" data-row="A" data-column="5" x="404" y="155" width="18" height="18" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
-    <rect data-seat="PLT-A6" data-ticket-type="PLATINUM PASS" data-row="A" data-column="6" x="430" y="155" width="18" height="18" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
-    <rect data-seat="PLT-A7" data-ticket-type="PLATINUM PASS" data-row="A" data-column="7" x="456" y="155" width="18" height="18" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
-    <rect data-seat="PLT-A8" data-ticket-type="PLATINUM PASS" data-row="A" data-column="8" x="482" y="155" width="18" height="18" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
-    <rect data-seat="PLT-B1" data-ticket-type="PLATINUM PASS" data-row="B" data-column="1" x="300" y="181" width="18" height="18" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
-    <rect data-seat="PLT-B2" data-ticket-type="PLATINUM PASS" data-row="B" data-column="2" x="326" y="181" width="18" height="18" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
-    <rect data-seat="PLT-B3" data-ticket-type="PLATINUM PASS" data-row="B" data-column="3" x="352" y="181" width="18" height="18" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
-    <rect data-seat="PLT-B4" data-ticket-type="PLATINUM PASS" data-row="B" data-column="4" x="378" y="181" width="18" height="18" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
-    <rect data-seat="PLT-B5" data-ticket-type="PLATINUM PASS" data-row="B" data-column="5" x="404" y="181" width="18" height="18" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
-    <rect data-seat="PLT-B6" data-ticket-type="PLATINUM PASS" data-row="B" data-column="6" x="430" y="181" width="18" height="18" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
-    <rect data-seat="PLT-B7" data-ticket-type="PLATINUM PASS" data-row="B" data-column="7" x="456" y="181" width="18" height="18" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
-    <rect data-seat="PLT-B8" data-ticket-type="PLATINUM PASS" data-row="B" data-column="8" x="482" y="181" width="18" height="18" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
-    <rect data-seat="PLT-C1" data-ticket-type="PLATINUM PASS" data-row="C" data-column="1" x="300" y="207" width="18" height="18" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
-    <rect data-seat="PLT-C2" data-ticket-type="PLATINUM PASS" data-row="C" data-column="2" x="326" y="207" width="18" height="18" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
-    <rect data-seat="PLT-C3" data-ticket-type="PLATINUM PASS" data-row="C" data-column="3" x="352" y="207" width="18" height="18" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
-    <rect data-seat="PLT-C4" data-ticket-type="PLATINUM PASS" data-row="C" data-column="4" x="378" y="207" width="18" height="18" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
-    <rect data-seat="PLT-C5" data-ticket-type="PLATINUM PASS" data-row="C" data-column="5" x="404" y="207" width="18" height="18" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
-    <rect data-seat="PLT-C6" data-ticket-type="PLATINUM PASS" data-row="C" data-column="6" x="430" y="207" width="18" height="18" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
-    <rect data-seat="PLT-C7" data-ticket-type="PLATINUM PASS" data-row="C" data-column="7" x="456" y="207" width="18" height="18" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
-    <rect data-seat="PLT-C8" data-ticket-type="PLATINUM PASS" data-row="C" data-column="8" x="482" y="207" width="18" height="18" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
-
-    <rect data-seat="GLD-A1" data-ticket-type="GOLD PASS" data-row="A" data-column="1" x="114" y="300" width="18" height="18" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
-    <rect data-seat="GLD-A2" data-ticket-type="GOLD PASS" data-row="A" data-column="2" x="140" y="300" width="18" height="18" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
-    <rect data-seat="GLD-A3" data-ticket-type="GOLD PASS" data-row="A" data-column="3" x="166" y="300" width="18" height="18" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
-    <rect data-seat="GLD-A4" data-ticket-type="GOLD PASS" data-row="A" data-column="4" x="192" y="300" width="18" height="18" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
-    <rect data-seat="GLD-A5" data-ticket-type="GOLD PASS" data-row="A" data-column="5" x="218" y="300" width="18" height="18" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
-    <rect data-seat="GLD-A6" data-ticket-type="GOLD PASS" data-row="A" data-column="6" x="244" y="300" width="18" height="18" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
-    <rect data-seat="GLD-A7" data-ticket-type="GOLD PASS" data-row="A" data-column="7" x="270" y="300" width="18" height="18" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
-    <rect data-seat="GLD-A8" data-ticket-type="GOLD PASS" data-row="A" data-column="8" x="296" y="300" width="18" height="18" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
-    <rect data-seat="GLD-A9" data-ticket-type="GOLD PASS" data-row="A" data-column="9" x="322" y="300" width="18" height="18" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
-    <rect data-seat="GLD-A10" data-ticket-type="GOLD PASS" data-row="A" data-column="10" x="348" y="300" width="18" height="18" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
-    <rect data-seat="GLD-B1" data-ticket-type="GOLD PASS" data-row="B" data-column="1" x="114" y="326" width="18" height="18" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
-    <rect data-seat="GLD-B2" data-ticket-type="GOLD PASS" data-row="B" data-column="2" x="140" y="326" width="18" height="18" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
-    <rect data-seat="GLD-B3" data-ticket-type="GOLD PASS" data-row="B" data-column="3" x="166" y="326" width="18" height="18" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
-    <rect data-seat="GLD-B4" data-ticket-type="GOLD PASS" data-row="B" data-column="4" x="192" y="326" width="18" height="18" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
-    <rect data-seat="GLD-B5" data-ticket-type="GOLD PASS" data-row="B" data-column="5" x="218" y="326" width="18" height="18" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
-    <rect data-seat="GLD-B6" data-ticket-type="GOLD PASS" data-row="B" data-column="6" x="244" y="326" width="18" height="18" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
-    <rect data-seat="GLD-B7" data-ticket-type="GOLD PASS" data-row="B" data-column="7" x="270" y="326" width="18" height="18" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
-    <rect data-seat="GLD-B8" data-ticket-type="GOLD PASS" data-row="B" data-column="8" x="296" y="326" width="18" height="18" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
-    <rect data-seat="GLD-B9" data-ticket-type="GOLD PASS" data-row="B" data-column="9" x="322" y="326" width="18" height="18" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
-    <rect data-seat="GLD-B10" data-ticket-type="GOLD PASS" data-row="B" data-column="10" x="348" y="326" width="18" height="18" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
-    <rect data-seat="GLD-C1" data-ticket-type="GOLD PASS" data-row="C" data-column="1" x="114" y="352" width="18" height="18" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
-    <rect data-seat="GLD-C2" data-ticket-type="GOLD PASS" data-row="C" data-column="2" x="140" y="352" width="18" height="18" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
-    <rect data-seat="GLD-C3" data-ticket-type="GOLD PASS" data-row="C" data-column="3" x="166" y="352" width="18" height="18" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
-    <rect data-seat="GLD-C4" data-ticket-type="GOLD PASS" data-row="C" data-column="4" x="192" y="352" width="18" height="18" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
-    <rect data-seat="GLD-C5" data-ticket-type="GOLD PASS" data-row="C" data-column="5" x="218" y="352" width="18" height="18" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
-    <rect data-seat="GLD-C6" data-ticket-type="GOLD PASS" data-row="C" data-column="6" x="244" y="352" width="18" height="18" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
-    <rect data-seat="GLD-C7" data-ticket-type="GOLD PASS" data-row="C" data-column="7" x="270" y="352" width="18" height="18" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
-    <rect data-seat="GLD-C8" data-ticket-type="GOLD PASS" data-row="C" data-column="8" x="296" y="352" width="18" height="18" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
-    <rect data-seat="GLD-C9" data-ticket-type="GOLD PASS" data-row="C" data-column="9" x="322" y="352" width="18" height="18" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
-    <rect data-seat="GLD-C10" data-ticket-type="GOLD PASS" data-row="C" data-column="10" x="348" y="352" width="18" height="18" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
-    <rect data-seat="GLD-D1" data-ticket-type="GOLD PASS" data-row="D" data-column="1" x="114" y="378" width="18" height="18" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
-    <rect data-seat="GLD-D2" data-ticket-type="GOLD PASS" data-row="D" data-column="2" x="140" y="378" width="18" height="18" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
-    <rect data-seat="GLD-D3" data-ticket-type="GOLD PASS" data-row="D" data-column="3" x="166" y="378" width="18" height="18" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
-    <rect data-seat="GLD-D4" data-ticket-type="GOLD PASS" data-row="D" data-column="4" x="192" y="378" width="18" height="18" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
-    <rect data-seat="GLD-D5" data-ticket-type="GOLD PASS" data-row="D" data-column="5" x="218" y="378" width="18" height="18" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
-    <rect data-seat="GLD-D6" data-ticket-type="GOLD PASS" data-row="D" data-column="6" x="244" y="378" width="18" height="18" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
-    <rect data-seat="GLD-D7" data-ticket-type="GOLD PASS" data-row="D" data-column="7" x="270" y="378" width="18" height="18" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
-    <rect data-seat="GLD-D8" data-ticket-type="GOLD PASS" data-row="D" data-column="8" x="296" y="378" width="18" height="18" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
-    <rect data-seat="GLD-D9" data-ticket-type="GOLD PASS" data-row="D" data-column="9" x="322" y="378" width="18" height="18" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
-    <rect data-seat="GLD-D10" data-ticket-type="GOLD PASS" data-row="D" data-column="10" x="348" y="378" width="18" height="18" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
-
-    <rect data-seat="SLV-A1" data-ticket-type="SILVER PASS" data-row="A" data-column="1" x="434" y="300" width="18" height="18" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
-    <rect data-seat="SLV-A2" data-ticket-type="SILVER PASS" data-row="A" data-column="2" x="460" y="300" width="18" height="18" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
-    <rect data-seat="SLV-A3" data-ticket-type="SILVER PASS" data-row="A" data-column="3" x="486" y="300" width="18" height="18" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
-    <rect data-seat="SLV-A4" data-ticket-type="SILVER PASS" data-row="A" data-column="4" x="512" y="300" width="18" height="18" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
-    <rect data-seat="SLV-A5" data-ticket-type="SILVER PASS" data-row="A" data-column="5" x="538" y="300" width="18" height="18" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
-    <rect data-seat="SLV-A6" data-ticket-type="SILVER PASS" data-row="A" data-column="6" x="564" y="300" width="18" height="18" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
-    <rect data-seat="SLV-A7" data-ticket-type="SILVER PASS" data-row="A" data-column="7" x="590" y="300" width="18" height="18" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
-    <rect data-seat="SLV-A8" data-ticket-type="SILVER PASS" data-row="A" data-column="8" x="616" y="300" width="18" height="18" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
-    <rect data-seat="SLV-A9" data-ticket-type="SILVER PASS" data-row="A" data-column="9" x="642" y="300" width="18" height="18" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
-    <rect data-seat="SLV-A10" data-ticket-type="SILVER PASS" data-row="A" data-column="10" x="668" y="300" width="18" height="18" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
-    <rect data-seat="SLV-B1" data-ticket-type="SILVER PASS" data-row="B" data-column="1" x="434" y="326" width="18" height="18" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
-    <rect data-seat="SLV-B2" data-ticket-type="SILVER PASS" data-row="B" data-column="2" x="460" y="326" width="18" height="18" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
-    <rect data-seat="SLV-B3" data-ticket-type="SILVER PASS" data-row="B" data-column="3" x="486" y="326" width="18" height="18" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
-    <rect data-seat="SLV-B4" data-ticket-type="SILVER PASS" data-row="B" data-column="4" x="512" y="326" width="18" height="18" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
-    <rect data-seat="SLV-B5" data-ticket-type="SILVER PASS" data-row="B" data-column="5" x="538" y="326" width="18" height="18" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
-    <rect data-seat="SLV-B6" data-ticket-type="SILVER PASS" data-row="B" data-column="6" x="564" y="326" width="18" height="18" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
-    <rect data-seat="SLV-B7" data-ticket-type="SILVER PASS" data-row="B" data-column="7" x="590" y="326" width="18" height="18" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
-    <rect data-seat="SLV-B8" data-ticket-type="SILVER PASS" data-row="B" data-column="8" x="616" y="326" width="18" height="18" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
-    <rect data-seat="SLV-B9" data-ticket-type="SILVER PASS" data-row="B" data-column="9" x="642" y="326" width="18" height="18" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
-    <rect data-seat="SLV-B10" data-ticket-type="SILVER PASS" data-row="B" data-column="10" x="668" y="326" width="18" height="18" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
-    <rect data-seat="SLV-C1" data-ticket-type="SILVER PASS" data-row="C" data-column="1" x="434" y="352" width="18" height="18" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
-    <rect data-seat="SLV-C2" data-ticket-type="SILVER PASS" data-row="C" data-column="2" x="460" y="352" width="18" height="18" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
-    <rect data-seat="SLV-C3" data-ticket-type="SILVER PASS" data-row="C" data-column="3" x="486" y="352" width="18" height="18" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
-    <rect data-seat="SLV-C4" data-ticket-type="SILVER PASS" data-row="C" data-column="4" x="512" y="352" width="18" height="18" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
-    <rect data-seat="SLV-C5" data-ticket-type="SILVER PASS" data-row="C" data-column="5" x="538" y="352" width="18" height="18" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
-    <rect data-seat="SLV-C6" data-ticket-type="SILVER PASS" data-row="C" data-column="6" x="564" y="352" width="18" height="18" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
-    <rect data-seat="SLV-C7" data-ticket-type="SILVER PASS" data-row="C" data-column="7" x="590" y="352" width="18" height="18" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
-    <rect data-seat="SLV-C8" data-ticket-type="SILVER PASS" data-row="C" data-column="8" x="616" y="352" width="18" height="18" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
-    <rect data-seat="SLV-C9" data-ticket-type="SILVER PASS" data-row="C" data-column="9" x="642" y="352" width="18" height="18" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
-    <rect data-seat="SLV-C10" data-ticket-type="SILVER PASS" data-row="C" data-column="10" x="668" y="352" width="18" height="18" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
-    <rect data-seat="SLV-D1" data-ticket-type="SILVER PASS" data-row="D" data-column="1" x="434" y="378" width="18" height="18" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
-    <rect data-seat="SLV-D2" data-ticket-type="SILVER PASS" data-row="D" data-column="2" x="460" y="378" width="18" height="18" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
-    <rect data-seat="SLV-D3" data-ticket-type="SILVER PASS" data-row="D" data-column="3" x="486" y="378" width="18" height="18" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
-    <rect data-seat="SLV-D4" data-ticket-type="SILVER PASS" data-row="D" data-column="4" x="512" y="378" width="18" height="18" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
-    <rect data-seat="SLV-D5" data-ticket-type="SILVER PASS" data-row="D" data-column="5" x="538" y="378" width="18" height="18" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
-    <rect data-seat="SLV-D6" data-ticket-type="SILVER PASS" data-row="D" data-column="6" x="564" y="378" width="18" height="18" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
-    <rect data-seat="SLV-D7" data-ticket-type="SILVER PASS" data-row="D" data-column="7" x="590" y="378" width="18" height="18" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
-    <rect data-seat="SLV-D8" data-ticket-type="SILVER PASS" data-row="D" data-column="8" x="616" y="378" width="18" height="18" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
-    <rect data-seat="SLV-D9" data-ticket-type="SILVER PASS" data-row="D" data-column="9" x="642" y="378" width="18" height="18" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
-    <rect data-seat="SLV-D10" data-ticket-type="SILVER PASS" data-row="D" data-column="10" x="668" y="378" width="18" height="18" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
-
-    <rect data-seat="GA-A1" data-ticket-type="GENERAL ADMISSION" data-row="A" data-column="1" x="222" y="465" width="18" height="18" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
-    <rect data-seat="GA-A2" data-ticket-type="GENERAL ADMISSION" data-row="A" data-column="2" x="248" y="465" width="18" height="18" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
-    <rect data-seat="GA-A3" data-ticket-type="GENERAL ADMISSION" data-row="A" data-column="3" x="274" y="465" width="18" height="18" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
-    <rect data-seat="GA-A4" data-ticket-type="GENERAL ADMISSION" data-row="A" data-column="4" x="300" y="465" width="18" height="18" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
-    <rect data-seat="GA-A5" data-ticket-type="GENERAL ADMISSION" data-row="A" data-column="5" x="326" y="465" width="18" height="18" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
-    <rect data-seat="GA-A6" data-ticket-type="GENERAL ADMISSION" data-row="A" data-column="6" x="352" y="465" width="18" height="18" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
-    <rect data-seat="GA-A7" data-ticket-type="GENERAL ADMISSION" data-row="A" data-column="7" x="378" y="465" width="18" height="18" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
-    <rect data-seat="GA-A8" data-ticket-type="GENERAL ADMISSION" data-row="A" data-column="8" x="404" y="465" width="18" height="18" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
-    <rect data-seat="GA-A9" data-ticket-type="GENERAL ADMISSION" data-row="A" data-column="9" x="430" y="465" width="18" height="18" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
-    <rect data-seat="GA-A10" data-ticket-type="GENERAL ADMISSION" data-row="A" data-column="10" x="456" y="465" width="18" height="18" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
-    <rect data-seat="GA-A11" data-ticket-type="GENERAL ADMISSION" data-row="A" data-column="11" x="482" y="465" width="18" height="18" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
-    <rect data-seat="GA-A12" data-ticket-type="GENERAL ADMISSION" data-row="A" data-column="12" x="508" y="465" width="18" height="18" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
-    <rect data-seat="GA-A13" data-ticket-type="GENERAL ADMISSION" data-row="A" data-column="13" x="534" y="465" width="18" height="18" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
-    <rect data-seat="GA-A14" data-ticket-type="GENERAL ADMISSION" data-row="A" data-column="14" x="560" y="465" width="18" height="18" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
-    <rect data-seat="GA-B1" data-ticket-type="GENERAL ADMISSION" data-row="B" data-column="1" x="222" y="491" width="18" height="18" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
-    <rect data-seat="GA-B2" data-ticket-type="GENERAL ADMISSION" data-row="B" data-column="2" x="248" y="491" width="18" height="18" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
-    <rect data-seat="GA-B3" data-ticket-type="GENERAL ADMISSION" data-row="B" data-column="3" x="274" y="491" width="18" height="18" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
-    <rect data-seat="GA-B4" data-ticket-type="GENERAL ADMISSION" data-row="B" data-column="4" x="300" y="491" width="18" height="18" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
-    <rect data-seat="GA-B5" data-ticket-type="GENERAL ADMISSION" data-row="B" data-column="5" x="326" y="491" width="18" height="18" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
-    <rect data-seat="GA-B6" data-ticket-type="GENERAL ADMISSION" data-row="B" data-column="6" x="352" y="491" width="18" height="18" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
-    <rect data-seat="GA-B7" data-ticket-type="GENERAL ADMISSION" data-row="B" data-column="7" x="378" y="491" width="18" height="18" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
-    <rect data-seat="GA-B8" data-ticket-type="GENERAL ADMISSION" data-row="B" data-column="8" x="404" y="491" width="18" height="18" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
-    <rect data-seat="GA-B9" data-ticket-type="GENERAL ADMISSION" data-row="B" data-column="9" x="430" y="491" width="18" height="18" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
-    <rect data-seat="GA-B10" data-ticket-type="GENERAL ADMISSION" data-row="B" data-column="10" x="456" y="491" width="18" height="18" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
-    <rect data-seat="GA-B11" data-ticket-type="GENERAL ADMISSION" data-row="B" data-column="11" x="482" y="491" width="18" height="18" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
-    <rect data-seat="GA-B12" data-ticket-type="GENERAL ADMISSION" data-row="B" data-column="12" x="508" y="491" width="18" height="18" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
-    <rect data-seat="GA-B13" data-ticket-type="GENERAL ADMISSION" data-row="B" data-column="13" x="534" y="491" width="18" height="18" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
-    <rect data-seat="GA-B14" data-ticket-type="GENERAL ADMISSION" data-row="B" data-column="14" x="560" y="491" width="18" height="18" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
-    <rect data-seat="GA-C1" data-ticket-type="GENERAL ADMISSION" data-row="C" data-column="1" x="222" y="517" width="18" height="18" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
-    <rect data-seat="GA-C2" data-ticket-type="GENERAL ADMISSION" data-row="C" data-column="2" x="248" y="517" width="18" height="18" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
-    <rect data-seat="GA-C3" data-ticket-type="GENERAL ADMISSION" data-row="C" data-column="3" x="274" y="517" width="18" height="18" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
-    <rect data-seat="GA-C4" data-ticket-type="GENERAL ADMISSION" data-row="C" data-column="4" x="300" y="517" width="18" height="18" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
-    <rect data-seat="GA-C5" data-ticket-type="GENERAL ADMISSION" data-row="C" data-column="5" x="326" y="517" width="18" height="18" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
-    <rect data-seat="GA-C6" data-ticket-type="GENERAL ADMISSION" data-row="C" data-column="6" x="352" y="517" width="18" height="18" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
-    <rect data-seat="GA-C7" data-ticket-type="GENERAL ADMISSION" data-row="C" data-column="7" x="378" y="517" width="18" height="18" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
-    <rect data-seat="GA-C8" data-ticket-type="GENERAL ADMISSION" data-row="C" data-column="8" x="404" y="517" width="18" height="18" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
-    <rect data-seat="GA-C9" data-ticket-type="GENERAL ADMISSION" data-row="C" data-column="9" x="430" y="517" width="18" height="18" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
-    <rect data-seat="GA-C10" data-ticket-type="GENERAL ADMISSION" data-row="C" data-column="10" x="456" y="517" width="18" height="18" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
-    <rect data-seat="GA-C11" data-ticket-type="GENERAL ADMISSION" data-row="C" data-column="11" x="482" y="517" width="18" height="18" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
-    <rect data-seat="GA-C12" data-ticket-type="GENERAL ADMISSION" data-row="C" data-column="12" x="508" y="517" width="18" height="18" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
-    <rect data-seat="GA-C13" data-ticket-type="GENERAL ADMISSION" data-row="C" data-column="13" x="534" y="517" width="18" height="18" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
-    <rect data-seat="GA-C14" data-ticket-type="GENERAL ADMISSION" data-row="C" data-column="14" x="560" y="517" width="18" height="18" rx="3" fill="#4CAF50" stroke="transparent" stroke-width="0" class="seat"/>
-  </g>
+<g id="zones" aria-label="Khu vực ghế">
+  <rect data-zone="platinum-pass" data-zone-name="PLATINUM PASS" data-ticket-type="PLATINUM PASS" x="275" y="115" width="250" height="120" rx="8" fill="#4CAF50" stroke="transparent" stroke-width="2" class="zone"/>
+  <rect data-zone="gold-pass" data-zone-name="GOLD PASS" data-ticket-type="GOLD PASS" x="95" y="260" width="290" height="150" rx="8" fill="#4CAF50" stroke="transparent" stroke-width="2" class="zone"/>
+  <rect data-zone="silver-pass" data-zone-name="SILVER PASS" data-ticket-type="SILVER PASS" x="415" y="260" width="290" height="150" rx="8" fill="#4CAF50" stroke="transparent" stroke-width="2" class="zone"/>
+  <rect data-zone="general-admission" data-zone-name="GENERAL ADMISSION" data-ticket-type="GENERAL ADMISSION" x="130" y="425" width="540" height="120" rx="8" fill="#4CAF50" stroke="transparent" stroke-width="2" class="zone"/>
+</g>
 </svg>

@@ -15,7 +15,31 @@ export interface Ticket {
   createdAt: string;
 }
 
+/** Raw ticket shape from GET /tickets/me (before concert enrichment). */
+export interface BackendTicket {
+  id: string;
+  orderId: string;
+  concertId: string;
+  ticketTypeId: string;
+  ticketTypeName: string;
+  status: TicketStatus;
+  checkedInAt: string | null;
+  qrPayload?: string;
+  createdAt: string;
+}
+
+export interface BackendTicketListResponse {
+  data: BackendTicket[];
+  total: number;
+  page: number;
+  limit: number;
+  totalPages: number;
+}
+
 export interface TicketListResponse {
   data: Ticket[];
   total: number;
+  page?: number;
+  limit?: number;
+  totalPages?: number;
 }

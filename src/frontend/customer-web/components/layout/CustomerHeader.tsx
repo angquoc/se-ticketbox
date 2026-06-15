@@ -28,6 +28,11 @@ export default function CustomerHeader({ concertName }: CustomerHeaderProps) {
           <Link href="/" className="text-slate-600 hover:text-indigo-600">
             Sự kiện
           </Link>
+          {isAuthenticated && (
+            <Link href="/tickets" className="text-slate-600 hover:text-indigo-600">
+              Vé của tôi
+            </Link>
+          )}
           {isAuthenticated ? (
             <>
               <span className="hidden text-slate-600 sm:inline">
