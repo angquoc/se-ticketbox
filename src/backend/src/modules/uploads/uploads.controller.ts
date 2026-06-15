@@ -62,4 +62,24 @@ export class UploadsController {
   getUploadStatus(@Param('uploadedFileId') uploadedFileId: string) {
     return this.uploadsService.getUploadStatus(uploadedFileId);
   }
+
+  @Post('upload-csv')
+  @UseGuards(AuthGuard)
+  @UseInterceptors(FileInterceptor('file'))
+  uploadGuestListCsv(
+    @Param('concertId') concertId: string,
+    @UploadedFile() file: MulterFile,
+    @Req() req: AuthenticatedRequest,
+  ) {
+    if (!file) {
+      throw new BadRequestException('Thiếu file CSV');
+    }
+
+    return this.uploadsService.uploadGuestListCsv({
+      concertId,
+      file,
+      userId: req.user.sub,
+      role: req.user.role,
+    });
+  }
 }
