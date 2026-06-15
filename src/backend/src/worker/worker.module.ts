@@ -6,9 +6,11 @@ import { StorageModule } from '../modules/storage/storage.module';
 import { TicketIssueProcessor } from './processors/ticket-issue.processor';
 import { NotificationModule } from '../modules/notification/notification.module';
 import { AiBioProcessor } from './processors/ai-bio.processor';
+import { CsvImportProcessor } from './processors/csv-import.processor';
 import { NotificationProcessor } from './processors/notification.processor';
 import { PdfExtractService } from './services/pdf-extract.service';
 import { AiService } from './services/ai.service';
+import { CsvParseService } from './services/csv-parse.service';
 
 @Module({
   imports: [
@@ -24,6 +26,8 @@ import { AiService } from './services/ai.service';
     AiBioProcessor,
     PdfExtractService,
     AiService,
+    CsvParseService,
+    CsvImportProcessor,
   ],
 })
 export class WorkerModule {}
