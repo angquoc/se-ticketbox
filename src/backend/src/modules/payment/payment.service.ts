@@ -173,7 +173,7 @@ export class PaymentService {
     );
 
     const isStaleMockPaymentUrl = (url: string) =>
-      url.includes('/payment/mock-page') || /localhost:3001/i.test(url);
+      url.includes('/payment/mock-page') || /localhost:3000/i.test(url);
 
     if (
       existingInititated?.paymentUrl &&

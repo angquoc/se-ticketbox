@@ -1,9 +1,5 @@
 import { getBackendApiUrl } from '@/lib/backend-url';
 
-/**
- * Older builds pointed mock payment at the Next.js app (port 3001) with path
- * `/payment/mock-page`. The gateway actually lives on the NestJS backend.
- */
 export function normalizeMockPaymentUrl(url: string): string {
   try {
     const parsed = new URL(url);
