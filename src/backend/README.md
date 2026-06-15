@@ -24,7 +24,7 @@ DATABASE_URL="postgresql://ticketbox_user:ticketbox_password@localhost:5434/tick
 REDIS_URL="redis://localhost:6379"
 JWT_SECRET="ticketbox-super-secret"
 JWT_EXPIRES_IN="1d"
-PORT=3000
+PORT=3001
 ```
 
 ## Configuration

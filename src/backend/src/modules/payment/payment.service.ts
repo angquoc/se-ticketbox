@@ -175,7 +175,13 @@ export class PaymentService {
       (payment) => payment.status === PaymentStatus.INITIATED,
     );
 
-    if (existingInititated?.paymentUrl) {
+    const isStaleMockPaymentUrl = (url: string) =>
+      url.includes('/payment/mock-page') || /localhost:3000/i.test(url);
+
+    if (
+      existingInititated?.paymentUrl &&
+      !isStaleMockPaymentUrl(existingInititated.paymentUrl)
+    ) {
       return { paymentUrl: existingInititated.paymentUrl, reused: true };
     }
 
@@ -185,6 +191,14 @@ export class PaymentService {
         order.totalAmountInVnd,
       );
     });
+
+    if (existingInititated) {
+      await this.prisma.paymentTransaction.update({
+        where: { id: existingInititated.id },
+        data: { paymentUrl },
+      });
+      return { paymentUrl, reused: false };
+    }
 
     await this.prisma.paymentTransaction.create({
       data: {

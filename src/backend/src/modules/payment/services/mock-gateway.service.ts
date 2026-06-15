@@ -15,7 +15,7 @@ export class MockGatewayService {
     );
 
     return Promise.resolve(
-      `${baseUrl}/payment/mock-page?orderId=${orderId}&amount=${amount}`,
+      `${baseUrl}/payments/mock-page?orderId=${orderId}&amount=${amount}`,
     );
   }
 

@@ -124,6 +124,7 @@ async function main() {
       saleStartsAt: new Date('2026-02-09T09:00:00'),
       saleEndsAt: new Date('2026-03-29T17:00:00'),
       status: ConcertStatus.COMPLETED,
+      seatMapUrl: '/seatmaps/concerts/tgc-vietnam-2026.svg',
       coverImageUrl: 'https://popsww.com/tgc-vietnam-2026.jpg',
     },
   });
@@ -231,6 +232,7 @@ async function main() {
       saleStartsAt: new Date('2025-11-20T09:00:00'),
       saleEndsAt: new Date('2026-01-24T18:00:00'),
       status: ConcertStatus.COMPLETED,
+      seatMapUrl: '/seatmaps/concerts/2026-kangin-fan-meeting-in-ho-chi-minh.svg',
       coverImageUrl: 'https://kangintour-2026.com/poster.jpg',
     },
   });
@@ -296,6 +298,7 @@ async function main() {
       saleStartsAt: new Date('2026-02-24T09:00:00'),
       saleEndsAt: new Date('2026-04-18T17:00:00'),
       status: ConcertStatus.COMPLETED,
+      seatMapUrl: '/seatmaps/concerts/jessica-reflections-2026.svg',
       coverImageUrl: 'https://ticketbox.vn/jessica-reflections-2026.jpg',
     },
   });
@@ -403,6 +406,86 @@ async function main() {
   ]);
 
   console.log('Created Jessica Reflections concert and ticket types');
+
+  // Concert 4: Summer Music Festival Vietnam 2026
+  const summerConcert = await prisma.concert.create({
+    data: {
+      organizerId: organizer1.id,
+      title: 'SUMMER MUSIC FESTIVAL VIETNAM 2026',
+      slug: 'summer-music-festival-2026',
+      description: 'The biggest summer music festival in Vietnam featuring top international and local artists. Three days of non-stop music, performances, and entertainment.',
+      artistBio: 'Featuring performances from international superstars and emerging Vietnamese artists.',
+      venue: 'Quang Truong Ba Dinh, Ha Noi, Vietnam',
+      startsAt: new Date('2026-07-08T18:00:00'),
+      saleStartsAt: new Date('2026-05-01T09:00:00'),
+      saleEndsAt: new Date('2026-07-08T17:00:00'),
+      status: ConcertStatus.SALE_OPEN,
+      seatMapUrl: '/seatmaps/concerts/summer-music-festival-2026.svg',
+      coverImageUrl: 'https://ticketbox.vn/summer-festival-2026.jpg',
+    },
+  });
+
+  // Ticket types for Summer Music Festival
+  const summerTicketTypes = await Promise.all([
+    prisma.ticketType.create({
+      data: {
+        concertId: summerConcert.id,
+        name: 'PLATINUM PASS',
+        price: 8500000,
+        totalQty: 100,
+        soldQty: 45,
+        reservedQty: 10,
+        maxPerUser: 2,
+        saleStartsAt: new Date('2026-05-01T09:00:00'),
+        saleEndsAt: new Date('2026-07-08T17:00:00'),
+        status: TicketTypeStatus.ACTIVE,
+      },
+    }),
+    prisma.ticketType.create({
+      data: {
+        concertId: summerConcert.id,
+        name: 'GOLD PASS',
+        price: 5500000,
+        totalQty: 300,
+        soldQty: 180,
+        reservedQty: 20,
+        maxPerUser: 4,
+        saleStartsAt: new Date('2026-05-01T09:00:00'),
+        saleEndsAt: new Date('2026-07-08T17:00:00'),
+        status: TicketTypeStatus.ACTIVE,
+      },
+    }),
+    prisma.ticketType.create({
+      data: {
+        concertId: summerConcert.id,
+        name: 'SILVER PASS',
+        price: 3200000,
+        totalQty: 500,
+        soldQty: 320,
+        reservedQty: 30,
+        maxPerUser: 4,
+        saleStartsAt: new Date('2026-05-01T09:00:00'),
+        saleEndsAt: new Date('2026-07-08T17:00:00'),
+        status: TicketTypeStatus.ACTIVE,
+      },
+    }),
+    prisma.ticketType.create({
+      data: {
+        concertId: summerConcert.id,
+        name: 'GENERAL ADMISSION',
+        price: 1500000,
+        totalQty: 2000,
+        soldQty: 1200,
+        reservedQty: 100,
+        maxPerUser: 6,
+        saleStartsAt: new Date('2026-05-01T09:00:00'),
+        saleEndsAt: new Date('2026-07-08T17:00:00'),
+        status: TicketTypeStatus.ACTIVE,
+      },
+    }),
+  ]);
+
+  console.log('Created Summer Music Festival concert and ticket types');
 
   // Create sample orders with tickets
   // Order 1: Customer 1 bought TGC tickets
