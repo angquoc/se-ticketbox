@@ -1,0 +1,30 @@
+{
+  "slug": "summer-music-festival-2026",
+  "background": "summer-festival",
+  "zones": [
+    {
+      "zoneId": "platinum-pass",
+      "zoneName": "PLATINUM PASS",
+      "ticketTypeName": "PLATINUM PASS",
+      "rect": { "x": 275, "y": 115, "width": 250, "height": 120, "rx": 8 }
+    },
+    {
+      "zoneId": "gold-pass",
+      "zoneName": "GOLD PASS",
+      "ticketTypeName": "GOLD PASS",
+      "rect": { "x": 95, "y": 260, "width": 290, "height": 150, "rx": 8 }
+    },
+    {
+      "zoneId": "silver-pass",
+      "zoneName": "SILVER PASS",
+      "ticketTypeName": "SILVER PASS",
+      "rect": { "x": 415, "y": 260, "width": 290, "height": 150, "rx": 8 }
+    },
+    {
+      "zoneId": "general-admission",
+      "zoneName": "GENERAL ADMISSION",
+      "ticketTypeName": "GENERAL ADMISSION",
+      "rect": { "x": 130, "y": 425, "width": 540, "height": 120, "rx": 8 }
+    }
+  ]
+}

@@ -1,0 +1,250 @@
+'use client';
+
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { ALL_TICKET_TYPES, useSeatMap } from '@/hooks/useSeatMap';
+import { requestPurchaseAccess } from '@/lib/waiting-room-access';
+import CustomerHeader from '@/components/layout/CustomerHeader';
+import BackendNotice from '@/components/ui/BackendNotice';
+import SeatFilters from './SeatFilters';
+import InteractiveSeatMap from './InteractiveSeatMap';
+import ZoneListFallback from './ZoneListFallback';
+import SeatLegend from './SeatLegend';
+import SeatSummaryBar from './SeatSummaryBar';
+import { saveZoneSelection } from '@/lib/checkout-storage';
+import { formatVnd } from '@/lib/format';
+
+interface SeatMapPageProps {
+  concertId: string;
+}
+
+export default function SeatMapPage({ concertId }: SeatMapPageProps) {
+  const router = useRouter();
+  const [accessChecked, setAccessChecked] = useState(false);
+  const [accessError, setAccessError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function verifyAccess() {
+      setAccessError(null);
+      try {
+        const result = await requestPurchaseAccess(concertId);
+        if (cancelled) return;
+
+        if (result.granted) {
+          setAccessChecked(true);
+          return;
+        }
+
+        router.replace(`/concerts/${concertId}/waiting`);
+      } catch (error) {
+        if (!cancelled) {
+          setAccessError(
+            error instanceof Error ? error.message : 'Không thể xác minh quyền truy cập',
+          );
+        }
+      }
+    }
+
+    void verifyAccess();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [concertId, router]);
+
+  const {
+    data,
+    loading,
+    error,
+    source,
+    backendError,
+    warning,
+    selectionState,
+    ticketTypeFilter,
+    setTicketTypeFilter,
+    zoneFilter,
+    setZoneFilter,
+    limitWarning,
+    availabilityNotice,
+    filteredZones,
+    zoneOptions,
+    selectZone,
+    setQuantity,
+    isZoneSelected,
+  } = useSeatMap({ concertId });
+
+  const [showFallback, setShowFallback] = useState(false);
+  const [mapReady, setMapReady] = useState(false);
+  const handleBackgroundLoaded = useCallback(() => setMapReady(true), []);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (!mapReady && !loading) setShowFallback(true);
+    }, 5000);
+    return () => clearTimeout(timer);
+  }, [mapReady, loading]);
+
+  const maxQuantity = useMemo(() => {
+    const selection = selectionState.selection;
+    if (!selection || !data) return 1;
+
+    const ticketType = data.ticketTypes.find((tt) => tt.id === selection.ticketTypeId);
+    const zone = ticketType?.zones.find((z) => z.zoneId === selection.zoneId);
+    if (!ticketType || !zone) return 1;
+
+    return Math.min(zone.availableCount, ticketType.maxPerUser);
+  }, [selectionState.selection, data]);
+
+  const handleProceed = () => {
+    if (!selectionState.selection) return;
+    saveZoneSelection(concertId, selectionState.selection);
+    router.push(`/concerts/${concertId}/checkout`);
+  };
+
+  if (!accessChecked) {
+    return (
+      <div className="flex min-h-screen flex-col bg-slate-50">
+        <CustomerHeader />
+        <main className="flex flex-1 items-center justify-center p-4">
+          {accessError ? (
+            <div className="max-w-md rounded-xl border border-red-200 bg-red-50 p-6 text-center">
+              <p className="text-red-700">{accessError}</p>
+            </div>
+          ) : (
+            <div className="text-center">
+              <div className="mx-auto h-10 w-10 animate-spin rounded-full border-4 border-indigo-200 border-t-indigo-600" />
+              <p className="mt-4 text-slate-600">Đang xác minh quyền truy cập...</p>
+            </div>
+          )}
+        </main>
+      </div>
+    );
+  }
+
+  if (loading) {
+    return (
+      <div className="flex min-h-screen flex-col bg-slate-50">
+        <CustomerHeader />
+        <main className="flex flex-1 items-center justify-center">
+          <div className="text-center">
+            <div className="mx-auto h-10 w-10 animate-spin rounded-full border-4 border-indigo-200 border-t-indigo-600" />
+            <p className="mt-4 text-slate-600">Đang tải sơ đồ ghế...</p>
+          </div>
+        </main>
+      </div>
+    );
+  }
+
+  if (error || !data) {
+    return (
+      <div className="flex min-h-screen flex-col bg-slate-50">
+        <CustomerHeader />
+        <main className="flex flex-1 items-center justify-center p-4">
+          <div className="rounded-xl border border-red-200 bg-red-50 p-6 text-center">
+            <p className="text-red-700">{error ?? 'Không tải được dữ liệu'}</p>
+          </div>
+        </main>
+      </div>
+    );
+  }
+
+  const isAllTicketTypes = ticketTypeFilter === ALL_TICKET_TYPES;
+  const activeTicketType = isAllTicketTypes
+    ? null
+    : data.ticketTypes.find((tt) => tt.id === ticketTypeFilter);
+  const availableTotal = data.ticketTypes.reduce(
+    (sum, tt) => sum + tt.zones.reduce((s, z) => s + z.availableCount, 0),
+    0,
+  );
+
+  return (
+    <div className="flex min-h-screen flex-col bg-slate-50">
+      <CustomerHeader concertName={data.concertName} />
+
+      <main className="mx-auto w-full max-w-7xl flex-1 px-4 py-6 pb-32 sm:px-6">
+        <div className="mb-6">
+          <h1 className="text-2xl font-bold text-slate-900">Tổng quan khu vực ghế</h1>
+          <p className="mt-1 text-slate-600">{data.concertName}</p>
+          {data.venueName && (
+            <p className="mt-1 text-sm text-slate-500">{data.venueName}</p>
+          )}
+          <div className="mt-3">
+            <BackendNotice backendError={backendError} warning={warning} source={source} />
+          </div>
+          <p className="mt-2 text-sm text-slate-500">
+            Còn {availableTotal} vé trống
+            {isAllTicketTypes ? (
+              <> · {data.ticketTypes.map((tt) => tt.name).join(', ')}</>
+            ) : (
+              activeTicketType && (
+                <>
+                  {' '}
+                  · {activeTicketType.name}: tối đa {activeTicketType.maxPerUser} vé/người (
+                  {formatVnd(activeTicketType.price)}/vé)
+                </>
+              )
+            )}
+          </p>
+        </div>
+
+        <div className="mb-4">
+          <SeatFilters
+            ticketTypes={data.ticketTypes}
+            ticketTypeFilter={ticketTypeFilter}
+            onTicketTypeChange={setTicketTypeFilter}
+            zones={zoneOptions}
+            zoneFilter={zoneFilter}
+            onZoneChange={setZoneFilter}
+          />
+        </div>
+
+        {limitWarning && (
+          <div className="mb-4 rounded-lg border border-amber-300 bg-amber-50 px-4 py-2 text-sm text-amber-800">
+            {limitWarning}
+          </div>
+        )}
+
+        {availabilityNotice && (
+          <div className="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-2 text-sm text-red-800">
+            {availabilityNotice}
+          </div>
+        )}
+
+        {showFallback && !mapReady && (
+          <div className="mb-4">
+            <ZoneListFallback
+              zones={filteredZones}
+              isZoneSelected={isZoneSelected}
+              onSelectZone={selectZone}
+              onRetry={() => {
+                setShowFallback(false);
+                setMapReady(true);
+              }}
+            />
+          </div>
+        )}
+
+        <div className={showFallback && !mapReady ? 'hidden' : 'mb-4'}>
+          <InteractiveSeatMap
+            seatMapUrl={data.seatMapUrl}
+            zones={filteredZones}
+            isZoneSelected={isZoneSelected}
+            onSelectZone={selectZone}
+            onBackgroundLoaded={handleBackgroundLoaded}
+          />
+        </div>
+
+        <SeatLegend />
+      </main>
+
+      <SeatSummaryBar
+        selectionState={selectionState}
+        maxQuantity={maxQuantity}
+        onQuantityChange={setQuantity}
+        onProceed={handleProceed}
+      />
+    </div>
+  );
+}
