@@ -11,6 +11,15 @@ import { PrismaService } from '../../database/prisma.service';
 import { StorageService } from '../storage/storage.service';
 import { AI_BIO_QUEUE } from '../queue/queue.constants';
 
+export interface MulterFile {
+  fieldname: string;
+  originalname: string;
+  encoding: string;
+  mimetype: string;
+  size: number;
+  buffer: Buffer;
+}
+
 @Injectable()
 export class UploadsService {
   constructor(
@@ -23,7 +32,7 @@ export class UploadsService {
 
   async uploadArtistPdf(params: {
     concertId: string;
-    file: Express.Multer.File;
+    file: MulterFile;
     userId: string;
     role: string;
   }) {
@@ -53,7 +62,7 @@ export class UploadsService {
       );
     }
 
-    const safeFileName = file.originalname.replace(/[^\w.\-]+/g, '_');
+    const safeFileName = file.originalname.replace(/[^\w.-]+/g, '_');
     const objectKey = `concerts/${concertId}/artist-bio/${randomUUID()}-${safeFileName}`;
 
     await this.storage.uploadFile({

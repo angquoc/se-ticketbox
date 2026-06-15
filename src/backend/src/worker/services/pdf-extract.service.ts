@@ -9,13 +9,14 @@ export class PdfExtractService {
 
     try {
       this.logger.log('Đang bắt đầu parse PDF...');
-      
-      // VŨ KHÍ TỐI THƯỢNG: Ép Node.js chạy require nguyên thủy, 
-      // cấm TypeScript can thiệp hay bọc lại thành object.
+
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
       const pdfParse = eval('require("pdf-parse")');
 
       if (typeof pdfParse !== 'function') {
-        throw new Error(`Thư viện vẫn bị lỗi nạp. Kiểu thực tế: ${typeof pdfParse}`);
+        throw new Error(
+          `Thư viện vẫn bị lỗi nạp. Kiểu thực tế: ${typeof pdfParse}`,
+        );
       }
 
       // Tạo một promise báo lỗi sau 5 giây
@@ -24,14 +25,19 @@ export class PdfExtractService {
       });
 
       // Gọi hàm trực tiếp
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-assignment
       const parsePromise = pdfParse(buffer);
-      
+
       // Chạy đua giữa việc đọc file và bộ đếm thời gian
-      const result = await Promise.race([parsePromise, timeoutPromise]) as { text: string };
-      
+      const result = (await Promise.race([parsePromise, timeoutPromise])) as {
+        text: string;
+      };
+
       if (timer) clearTimeout(timer); // Hủy bộ đếm thời gian
-      
-      this.logger.log(`Parse PDF thành công! Độ dài text: ${result.text?.length || 0}`);
+
+      this.logger.log(
+        `Parse PDF thành công! Độ dài text: ${result.text?.length || 0}`,
+      );
       return this.cleanText(result.text || '');
     } catch (error) {
       if (timer) clearTimeout(timer); // Hủy bộ đếm thời gian
@@ -41,9 +47,12 @@ export class PdfExtractService {
   }
 
   private cleanText(text: string) {
-    return text
-      .replace(/\s+/g, ' ')
-      .replace(/\u0000/g, '')
-      .trim();
+    return (
+      text
+        .replace(/\s+/g, ' ')
+        // eslint-disable-next-line no-control-regex
+        .replace(/\u0000/g, '')
+        .trim()
+    );
   }
 }

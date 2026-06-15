@@ -19,7 +19,7 @@ import { AiService } from './services/ai.service';
     StorageModule,
   ],
   providers: [
-    TicketIssueProcessor, 
+    TicketIssueProcessor,
     NotificationProcessor,
     AiBioProcessor,
     PdfExtractService,

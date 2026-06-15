@@ -64,10 +64,10 @@ export class StorageService {
     );
 
     const stream = result.Body as Readable;
-    const chunks: Buffer[] = [];
+    const chunks: Uint8Array[] = [];
 
     for await (const chunk of stream) {
-      chunks.push(Buffer.from(chunk));
+      chunks.push(chunk as Uint8Array);
     }
 
     return Buffer.concat(chunks);

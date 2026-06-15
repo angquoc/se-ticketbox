@@ -9,7 +9,10 @@ import {
 } from '@nestjs/common';
 import { TicketService } from './ticket.service';
 import { AuthGuard } from '../auth/guards/auth.guard';
-import { CurrentUser, type AuthUser } from '../auth/decorators/current-user.decorator';
+import {
+  CurrentUser,
+  type AuthUser,
+} from '../auth/decorators/current-user.decorator';
 
 @Controller('tickets')
 @UseGuards(AuthGuard)

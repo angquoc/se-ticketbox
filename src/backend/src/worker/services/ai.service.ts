@@ -34,8 +34,10 @@ export class AiService {
     }
 
     try {
-      const model = this.genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
-      
+      const model = this.genAI.getGenerativeModel({
+        model: 'gemini-2.5-flash',
+      });
+
       const prompt = `
         Bạn là một chuyên gia biên tập nội dung cho các sự kiện âm nhạc.
         Dưới đây là văn bản trích xuất từ press kit của nghệ sĩ.
@@ -48,7 +50,7 @@ export class AiService {
       `;
 
       const result = await model.generateContent(prompt);
-      const response = await result.response;
+      const response = result.response;
       return response.text().trim();
     } catch (error) {
       this.logger.error('Gọi dịch vụ AI thất bại', error);

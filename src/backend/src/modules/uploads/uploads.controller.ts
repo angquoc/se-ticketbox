@@ -20,6 +20,15 @@ interface JwtPayload {
   role: string;
 }
 
+export interface MulterFile {
+  fieldname: string;
+  originalname: string;
+  encoding: string;
+  mimetype: string;
+  size: number;
+  buffer: Buffer;
+}
+
 type AuthenticatedRequest = Request & {
   user: JwtPayload;
 };
@@ -33,7 +42,7 @@ export class UploadsController {
   @UseInterceptors(FileInterceptor('file'))
   uploadArtistPdf(
     @Param('concertId') concertId: string,
-    @UploadedFile() file: Express.Multer.File,
+    @UploadedFile() file: MulterFile,
     @Req() req: AuthenticatedRequest,
   ) {
     if (!file) {

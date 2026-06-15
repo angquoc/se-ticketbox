@@ -48,13 +48,17 @@ export class AiBioProcessor extends WorkerHost {
         },
       });
 
-      this.logger.log('1. Đã cập nhật DB PROCESSING. Đang tải file từ MinIO...');
+      this.logger.log(
+        '1. Đã cập nhật DB PROCESSING. Đang tải file từ MinIO...',
+      );
       const fileBuffer = await this.storage.downloadFile(objectKey);
 
       this.logger.log('2. Tải file MinIO thành công. Đang bóc tách PDF...');
       const extractedText = await this.pdfExtract.extractText(fileBuffer);
 
-      this.logger.log(`3. Bóc tách PDF xong (${extractedText.length} ký tự). Đang gọi AI...`);
+      this.logger.log(
+        `3. Bóc tách PDF xong (${extractedText.length} ký tự). Đang gọi AI...`,
+      );
 
       if (!extractedText || extractedText.length < 20) {
         throw new Error('PDF_TEXT_EXTRACTION_FAILED');
