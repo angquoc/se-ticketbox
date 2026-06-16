@@ -1,6 +1,6 @@
 'use client';
 import { useState, useRef, useCallback } from 'react';
-import { Guest, Transfer } from '@/components/guests/types.tsx';
+import { Guest, Transfer } from '@/types/guests';
 import TicketBadge from '@/components/guests/TicketBadge.tsx';
 import StatusCell from '@/components/guests/StatusCell.tsx';
 import WarnIcon from '@/components/guests/WarnIcon.tsx';
