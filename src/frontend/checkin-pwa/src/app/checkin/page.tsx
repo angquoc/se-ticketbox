@@ -24,7 +24,7 @@ export default function CheckinPage() {
     ];
     const types = ['General Admission', 'VIP Stage A', 'VIP Stage B', 'Staff Only', 'Press/Media'];
     let currentId = 88894;
-    let baseTime = new Date();
+    const baseTime = new Date();
     baseTime.setHours(14, 12, 0); // Start going backwards from 14:12:00
     
     for (let i = 0; i < 50; i++) {
@@ -43,49 +43,23 @@ export default function CheckinPage() {
   });
 
   return (
-    <div
-      className="min-h-screen flex flex-col items-center"
-      style={{
-        fontFamily: "'Inter', system-ui, sans-serif",
-        color: '#FFFFFF',
-      }}
-    >
-      <div style={{
-        width: '100%',
-        maxWidth: '390px',
-        display: 'flex',
-        flexDirection: 'column',
-        minHeight: '100dvh',
-        position: 'relative',
-        paddingBottom: '96px',
-        boxSizing: 'border-box',
-        overflow: 'hidden',
-        background: scanResult
+    <div className="min-h-screen flex flex-col items-center font-sans text-white">
+      <div className={`w-full max-w-[390px] flex flex-col min-h-[100dvh] relative pb-24 box-border overflow-hidden transition-all duration-300 ${
+        scanResult
           ? (scanResult.status === 'valid'
-              ? 'linear-gradient(180deg, #10B981 0%, #059669 100%)'
-              : 'linear-gradient(180deg, #EF4444 0%, #B91C1C 100%)')
-          : 'transparent',
-        transition: 'background 300ms ease',
-      }}>
+              ? 'bg-gradient-to-b from-success to-emerald-800'
+              : 'bg-gradient-to-b from-error to-red-800')
+          : 'bg-transparent'
+      }`}>
 
         {/* ── Header ── */}
-        <header
-          className="flex-shrink-0 relative z-10"
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            padding: '20px 20px 20px',
-            background: scanResult ? 'transparent' : 'rgba(18, 18, 20, 0.85)',
-            backdropFilter: scanResult ? 'none' : 'blur(10px)',
-            WebkitBackdropFilter: scanResult ? 'none' : 'blur(10px)',
-            borderBottom: scanResult ? '1px solid rgba(255, 255, 255, 0.15)' : '1px solid rgba(255,255,255,0.08)',
-            zIndex: 10,
-            transition: 'background 300ms ease, border-bottom 300ms ease',
-          }}
-        >
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={scanResult ? '#FFFFFF' : '#7C5CFC'} strokeWidth="2.5" strokeLinecap="round" style={{ transition: 'stroke 300ms' }}>
+        <header className={`flex-shrink-0 relative z-10 flex items-center justify-between p-5 border-b transition-all duration-300 ${
+          scanResult
+            ? 'bg-transparent border-white/15'
+            : 'bg-zinc-950/80 backdrop-blur-md border-white/10'
+        }`}>
+          <div className="flex items-center gap-2">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={scanResult ? '#FFFFFF' : 'var(--color-brand)'} strokeWidth="2.5" strokeLinecap="round" className="transition-all duration-300">
               {scanResult ? (
                 <>
                   <line x1="6" y1="20" x2="6" y2="14" />
@@ -100,7 +74,7 @@ export default function CheckinPage() {
                 </>
               )}
             </svg>
-            <span style={{ fontWeight: 800, fontSize: '15px', letterSpacing: '1.5px', color: '#FFFFFF' }}>
+            <span className="font-extrabold text-[15px] tracking-[1.5px] text-white">
               TICKETSCAN
             </span>
           </div>
@@ -129,29 +103,20 @@ export default function CheckinPage() {
             ) : (
               <>
                 {/* Cổng hiện tại & Lượt quét card */}
-                <div className="relative z-10" style={{
-                  background: '#1C1C1E',
-                  border: '1px solid rgba(255,255,255,0.08)',
-                  borderRadius: '16px',
-                  padding: '16px 20px',
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  alignItems: 'center',
-                  margin: '10px 20px 20px',
-                }}>
-                  <div style={{ display: 'flex', flexDirection: 'column' }}>
-                    <span style={{ fontSize: '10px', fontWeight: 500, color: 'rgba(255,255,255,0.4)', letterSpacing: '0.8px' }}>
-                      CỔNG HIỆN TẠI
+                <div className="relative z-10 bg-card-dark border border-white/10 rounded-2xl py-4 px-5 flex justify-between items-center mx-5 mt-2.5 mb-5 shadow-sm">
+                  <div className="flex flex-col">
+                    <span className="text-[10px] font-medium text-white/40 tracking-wider uppercase">
+                      CổNG HIệN TạI
                     </span>
-                    <span style={{ fontSize: '15px', fontWeight: 700, color: '#FFFFFF', marginTop: '4px' }}>
+                    <span className="text-[15px] font-bold text-white mt-1">
                       GATE C1 - VIP NORTH
                     </span>
                   </div>
-                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end' }}>
-                    <span style={{ fontSize: '10px', fontWeight: 500, color: 'rgba(255,255,255,0.4)', letterSpacing: '0.8px' }}>
-                      LƯỢT QUÉT
+                  <div className="flex flex-col items-end">
+                    <span className="text-[10px] font-medium text-white/40 tracking-wider uppercase">
+                      LƯợT QUÉT
                     </span>
-                    <span style={{ fontSize: '16px', fontWeight: 800, color: '#10B981', marginTop: '2px' }}>
+                    <span className="text-base font-extrabold text-success mt-0.5">
                       {(1240 + logs.length).toLocaleString()}
                     </span>
                   </div>
@@ -191,40 +156,32 @@ export default function CheckinPage() {
         )}
 
         {activeTab === 'settings' && (
-          <main className="flex-1 flex flex-col px-6 pb-6 gap-6 overflow-y-auto" style={{ zIndex: 10 }}>
+          <main className="flex-1 flex flex-col px-6 pb-6 gap-6 overflow-y-auto z-10">
             {/* Title & Subtitle */}
-            <div style={{ margin: '15px 0 10px' }}>
-              <h1 style={{ fontSize: '28px', fontWeight: 800, color: '#FFFFFF', letterSpacing: '-0.5px' }}>
+            <div className="my-3.5 mx-0">
+              <h1 className="text-[28px] font-extrabold text-white tracking-tight">
                 Cài đặt
               </h1>
-              <p style={{ fontSize: '13px', fontWeight: 500, color: 'rgba(255,255,255,0.5)', marginTop: '4px' }}>
+              <p className="text-[13px] font-medium text-white/50 mt-1">
                 Quản lý cấu hình ứng dụng soát vé
               </p>
             </div>
 
-            <div style={{
-              background: '#1C1C1E',
-              border: '1px solid rgba(255,255,255,0.08)',
-              borderRadius: '16px',
-              padding: '20px',
-              display: 'flex',
-              flexDirection: 'column',
-              gap: '16px',
-            }}>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                <span style={{ fontSize: '11px', fontWeight: 600, color: 'rgba(255,255,255,0.4)', letterSpacing: '0.8px' }}>
-                  THIẾT BỊ SOÁT VÉ
+            <div className="bg-card-dark border border-white/10 rounded-2xl p-5 flex flex-col gap-4">
+              <div className="flex flex-col gap-1">
+                <span className="text-[11px] font-semibold text-white/40 tracking-wider uppercase">
+                  THIếT Bị SOÁT VÉ
                 </span>
-                <span style={{ fontSize: '15px', fontWeight: 700, color: '#FFFFFF' }}>
+                <span className="text-[15px] font-bold text-white">
                   iPhone 15 Pro Max - Scanner 01
                 </span>
               </div>
-              <hr style={{ border: 'none', borderTop: '1px solid rgba(255,255,255,0.08)' }} />
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                <span style={{ fontSize: '11px', fontWeight: 600, color: 'rgba(255,255,255,0.4)', letterSpacing: '0.8px' }}>
-                  PHIÊN BẢN ỨNG DỤNG
+              <hr className="border-none border-t border-white/10" />
+              <div className="flex flex-col gap-1">
+                <span className="text-[11px] font-semibold text-white/40 tracking-wider uppercase">
+                  PHIÊN BảN ỨNG DụNG
                 </span>
-                <span style={{ fontSize: '15px', fontWeight: 700, color: '#FFFFFF' }}>
+                <span className="text-[15px] font-bold text-white">
                   v1.4.2-pwa
                 </span>
               </div>
@@ -233,45 +190,24 @@ export default function CheckinPage() {
         )}
 
         {/* ── Fixed Bottom Navigation Bar ── */}
-        <div style={{
-          position: 'fixed',
-          bottom: 0,
-          left: '50%',
-          transform: 'translateX(-50%)',
-          width: '100%',
-          maxWidth: '390px',
-          height: '76px',
-          background: scanResult ? 'transparent' : 'rgba(18, 18, 20, 0.85)',
-          backdropFilter: scanResult ? 'none' : 'blur(10px)',
-          WebkitBackdropFilter: scanResult ? 'none' : 'blur(10px)',
-          borderTop: scanResult ? '1px solid rgba(255, 255, 255, 0.15)' : '1px solid rgba(255,255,255,0.06)',
-          display: 'flex',
-          justifyContent: 'space-around',
-          alignItems: 'center',
-          padding: '0 24px 12px',
-          boxSizing: 'border-box',
-          zIndex: 100,
-          transition: 'background 300ms ease, border-top 300ms ease',
-        }}>
+        <div className={`fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[390px] h-[76px] flex justify-around items-center px-6 pb-3 box-border z-[100] border-t transition-all duration-300 ${
+          scanResult
+            ? 'bg-transparent border-white/15'
+            : 'bg-zinc-950/80 backdrop-blur-md border-white/5'
+        }`}>
           {/* QR Tab */}
           <button
             onClick={() => {
               setScanResult(null);
               setActiveTab('scan');
             }}
-            style={{
-              background: !scanResult && activeTab === 'scan' ? '#6366f1' : 'none',
-              border: 'none',
-              borderRadius: '16px',
-              width: '46px',
-              height: '46px',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              color: activeTab === 'scan' ? '#FFFFFF' : (scanResult ? 'rgba(255,255,255,0.6)' : 'rgba(255,255,255,0.4)'),
-              cursor: 'pointer',
-              transition: 'background 200ms, color 200ms',
-            }}
+            className={`border-none rounded-2xl w-[46px] h-[46px] flex items-center justify-center cursor-pointer transition-all duration-200 active:scale-95 ${
+              !scanResult && activeTab === 'scan'
+                ? 'bg-brand text-white shadow-md'
+                : scanResult
+                  ? 'text-white/60'
+                  : 'text-white/40 hover:text-white'
+            }`}
           >
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
               <rect x="3" y="3" width="7" height="7" />
@@ -287,19 +223,13 @@ export default function CheckinPage() {
               setScanResult(null);
               setActiveTab('history');
             }}
-            style={{
-              background: !scanResult && activeTab === 'history' ? '#6366f1' : 'none',
-              border: 'none',
-              borderRadius: '16px',
-              width: '46px',
-              height: '46px',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              color: activeTab === 'history' ? '#FFFFFF' : (scanResult ? 'rgba(255,255,255,0.6)' : 'rgba(255,255,255,0.4)'),
-              cursor: 'pointer',
-              transition: 'background 200ms, color 200ms',
-            }}
+            className={`border-none rounded-2xl w-[46px] h-[46px] flex items-center justify-center cursor-pointer transition-all duration-200 active:scale-95 ${
+              !scanResult && activeTab === 'history'
+                ? 'bg-brand text-white shadow-md'
+                : scanResult
+                  ? 'text-white/60'
+                  : 'text-white/40 hover:text-white'
+            }`}
           >
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
               <circle cx="12" cy="12" r="10" />
@@ -313,19 +243,13 @@ export default function CheckinPage() {
               setScanResult(null);
               setActiveTab('settings');
             }}
-            style={{
-              background: !scanResult && activeTab === 'settings' ? '#6366f1' : 'none',
-              border: 'none',
-              borderRadius: '16px',
-              width: '46px',
-              height: '46px',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              color: activeTab === 'settings' ? '#FFFFFF' : (scanResult ? 'rgba(255,255,255,0.6)' : 'rgba(255,255,255,0.4)'),
-              cursor: 'pointer',
-              transition: 'background 200ms, color 200ms',
-            }}
+            className={`border-none rounded-2xl w-[46px] h-[46px] flex items-center justify-center cursor-pointer transition-all duration-200 active:scale-95 ${
+              !scanResult && activeTab === 'settings'
+                ? 'bg-brand text-white shadow-md'
+                : scanResult
+                  ? 'text-white/60'
+                  : 'text-white/40 hover:text-white'
+            }`}
           >
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
               <circle cx="12" cy="12" r="3" />
