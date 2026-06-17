@@ -35,7 +35,6 @@ export default function CameraScanner({ onScan, onViewHistory }: CameraScannerPr
   const startCamera = useCallback(async () => {
     try {
       console.log('[CameraScanner] Hàm startCamera được gọi.');
-      // Thay alert bằng setDebugInfo để in thẳng ra màn hình, tránh việc iOS chặn alert
       setDebugInfo('[Click] Đã nhận sự kiện bấm nút startCamera!\n');
 
       if (typeof window === 'undefined') {
@@ -44,7 +43,7 @@ export default function CameraScanner({ onScan, onViewHistory }: CameraScannerPr
       }
 
       console.log('[CameraScanner] Kiểm tra isSecureContext:', window.isSecureContext);
-      if (window.isSecureContext === false) { // Có thể undefined trên một số trình duyệt siêu cũ, nên check === false
+      if (window.isSecureContext === false) {
         console.warn('[CameraScanner] Không phải context bảo mật (HTTPS/localhost).');
         setState('error');
         setErrorMsg('Cần HTTPS để dùng camera.');
@@ -102,7 +101,6 @@ export default function CameraScanner({ onScan, onViewHistory }: CameraScannerPr
           };
           video.addEventListener('loadedmetadata', onReady, { once: true });
           video.addEventListener('loadeddata', onReady, { once: true });
-          // Fallback: sau 2s nếu event không fire thì vẫn tiếp tục
           setTimeout(() => {
             console.log('[CameraScanner] Timeout chờ metadata, vẫn tiếp tục...');
             resolve();
@@ -148,11 +146,12 @@ export default function CameraScanner({ onScan, onViewHistory }: CameraScannerPr
           setErrorMsg('Lỗi không xác định.');
         }
       }
-    } catch (fatalErr: any) {
-      console.error('[CameraScanner] Lỗi nghiêm trọng chưa xử lý:', fatalErr);
+    } catch (fatalErr: unknown) {
+      const errorInstance = fatalErr instanceof Error ? fatalErr : new Error(String(fatalErr));
+      console.error('[CameraScanner] Lỗi nghiêm trọng chưa xử lý:', errorInstance);
       setState('error');
       setErrorMsg('Đã xảy ra lỗi nghiêm trọng.');
-      setDebugInfo(fatalErr.message || String(fatalErr));
+      setDebugInfo(errorInstance.message);
     }
   }, []);
 
@@ -185,8 +184,9 @@ export default function CameraScanner({ onScan, onViewHistory }: CameraScannerPr
   }, [state, onScan]);
 
   useEffect(() => {
-    // Tự động khởi động camera khi tải trang
-    startCamera();
+    const timer = setTimeout(() => {
+      startCamera();
+    }, 0);
 
     const handleError = (event: ErrorEvent) => {
       setDebugInfo((prev) => prev + `\n[Lỗi ngầm JS]: ${event.message}`);
@@ -198,7 +198,6 @@ export default function CameraScanner({ onScan, onViewHistory }: CameraScannerPr
     window.addEventListener('error', handleError);
     window.addEventListener('unhandledrejection', handleRejection);
 
-    // Đoạn code tạm thời để ép trình duyệt xóa Service Worker (PWA Cache)
     if (typeof window !== 'undefined' && 'serviceWorker' in navigator) {
       navigator.serviceWorker.getRegistrations().then((registrations) => {
         for (const registration of registrations) {
@@ -209,6 +208,7 @@ export default function CameraScanner({ onScan, onViewHistory }: CameraScannerPr
     }
 
     return () => {
+      clearTimeout(timer);
       stopCamera();
       window.removeEventListener('error', handleError);
       window.removeEventListener('unhandledrejection', handleRejection);
@@ -218,34 +218,13 @@ export default function CameraScanner({ onScan, onViewHistory }: CameraScannerPr
   return (
     <>
       {/* Camera Box / Overlay - Expanded to full relative viewport container */}
-      <div
-        style={{
-          position: 'absolute',
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          overflow: 'hidden',
-          backgroundColor: 'rgba(0, 0, 0, 0.4)',
-          zIndex: 0,
-        }}
-      >
+      <div className="absolute inset-0 overflow-hidden bg-black/40 z-0">
         {/* Video feed */}
         <video
           ref={videoRef}
-          style={{
-            position: 'absolute',
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            width: '100%',
-            height: '100%',
-            objectFit: 'cover',
-            zIndex: 1,
-            transition: 'opacity 300ms',
-            opacity: state === 'active' ? 1 : 0,
-          }}
+          className={`absolute inset-0 w-full h-full object-cover z-1 transition-opacity duration-300 ${
+            state === 'active' ? 'opacity-100' : 'opacity-0'
+          }`}
           playsInline
           muted
           autoPlay
@@ -253,51 +232,18 @@ export default function CameraScanner({ onScan, onViewHistory }: CameraScannerPr
 
         {/* Idle / Error / Requesting states */}
         {state !== 'active' && (
-          <div
-            style={{
-              position: 'absolute',
-              top: 0,
-              left: 0,
-              right: 0,
-              bottom: 0,
-              display: 'flex',
-              flexDirection: 'column',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: '12px',
-              paddingLeft: '24px',
-              paddingRight: '24px',
-              zIndex: 5,
-            }}
-          >
+          <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 px-6 z-5">
             {state === 'error' ? (
-              <div
-                style={{
-                  textAlign: 'center',
-                  backgroundColor: 'rgba(9, 9, 11, 0.8)',
-                  padding: '20px',
-                  borderRadius: '16px',
-                  border: '1px solid rgba(239, 68, 68, 0.2)',
-                }}
-              >
-                <p style={{ color: '#F87171', fontSize: '14px', fontWeight: 500, marginBottom: '4px' }}>Không thể mở camera</p>
-                <p style={{ color: '#94A3B8', fontSize: '12px', lineHeight: 1.625, whiteSpace: 'pre-line' }}>
+              <div className="text-center bg-zinc-950/80 p-5 rounded-2xl border border-red-500/20">
+                <p className="color-red-400 text-sm font-medium mb-1 text-red-400">Không thể mở camera</p>
+                <p className="text-slate-400 text-xs leading-relaxed whiteSpace-pre-line">
                   {errorMsg}
                 </p>
               </div>
             ) : (
-              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '12px' }}>
-                <div
-                  style={{
-                    width: '40px',
-                    height: '40px',
-                    borderRadius: '50%',
-                    border: '4px solid #6366f1',
-                    borderTopColor: 'transparent',
-                    animation: 'spin-loader 0.8s linear infinite',
-                  }}
-                />
-                <p style={{ color: '#94A3B8', fontSize: '14px' }}>Đang mở camera...</p>
+              <div className="flex flex-col items-center gap-3">
+                <div className="w-10 h-10 rounded-full border-4 border-brand border-t-transparent animate-spin" />
+                <p className="text-slate-400 text-sm">Đang mở camera...</p>
               </div>
             )}
           </div>
@@ -305,114 +251,62 @@ export default function CameraScanner({ onScan, onViewHistory }: CameraScannerPr
 
         {/* QR scan overlay - Khung quét và tia quét */}
         {state === 'active' && (
-          <div
-            style={{
-              position: 'absolute',
-              top: 0,
-              left: 0,
-              right: 0,
-              bottom: 0,
-              pointerEvents: 'none',
-              zIndex: 10,
-              display: 'grid',
-              gridTemplateRows: '1fr 250px 1fr',
-              gridTemplateColumns: '1fr 250px 1fr',
-              transform: 'translateZ(0)',
-              WebkitTransform: 'translateZ(0)'
-            }}
-          >
+          <div className="absolute inset-0 pointer-events-none z-10 grid grid-rows-[1fr_250px_1fr] grid-cols-[1fr_250px_1fr] transform translate-z-0">
             {/* Top mask overlay */}
-            <div style={{ gridRow: '1', gridColumn: '1 / 4', backgroundColor: 'rgba(0, 0, 0, 0.6)', backdropFilter: 'blur(5px)', WebkitBackdropFilter: 'blur(5px)' }} />
+            <div className="bg-black/60 backdrop-blur-[5px]" style={{ gridRow: '1', gridColumn: '1 / 4' }} />
             {/* Bottom mask overlay */}
-            <div style={{ gridRow: '3', gridColumn: '1 / 4', backgroundColor: 'rgba(0, 0, 0, 0.6)', backdropFilter: 'blur(5px)', WebkitBackdropFilter: 'blur(5px)' }} />
+            <div className="bg-black/60 backdrop-blur-[5px]" style={{ gridRow: '3', gridColumn: '1 / 4' }} />
             {/* Left mask overlay */}
-            <div style={{ gridRow: '2', gridColumn: '1', backgroundColor: 'rgba(0, 0, 0, 0.6)', backdropFilter: 'blur(5px)', WebkitBackdropFilter: 'blur(5px)' }} />
+            <div className="bg-black/60 backdrop-blur-[5px]" style={{ gridRow: '2', gridColumn: '1' }} />
             {/* Right mask overlay */}
-            <div style={{ gridRow: '2', gridColumn: '3', backgroundColor: 'rgba(0, 0, 0, 0.6)', backdropFilter: 'blur(5px)', WebkitBackdropFilter: 'blur(5px)' }} />
+            <div className="bg-black/60 backdrop-blur-[5px]" style={{ gridRow: '2', gridColumn: '3' }} />
 
             {/* Central scan frame (180px * 180px) */}
-            <div style={{ gridRow: '2', gridColumn: '2', position: 'relative', width: '100%', height: '100%', pointerEvents: 'none' }}>
+            <div className="relative w-full h-full pointer-events-none" style={{ gridRow: '2', gridColumn: '2' }}>
               {/* Corner: top-left */}
-              <span style={{ position: 'absolute', top: 0, left: 0, width: '24px', height: '24px', borderTop: '4px solid #FFFFFF', borderLeft: '4px solid #FFFFFF', borderTopLeftRadius: '6px' }} />
+              <span className="absolute top-0 left-0 w-6 h-6 border-t-4 border-l-4 border-white rounded-tl-[6px]" />
               {/* Corner: top-right */}
-              <span style={{ position: 'absolute', top: 0, right: 0, width: '24px', height: '24px', borderTop: '4px solid #FFFFFF', borderRight: '4px solid #FFFFFF', borderTopRightRadius: '6px' }} />
+              <span className="absolute top-0 right-0 w-6 h-6 border-t-4 border-r-4 border-white rounded-tr-[6px]" />
               {/* Corner: bottom-left */}
-              <span style={{ position: 'absolute', bottom: 0, left: 0, width: '24px', height: '24px', borderBottom: '4px solid #FFFFFF', borderLeft: '4px solid #FFFFFF', borderBottomLeftRadius: '6px' }} />
+              <span className="absolute bottom-0 left-0 w-6 h-6 border-b-4 border-l-4 border-white rounded-bl-[6px]" />
               {/* Corner: bottom-right */}
-              <span style={{ position: 'absolute', bottom: 0, right: 0, width: '24px', height: '24px', borderBottom: '4px solid #FFFFFF', borderRight: '4px solid #FFFFFF', borderBottomRightRadius: '6px' }} />
+              <span className="absolute bottom-0 right-0 w-6 h-6 border-b-4 border-r-4 border-white rounded-br-[6px]" />
 
               {/* Scanning line */}
-              <div
-                style={{
-                  position: 'absolute',
-                  left: '6px',
-                  right: '6px',
-                  height: '2px',
-                  backgroundColor: 'rgba(52, 211, 153, 0.8)',
-                  boxShadow: '0 0 8px #10B981',
-                  animation: 'scanline 2.5s linear infinite',
-                  top: '50%',
-                }}
-              />
+              <div className="absolute left-1.5 right-1.5 h-0.5 bg-emerald-400/80 shadow-[0_0_8px_#10B981] animate-scanline top-1/2" />
             </div>
           </div>
         )}
       </div>
 
-      {/* Floating Bottom Panel containing buttons and debug info, placed exactly 10px above the Bottom Navigation Bar (76px + 10px = 86px) */}
-      <div
-        style={{
-          position: 'absolute',
-          bottom: '86px',
-          left: '24px',
-          right: '24px',
-          zIndex: 20,
-          display: 'flex',
-          flexDirection: 'column',
-          gap: '12px',
-        }}
-      >
+      {/* Floating Bottom Panel containing buttons and debug info */}
+      <div className="absolute bottom-[86px] left-6 right-6 z-20 flex flex-col gap-3">
         {/* Bộ đôi nút Đèn Flash & Lịch Sử */}
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px', width: '100%' }}>
+        <div className="grid grid-cols-2 gap-3.5 w-full">
           <button
             onClick={() => {
               if (streamRef.current) {
                 const track = streamRef.current.getVideoTracks()[0];
-                const capabilities = track.getCapabilities?.() as any;
+                const capabilities = (track.getCapabilities?.() || {}) as MediaTrackCapabilities & { torch?: boolean };
                 if (capabilities && capabilities.torch) {
-                  const constraints = track.getConstraints() as any;
+                  const constraints = track.getConstraints() as MediaTrackConstraints & { advanced?: Array<{ torch?: boolean }> };
                   const currentTorch = constraints.advanced?.[0]?.torch || false;
-                  track.applyConstraints({
-                    advanced: [{ torch: !currentTorch } as any]
+                  void track.applyConstraints({
+                    advanced: [{ torch: !currentTorch } as MediaTrackConstraintSet & { torch?: boolean }]
                   });
                 } else {
                   console.log('Flashlight/Torch is not supported on this device/browser.');
                 }
               }
             }}
-            style={{
-              background: 'rgba(255,255,255,0.08)',
-              backdropFilter: 'blur(10px)',
-              WebkitBackdropFilter: 'blur(10px)',
-              border: '1px solid rgba(255,255,255,0.12)',
-              borderRadius: '16px',
-              padding: '16px',
-              color: '#FFFFFF',
-              display: 'flex',
-              flexDirection: 'column',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: '8px',
-              cursor: 'pointer',
-              fontFamily: 'inherit',
-            }}
+            className="bg-white/8 backdrop-blur-md border border-white/12 rounded-2xl p-4 text-white flex flex-col items-center justify-center gap-2 cursor-pointer transition-all duration-200 active:scale-95 hover:bg-white/12"
           >
             {/* Flashlight Icon */}
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
               <path d="M18 6h-2l-1.2-2.4a1 1 0 0 0-.8-.6H10a1 1 0 0 0-.8.6L8 6H6a2 2 0 0 0-2 2v3a2 2 0 0 0 1.5 1.9L6 20a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2l.5-7.1A2 2 0 0 0 20 11V8a2 2 0 0 0-2-2z" />
               <line x1="12" y1="12" x2="12" y2="12.01" />
             </svg>
-            <span style={{ fontSize: '11px', fontWeight: 700, color: 'rgba(255,255,255,0.85)', letterSpacing: '0.3px' }}>
+            <span className="text-[11px] font-bold text-white/85 tracking-wider uppercase">
               ĐÈN FLASH
             </span>
           </button>
@@ -421,29 +315,14 @@ export default function CameraScanner({ onScan, onViewHistory }: CameraScannerPr
             onClick={() => {
               onViewHistory?.();
             }}
-            style={{
-              background: 'rgba(255,255,255,0.08)',
-              backdropFilter: 'blur(10px)',
-              WebkitBackdropFilter: 'blur(10px)',
-              border: '1px solid rgba(255,255,255,0.12)',
-              borderRadius: '16px',
-              padding: '16px',
-              color: '#FFFFFF',
-              display: 'flex',
-              flexDirection: 'column',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: '8px',
-              cursor: 'pointer',
-              fontFamily: 'inherit',
-            }}
+            className="bg-white/8 backdrop-blur-md border border-white/12 rounded-2xl p-4 text-white flex flex-col items-center justify-center gap-2 cursor-pointer transition-all duration-200 active:scale-95 hover:bg-white/12"
           >
             {/* History Icon */}
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
               <circle cx="12" cy="12" r="10" />
               <polyline points="12 6 12 12 16 14" />
             </svg>
-            <span style={{ fontSize: '11px', fontWeight: 700, color: 'rgba(255,255,255,0.85)', letterSpacing: '0.3px' }}>
+            <span className="text-[11px] font-bold text-white/85 tracking-wider uppercase">
               LỊCH SỬ
             </span>
           </button>
@@ -451,37 +330,12 @@ export default function CameraScanner({ onScan, onViewHistory }: CameraScannerPr
 
         {/* Debug details panel inside absolute container */}
         {debugInfo !== '' && state === 'error' && (
-          <div
-            style={{
-              width: '100%',
-              borderRadius: '12px',
-              padding: '12px 16px',
-              fontSize: '12px',
-              color: '#CBD5E1',
-              lineHeight: 1.625,
-              background: 'rgba(15, 23, 42, 0.85)',
-              backdropFilter: 'blur(10px)',
-              WebkitBackdropFilter: 'blur(10px)',
-              border: '1px solid rgba(255,255,255,0.12)'
-            }}
-          >
-            <p style={{ color: '#94A3B8', fontWeight: 500, marginBottom: '4px' }}>Chi tiết kỹ thuật:</p>
-            <p style={{ margin: 0, whiteSpace: 'pre-wrap', fontFamily: 'monospace' }}>{debugInfo}</p>
+          <div className="w-full rounded-xl py-3 px-4 text-xs text-slate-300 leading-relaxed bg-slate-900/85 backdrop-blur-md border border-white/12">
+            <p className="text-slate-400 font-medium mb-1">Chi tiết kỹ thuật:</p>
+            <p className="margin-0 whiteSpace-pre-wrap font-mono">{debugInfo}</p>
           </div>
         )}
       </div>
-
-      {/* Keyframe animations */}
-      <style>{`
-        @keyframes scanline {
-          0%   { top: 4%;  }
-          50%  { top: 96%; }
-          100% { top: 4%;  }
-        }
-        @keyframes spin-loader {
-          to { transform: rotate(360deg); }
-        }
-      `}</style>
     </>
   );
 }
