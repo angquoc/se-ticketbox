@@ -23,7 +23,9 @@ import { HealthModule } from './modules/health/health.module';
 import { OrderModule } from './modules/order/order.module';
 import { TicketModule } from './modules/ticket/ticket.module';
 import { NotificationModule } from './modules/notification/notification.module';
+import { CheckinModule } from './modules/checkin/checkin.module';
 import { WorkerModule } from './worker/worker.module';
+import { RateLimitModule } from './modules/rate-limit/rate-limit.module';
 import { UploadsModule } from './modules/uploads/uploads.module';
 
 @Module({
@@ -45,7 +47,9 @@ import { UploadsModule } from './modules/uploads/uploads.module';
     OrderModule,
     TicketModule,
     NotificationModule,
+    CheckinModule,
     WorkerModule,
+    RateLimitModule,
     BullModule.forRootAsync({
       imports: [ConfigModule],
       inject: [ConfigService],
