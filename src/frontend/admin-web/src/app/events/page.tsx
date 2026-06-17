@@ -1,5 +1,6 @@
 'use client';
 import { useState } from 'react';
+import Link from 'next/link';
 
 // ── Types ────────────────────────────────────────────────────────────
 type EventStatus = 'Upcoming' | 'Ongoing' | 'Sold Out';
@@ -531,7 +532,20 @@ export default function EventsPage() {
                   <StatusBadge status={event.status} />
 
                   {/* Actions */}
-                  <div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', justifyContent: 'center' }}>
+                    <Link
+                      href={`/events/${event.id}`}
+                      style={{
+                        background: 'none', border: 'none',
+                        padding: '4px 0',
+                        color: '#434654', fontSize: '13px', fontWeight: 500,
+                        cursor: 'pointer', fontFamily: 'var(--font-sans)',
+                        textDecoration: 'none',
+                      }}
+                    >
+                      View
+                    </Link>
+                    <span style={{ color: '#C3C5D7', fontSize: '12px' }}>|</span>
                     {isEditing ? (
                       <button
                         onClick={() => setEditingEvent(null)}
