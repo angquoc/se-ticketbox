@@ -29,7 +29,5 @@ export const REDIS_KEY_RATE_LIMIT_USER = (
  *
  * Example: rate-limit:ip:192.168.1.1:/orders → Redis Hash { tokens, lastRefill }
  */
-export const REDIS_KEY_RATE_LIMIT_IP = (
-  ip: string,
-  route: string,
-): string => `rate-limit:ip:${ip}:${route}`;
+export const REDIS_KEY_RATE_LIMIT_IP = (ip: string, route: string): string =>
+  `rate-limit:ip:${ip}:${route}`;

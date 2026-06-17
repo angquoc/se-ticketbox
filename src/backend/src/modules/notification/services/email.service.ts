@@ -45,7 +45,9 @@ export class EmailService {
       </div>
     `,
       )
-      .join('<hr style="border:none;border-top:1px solid #e0e0e0;margin:12px 0;"/>');
+      .join(
+        '<hr style="border:none;border-top:1px solid #e0e0e0;margin:12px 0;"/>',
+      );
 
     const html = `
 <!DOCTYPE html>

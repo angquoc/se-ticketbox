@@ -54,9 +54,9 @@ export class RateLimitService implements OnModuleInit {
     try {
       const scriptPath = this.getScriptPath(filename);
       const scriptBody = readFileSync(scriptPath, 'utf8');
-      const sha = (await this.redisService
+      const sha = await this.redisService
         .getClient()
-        .script('LOAD', scriptBody)) as string;
+        .script('LOAD', scriptBody);
       this.scriptCache.set(filename, sha);
       this.logger.log(`Loaded Lua script: ${filename} (SHA: ${sha})`);
     } catch (err) {
@@ -135,9 +135,7 @@ export class RateLimitService implements OnModuleInit {
   ): Promise<TokenBucketResult> {
     const now = Math.floor(Date.now() / 1000);
 
-    const userKey = userId
-      ? `rate-limit:user:${userId}:${route}`
-      : '__none__';
+    const userKey = userId ? `rate-limit:user:${userId}:${route}` : '__none__';
     const ipKey = `rate-limit:ip:${ip}:${route}`;
 
     // When userId is not available, pass a dummy key that the Lua script

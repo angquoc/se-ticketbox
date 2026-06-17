@@ -29,7 +29,10 @@ import {
   OrderTicketResponseDto,
   CreateOrderResponseDto,
 } from './dto/order-response.dto';
-import { ORDER_EXPIRE_QUEUE, NOTIFICATION_QUEUE } from '../queue/queue.constants';
+import {
+  ORDER_EXPIRE_QUEUE,
+  NOTIFICATION_QUEUE,
+} from '../queue/queue.constants';
 import { PaymentService } from '../payment/payment.service';
 
 const DEFAULT_RESERVATION_TTL_SECONDS = 15 * 60; // 15 minutes
@@ -391,7 +394,6 @@ export class OrderService {
 
     const totalAmount = subtotals.reduce((sum, s) => sum + s.subtotal, 0);
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     let created: any = null;
 
     try {
@@ -450,8 +452,14 @@ export class OrderService {
     await Promise.all(
       ticketMeta.map((m) =>
         this.prisma.userTicketCounter.upsert({
-          where: { userId_ticketTypeId: { userId, ticketTypeId: m.ticketTypeId } },
-          create: { userId, ticketTypeId: m.ticketTypeId, reservedQty: m.quantity },
+          where: {
+            userId_ticketTypeId: { userId, ticketTypeId: m.ticketTypeId },
+          },
+          create: {
+            userId,
+            ticketTypeId: m.ticketTypeId,
+            reservedQty: m.quantity,
+          },
           update: { reservedQty: { increment: m.quantity } },
         }),
       ),
@@ -460,7 +468,10 @@ export class OrderService {
     // Create PaymentTransaction and get payment URL from gateway
     let paymentUrl: string;
     try {
-      const result = await this.paymentService.createPaymentUrl({ orderId, userId });
+      const result = await this.paymentService.createPaymentUrl({
+        orderId,
+        userId,
+      });
       paymentUrl = result.paymentUrl;
     } catch (gatewayErr) {
       // Payment gateway failed → rollback everything
@@ -511,7 +522,7 @@ export class OrderService {
     this.logger.debug(`Expire job scheduled for order ${orderId} in ${ttl}s`);
 
     return {
-      order: this.toOrderResponseMinimal(created as unknown as OrderWithMinimalTickets, paymentUrl),
+      order: this.toOrderResponseMinimal(created, paymentUrl),
       paymentUrl,
     };
   }
@@ -556,7 +567,7 @@ export class OrderService {
       );
     }
 
-    return this.toOrderResponseFull(order as OrderWithFullTickets, null);
+    return this.toOrderResponseFull(order, null);
   }
 
   // ─────────────────────────────────────────────────────────────────────────────
@@ -655,7 +666,9 @@ export class OrderService {
     await Promise.all(
       order.items.map((item) =>
         this.prisma.userTicketCounter.update({
-          where: { userId_ticketTypeId: { userId, ticketTypeId: item.ticketTypeId } },
+          where: {
+            userId_ticketTypeId: { userId, ticketTypeId: item.ticketTypeId },
+          },
           data: { reservedQty: { decrement: item.quantity } },
         }),
       ),
@@ -682,7 +695,7 @@ export class OrderService {
     });
 
     this.logger.log(`Order ${orderId} cancelled by user ${userId}`);
-    return this.toOrderResponseMinimal(updated as OrderWithMinimalTickets, null);
+    return this.toOrderResponseMinimal(updated, null);
   }
 
   // ─────────────────────────────────────────────────────────────────────────────
@@ -756,7 +769,7 @@ export class OrderService {
     }
 
     const paymentUrl = (order.payments ?? [])[0]?.paymentUrl ?? null;
-    return this.toOrderResponseMinimal(order as OrderWithMinimalTickets, paymentUrl);
+    return this.toOrderResponseMinimal(order, paymentUrl);
   }
 
   // ─────────────────────────────────────────────────────────────────────────────
