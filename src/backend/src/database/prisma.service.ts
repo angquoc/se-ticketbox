@@ -10,7 +10,7 @@ export class PrismaService
   implements OnModuleInit, OnModuleDestroy
 {
   constructor(private readonly configService: ConfigService) {
-    const connectionString = configService.get<string>('database.url');
+    const connectionString = configService.get<string>('DATABASE_URL');
 
     if (!connectionString) {
       throw new Error('DATABASE_URL is missing in environment variables.');

@@ -26,6 +26,7 @@ import { NotificationModule } from './modules/notification/notification.module';
 import { CheckinModule } from './modules/checkin/checkin.module';
 import { WorkerModule } from './worker/worker.module';
 import { RateLimitModule } from './modules/rate-limit/rate-limit.module';
+import { UploadsModule } from './modules/uploads/uploads.module';
 
 @Module({
   imports: [
@@ -58,6 +59,7 @@ import { RateLimitModule } from './modules/rate-limit/rate-limit.module';
         },
       }),
     }),
+    UploadsModule,
   ],
   controllers: [AppController],
   providers: [AppService],

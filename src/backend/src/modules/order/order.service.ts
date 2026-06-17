@@ -522,6 +522,7 @@ export class OrderService {
     this.logger.debug(`Expire job scheduled for order ${orderId} in ${ttl}s`);
 
     return {
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
       order: this.toOrderResponseMinimal(created, paymentUrl),
       paymentUrl,
     };
