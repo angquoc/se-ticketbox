@@ -1,16 +1,38 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
 
-* {
-  margin: 0;
-  padding: 0;
-  box-sizing: border-box;
+@theme {
+  --color-brand: #7C5CFC;
+  --color-brand-hover: #5A3FC0;
+  --color-success: #10B981;
+  --color-error: #EF4444;
+  --color-bg-dark: #0D0D0F;
+  --color-card-dark: #1C1C1E;
+
+  --animate-radar: radar 2s infinite;
+  --animate-scanline: scanline 2.5s linear infinite;
+
+  @keyframes radar {
+    0% { transform: scale(0.95); opacity: 0.5; box-shadow: 0 0 0 0 rgba(74, 222, 128, 0.7); }
+    70% { transform: scale(1); opacity: 1; box-shadow: 0 0 0 6px rgba(74, 222, 128, 0); }
+    100% { transform: scale(0.95); opacity: 0.5; box-shadow: 0 0 0 0 rgba(74, 222, 128, 0); }
+  }
+
+  @keyframes scanline {
+    0%   { top: 4%;  }
+    50%  { top: 96%; }
+    100% { top: 4%;  }
+  }
 }
 
-html, body {
+* {
+  box-sizing: border-box;
+  -webkit-tap-highlight-color: transparent;
+}
+
+html,
+body {
   height: 100vh;
-  background: #0f172a;
+  background: var(--color-bg-dark);
   color: white;
 }
 
@@ -19,7 +41,17 @@ input {
   font-size: 16px !important;
 }
 
+input::placeholder {
+  color: rgba(255, 255, 255, 0.2);
+}
+
+select option {
+  background: var(--color-card-dark);
+  color: white;
+}
+
 /* iOS safe area */
 body {
   padding-bottom: env(safe-area-inset-bottom);
 }
+
