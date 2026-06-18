@@ -1,51 +1,43 @@
 'use client';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import StatCard, { StatCardProps } from '@/components/dashboard/StatCard';
 import RevenueChart from '@/components/dashboard/RevenueChart';
 import UpcomingEvents, { UpcomingEventData } from '@/components/dashboard/UpcomingEvents';
 import { getConcerts, getConcertById } from '@/services/concertService';
+import { getAdminOrders, Order } from '@/services/orderService';
+import type { Concert } from '@/types/api';
 
-// ── Data ──────────────────────────────────────────────────────────────
-const revenueData30 = [
-  { day: 'May 9', value: 520000000 },
-  { day: 'May 12', value: 580000000 },
-  { day: 'May 15', value: 630000000 },
-  { day: 'May 18', value: 610000000 },
-  { day: 'May 21', value: 750000000 },
-  { day: 'May 24', value: 820000000 },
-  { day: 'May 27', value: 950000000 },
-  { day: 'May 30', value: 1030000000 },
-  { day: 'Jun 2', value: 1120000000 },
-  { day: 'Jun 5', value: 1245920000 },
-];
+// Helper to format trend text based on range
+function getTrendText(change: number, rangeLabel: string) {
+  const period = rangeLabel === '30 Days' ? 'last month' : rangeLabel === '7 Days' ? 'last week' : 'yesterday';
+  if (change > 0) {
+    return `+${change}% from ${period}`;
+  }
+  if (change < 0) {
+    return `${change}% from ${period}`;
+  }
+  return '— No change';
+}
 
-const revenueData7 = [
-  { day: 'May 30', value: 1030000000 },
-  { day: 'May 31', value: 1070000000 },
-  { day: 'Jun 1', value: 1090000000 },
-  { day: 'Jun 2', value: 1120000000 },
-  { day: 'Jun 3', value: 1160000000 },
-  { day: 'Jun 4', value: 1200000000 },
-  { day: 'Jun 5', value: 1245920000 },
-];
+function getTrendIcon(change: number): 'up' | 'down' | 'flat' {
+  if (change > 0) return 'up';
+  if (change < 0) return 'down';
+  return 'flat';
+}
 
-const revenueData24 = [
-  { day: '6am', value: 1180000000 },
-  { day: '9am', value: 1200000000 },
-  { day: '12pm', value: 1215000000 },
-  { day: '3pm', value: 1230000000 },
-  { day: '6pm', value: 1240000000 },
-  { day: '9pm', value: 1245920000 },
-];
-
-const dataMap = { '30 Days': revenueData30, '7 Days': revenueData7, '24 Hours': revenueData24 };
+function getTrendColor(change: number): string {
+  if (change > 0) return '#1D52D7';
+  if (change < 0) return '#BA1A1A';
+  return '#434654';
+}
 
 // ── Main Page ──────────────────────────────────────────────────────────
 export default function DashboardPage() {
   const [activeRange, setActiveRange] = useState<'30 Days' | '7 Days' | '24 Hours'>('30 Days');
-  const chartData = dataMap[activeRange];
 
   const [loading, setLoading] = useState(true);
+  const [concerts, setConcerts] = useState<Concert[]>([]);
+  const [orders, setOrders] = useState<Order[]>([]);
   const [totals, setTotals] = useState({
     totalRevenue: 0,
     ticketsSold: 0,
@@ -60,17 +52,21 @@ export default function DashboardPage() {
         setLoading(true);
         // 1. Fetch all concerts
         const response = await getConcerts(1, 100);
-        console.log(response);
 
         // 2. Fetch details for each concert to get ticketTypes
-        const concerts = await Promise.all(
+        const concertsData = await Promise.all(
           response.data.map(c => getConcertById(c.id).catch(() => null))
         );
 
         // Filter out any failed requests
-        const validConcerts = concerts.filter((c): c is NonNullable<typeof c> => c !== null);
+        const validConcerts = concertsData.filter((c): c is Concert => c !== null);
+        setConcerts(validConcerts);
 
-        // 3. Compute totals
+        // 3. Fetch paid orders
+        const ordersResponse = await getAdminOrders(1, 1000, 'PAID');
+        setOrders(ordersResponse.data);
+
+        // 4. Compute totals
         let totalRevenue = 0;
         let ticketsSold = 0;
         let activeEvents = 0;
@@ -80,14 +76,12 @@ export default function DashboardPage() {
           if (c.status === 'PUBLISHED' || c.status === 'SALE_OPEN') {
             activeEvents++;
           }
+        });
 
-          // Accumulate tickets sold and revenue from ticket types
-          if (c.ticketTypes) {
-            c.ticketTypes.forEach(tt => {
-              ticketsSold += tt.soldQty;
-              totalRevenue += tt.soldQty * tt.price;
-            });
-          }
+        // Sum from real paid orders list
+        ordersResponse.data.forEach(o => {
+          totalRevenue += o.totalAmountInVnd;
+          ticketsSold += o.ticketCount;
         });
 
         setTotals(prev => ({
@@ -97,7 +91,7 @@ export default function DashboardPage() {
           activeEvents,
         }));
 
-        // 4. Extract and format upcoming events (excluding DRAFT and CANCELLED)
+        // 5. Extract and format upcoming events (excluding DRAFT and CANCELLED)
         const displayConcerts = validConcerts
           .filter(c => c.status !== 'DRAFT' && c.status !== 'CANCELLED')
           .sort((a, b) => new Date(a.startsAt).getTime() - new Date(b.startsAt).getTime());
@@ -140,7 +134,6 @@ export default function DashboardPage() {
         setUpcomingEventsList(mappedEvents);
       } catch (err) {
         console.error('Failed to load real dashboard metrics:', err);
-        // Keep fallback mock values on error
       } finally {
         setLoading(false);
       }
@@ -148,6 +141,127 @@ export default function DashboardPage() {
 
     loadDashboardData();
   }, []);
+
+  // ── Range Computations ──────────────────────────────────────────────────
+  const { chartData, revenueChange, ticketsChange, eventsChange } = useMemo(() => {
+    if (orders.length === 0 && concerts.length === 0) {
+      return {
+        chartData: [],
+        revenueChange: 0,
+        ticketsChange: 0,
+        eventsChange: 0,
+      };
+    }
+
+    const rangeMs = {
+      '30 Days': 30 * 24 * 60 * 60 * 1000,
+      '7 Days': 7 * 24 * 60 * 60 * 1000,
+      '24 Hours': 24 * 60 * 60 * 1000,
+    }[activeRange];
+
+    const now = new Date();
+    const currentStart = new Date(now.getTime() - rangeMs);
+    const previousStart = new Date(now.getTime() - 2 * rangeMs);
+
+    const getPaidAtDate = (o: Order) => {
+      return o.paidAt ? new Date(o.paidAt) : new Date(o.createdAt);
+    };
+
+    // Filter paid orders for current and previous periods
+    const currentOrders = orders.filter(o => {
+      const d = getPaidAtDate(o);
+      return d >= currentStart && d <= now;
+    });
+
+    const previousOrders = orders.filter(o => {
+      const d = getPaidAtDate(o);
+      return d >= previousStart && d < currentStart;
+    });
+
+    // Compute sums for comparison
+    const currentRevenue = currentOrders.reduce((sum, o) => sum + o.totalAmountInVnd, 0);
+    const previousRevenue = previousOrders.reduce((sum, o) => sum + o.totalAmountInVnd, 0);
+
+    const currentTickets = currentOrders.reduce((sum, o) => sum + o.ticketCount, 0);
+    const previousTickets = previousOrders.reduce((sum, o) => sum + o.ticketCount, 0);
+
+    const calculateChangePct = (curr: number, prev: number) => {
+      if (prev === 0) {
+        return curr > 0 ? 100 : 0;
+      }
+      return Number((((curr - prev) / prev) * 100).toFixed(1));
+    };
+
+    const revChange = calculateChangePct(currentRevenue, previousRevenue);
+    const tixChange = calculateChangePct(currentTickets, previousTickets);
+
+    // Compute event creations change
+    const activeConcerts = concerts.filter(c => c.status === 'PUBLISHED' || c.status === 'SALE_OPEN');
+    const currentEventsCount = activeConcerts.filter(c => {
+      const d = new Date(c.createdAt);
+      return d >= currentStart && d <= now;
+    }).length;
+    const previousEventsCount = activeConcerts.filter(c => {
+      const d = new Date(c.createdAt);
+      return d >= previousStart && d < currentStart;
+    }).length;
+
+    const evsChange = calculateChangePct(currentEventsCount, previousEventsCount);
+
+    // Build chart data based on active range
+    const chartPoints: Array<{ day: string; value: number;[key: string]: any }> = [];
+
+    if (activeRange === '24 Hours') {
+      for (let i = 23; i >= 0; i--) {
+        const d = new Date(now.getTime() - i * 60 * 60 * 1000);
+        const hour = d.getHours();
+        const ampm = hour >= 12 ? 'pm' : 'am';
+        const hour12 = hour % 12 || 12;
+        const label = `${hour12}${ampm}`;
+        chartPoints.push({
+          day: label,
+          hourKey: `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}-${hour}`,
+          value: 0,
+        });
+      }
+
+      currentOrders.forEach(o => {
+        const d = getPaidAtDate(o);
+        const key = `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}-${d.getHours()}`;
+        const slot = chartPoints.find(p => p.hourKey === key);
+        if (slot) {
+          slot.value += o.totalAmountInVnd;
+        }
+      });
+    } else {
+      const daysCount = activeRange === '7 Days' ? 7 : 30;
+      for (let i = daysCount - 1; i >= 0; i--) {
+        const d = new Date(now.getTime() - i * 24 * 60 * 60 * 1000);
+        const label = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+        chartPoints.push({
+          day: label,
+          dateKey: d.toDateString(),
+          value: 0,
+        });
+      }
+
+      currentOrders.forEach(o => {
+        const d = getPaidAtDate(o);
+        const key = d.toDateString();
+        const slot = chartPoints.find(p => p.dateKey === key);
+        if (slot) {
+          slot.value += o.totalAmountInVnd;
+        }
+      });
+    }
+
+    return {
+      chartData: chartPoints,
+      revenueChange: revChange,
+      ticketsChange: tixChange,
+      eventsChange: evsChange,
+    };
+  }, [activeRange, orders, concerts]);
 
   // Format total revenue as VND
   const formattedRevenue = loading
@@ -169,9 +283,9 @@ export default function DashboardPage() {
     {
       label: 'Total Revenue',
       value: formattedRevenue,
-      trend: '+14.5% from last month',
-      trendColor: '#1D52D7',
-      trendIcon: 'up',
+      trend: getTrendText(revenueChange, activeRange),
+      trendColor: getTrendColor(revenueChange),
+      trendIcon: getTrendIcon(revenueChange),
       icon: (
         <svg width="22" height="16" viewBox="0 0 24 18" fill="none" stroke="#003298" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
           <rect x="1" y="3" width="22" height="14" rx="2" />
@@ -182,9 +296,9 @@ export default function DashboardPage() {
     {
       label: 'Tickets Sold',
       value: formattedTickets,
-      trend: '+8.2% from last month',
-      trendColor: '#1D52D7',
-      trendIcon: 'up',
+      trend: getTrendText(ticketsChange, activeRange),
+      trendColor: getTrendColor(ticketsChange),
+      trendIcon: getTrendIcon(ticketsChange),
       icon: (
         <svg width="20" height="16" viewBox="0 0 24 18" fill="none" stroke="#003298" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
           <path d="M2 9h20M9 1v16M15 1v16" />
@@ -195,9 +309,9 @@ export default function DashboardPage() {
     {
       label: 'Active Events',
       value: formattedEvents,
-      trend: '— No change',
-      trendColor: '#434654',
-      trendIcon: 'flat',
+      trend: getTrendText(eventsChange, activeRange),
+      trendColor: getTrendColor(eventsChange),
+      trendIcon: getTrendIcon(eventsChange),
       icon: (
         <svg width="18" height="20" viewBox="0 0 22 24" fill="none" stroke="#003298" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
           <rect x="1" y="4" width="20" height="19" rx="2" />
