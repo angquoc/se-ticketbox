@@ -62,11 +62,8 @@ export async function getAdminConcertById(id: string): Promise<Concert> {
   return res.data;
 }
 
-/**
- * Tạo concert mới.
- */
 export async function createConcert(dto: CreateConcertDto): Promise<Concert> {
-  const res = await apiClient.post<Concert>('/concerts', dto);
+  const res = await apiClient.post<Concert>('/admin/concerts', dto);
   return res.data;
 }
 
@@ -77,7 +74,7 @@ export async function updateConcert(
   id: string,
   dto: UpdateConcertDto,
 ): Promise<Concert> {
-  const res = await apiClient.patch<Concert>(`/concerts/${id}`, dto);
+  const res = await apiClient.patch<Concert>(`/admin/concerts/${id}`, dto);
   return res.data;
 }
 
@@ -85,7 +82,7 @@ export async function updateConcert(
  * Xóa concert (chỉ admin).
  */
 export async function deleteConcert(id: string): Promise<void> {
-  await apiClient.delete(`/concerts/${id}`);
+  await apiClient.delete(`/admin/concerts/${id}`);
 }
 
 // ── TicketType Endpoints ──────────────────────────────────────────────
@@ -95,7 +92,7 @@ export async function deleteConcert(id: string): Promise<void> {
  */
 export async function getTicketTypes(concertId: string): Promise<TicketType[]> {
   const res = await apiClient.get<TicketType[]>(
-    `/concerts/${concertId}/ticket-types`,
+    `/admin/concerts/${concertId}/ticket-types`,
   );
   return res.data;
 }
@@ -108,7 +105,7 @@ export async function createTicketType(
   dto: CreateTicketTypeDto,
 ): Promise<TicketType> {
   const res = await apiClient.post<TicketType>(
-    `/concerts/${concertId}/ticket-types`,
+    `/admin/concerts/${concertId}/ticket-types`,
     dto,
   );
   return res.data;
@@ -123,7 +120,7 @@ export async function updateTicketType(
   dto: UpdateTicketTypeDto,
 ): Promise<TicketType> {
   const res = await apiClient.patch<TicketType>(
-    `/concerts/${concertId}/ticket-types/${ticketTypeId}`,
+    `/admin/concerts/${concertId}/ticket-types/${ticketTypeId}`,
     dto,
   );
   return res.data;
@@ -137,7 +134,7 @@ export async function deleteTicketType(
   ticketTypeId: string,
 ): Promise<void> {
   await apiClient.delete(
-    `/concerts/${concertId}/ticket-types/${ticketTypeId}`,
+    `/admin/concerts/${concertId}/ticket-types/${ticketTypeId}`,
   );
 }
 
