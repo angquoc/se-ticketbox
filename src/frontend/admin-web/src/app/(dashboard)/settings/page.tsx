@@ -1,17 +1,7 @@
 'use client';
 
-import { useState } from 'react';
-
-// ── Types ──────────────────────────────────────────────────────────────
-
-interface ProfileForm {
-  fullName: string;
-  email: string;
-  phone: string;
-  role: string;
-  organizationName: string;
-  organizationWebsite: string;
-}
+import { useSettingsForm } from '@/hooks/useSettingsForm';
+import ChangePasswordModal from '@/components/settings/ChangePasswordModal';
 
 // ── Helpers ────────────────────────────────────────────────────────────
 
@@ -153,150 +143,26 @@ function Toggle({ checked, onChange, label }: { checked: boolean; onChange: (v: 
   );
 }
 
-// ── Change Password Modal ──────────────────────────────────────────────
 
-function ChangePasswordModal({ onClose }: { onClose: () => void }) {
-  const [current, setCurrent] = useState('');
-  const [next, setNext] = useState('');
-  const [confirm, setConfirm] = useState('');
-  const [saving, setSaving] = useState(false);
-  const [done, setDone] = useState(false);
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (next !== confirm || !current) return;
-    setSaving(true);
-    await new Promise((r) => setTimeout(r, 800)); // TODO: call API
-    setSaving(false);
-    setDone(true);
-    setTimeout(onClose, 1200);
-  };
-
-  const inputStyle = {
-    height: '36px',
-    border: '1px solid #C3C5D7',
-    borderRadius: '4px',
-    padding: '0 10px',
-    fontSize: '13px',
-    color: '#191B23',
-    background: '#FFFFFF',
-    fontFamily: 'var(--font-sans)',
-    outline: 'none',
-    width: '100%',
-    boxSizing: 'border-box' as const,
-  };
-
-  return (
-    <div style={{
-      position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.35)',
-      display: 'flex', alignItems: 'center', justifyContent: 'center',
-      zIndex: 1000,
-    }}>
-      <div style={{
-        background: '#FFFFFF', borderRadius: '8px',
-        padding: '28px', width: '380px',
-        boxShadow: '0 20px 40px rgba(0,0,0,0.15)',
-      }}>
-        <h3 style={{ fontSize: '16px', fontWeight: 600, color: '#191B23', margin: '0 0 20px' }}>
-          Change Password
-        </h3>
-        {done ? (
-          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '10px', padding: '16px 0' }}>
-            <div style={{ width: '44px', height: '44px', borderRadius: '50%', background: '#DCFCE7', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#166534" strokeWidth="2.5" strokeLinecap="round"><polyline points="20 6 9 17 4 12" /></svg>
-            </div>
-            <p style={{ fontSize: '13px', color: '#434654', margin: 0 }}>Password updated!</p>
-          </div>
-        ) : (
-          <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-            <Field label="Current Password">
-              <input type="password" value={current} onChange={(e) => setCurrent(e.target.value)} style={inputStyle} />
-            </Field>
-            <Field label="New Password">
-              <input type="password" value={next} onChange={(e) => setNext(e.target.value)} style={inputStyle} />
-            </Field>
-            <Field label="Confirm New Password">
-              <input type="password" value={confirm} onChange={(e) => setConfirm(e.target.value)} style={inputStyle} />
-              {next && confirm && next !== confirm && (
-                <p style={{ fontSize: '11px', color: '#BA1A1A', margin: 0 }}>Passwords do not match</p>
-              )}
-            </Field>
-            <div style={{ display: 'flex', gap: '8px', marginTop: '8px' }}>
-              <button type="button" onClick={onClose} style={{
-                flex: 1, height: '36px', border: '1px solid #C3C5D7', borderRadius: '4px',
-                background: '#FFFFFF', color: '#434654', fontSize: '13px', fontWeight: 500, cursor: 'pointer', fontFamily: 'var(--font-sans)',
-              }}>
-                Cancel
-              </button>
-              <button type="submit" disabled={saving || next !== confirm || !current || !next} style={{
-                flex: 1, height: '36px', border: 'none', borderRadius: '4px',
-                background: saving ? '#6B8CC7' : '#003298', color: '#FFFFFF',
-                fontSize: '13px', fontWeight: 500, cursor: saving ? 'not-allowed' : 'pointer', fontFamily: 'var(--font-sans)',
-              }}>
-                {saving ? 'Saving…' : 'Update Password'}
-              </button>
-            </div>
-          </form>
-        )}
-      </div>
-    </div>
-  );
-}
 
 // ── Main Page ──────────────────────────────────────────────────────────
 
 export default function SettingsPage() {
-  const [editing, setEditing] = useState(false);
-  const [showPasswordModal, setShowPasswordModal] = useState(false);
-  const [savingProfile, setSavingProfile] = useState(false);
-  const [savedProfile, setSavedProfile] = useState(false);
-
-  const [profile, setProfile] = useState<ProfileForm>({
-    fullName: 'Admin User',
-    email: 'admin@ticketbox.vn',
-    phone: '+84 90 000 0000',
-    role: 'ORGANIZER',
-    organizationName: 'TicketBox Events',
-    organizationWebsite: 'https://ticketbox.vn',
-  });
-  const [draft, setDraft] = useState<ProfileForm>(profile);
-
-  const [notifications, setNotifications] = useState({
-    newOrder: true,
-    paymentFailed: true,
-    uploadComplete: true,
-    checkinAnomaly: false,
-    weeklyReport: true,
-  });
-
-  const handleEditToggle = () => {
-    if (!editing) {
-      setDraft({ ...profile });
-      setEditing(true);
-    }
-  };
-
-  const handleSaveProfile = async () => {
-    setSavingProfile(true);
-    try {
-      await new Promise((r) => setTimeout(r, 800)); // TODO: call API
-      setProfile({ ...draft });
-      setSavedProfile(true);
-      setEditing(false);
-      setTimeout(() => setSavedProfile(false), 2500);
-    } finally {
-      setSavingProfile(false);
-    }
-  };
-
-  const handleCancelEdit = () => {
-    setDraft({ ...profile });
-    setEditing(false);
-  };
-
-  const updateDraft = (field: keyof ProfileForm) => (val: string) => {
-    setDraft((prev) => ({ ...prev, [field]: val }));
-  };
+  const {
+    editing,
+    showPasswordModal,
+    setShowPasswordModal,
+    savingProfile,
+    savedProfile,
+    profile,
+    draft,
+    notifications,
+    setNotifications,
+    handleEditToggle,
+    handleSaveProfile,
+    handleCancelEdit,
+    updateDraft,
+  } = useSettingsForm();
 
   return (
     <>
