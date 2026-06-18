@@ -33,10 +33,32 @@ export async function getConcerts(
 }
 
 /**
+ * Lấy danh sách toàn bộ concerts cho admin (không phân biệt status mặc định).
+ */
+export async function getAdminConcerts(
+  page = 1,
+  limit = 10,
+  status?: string,
+): Promise<PaginatedResponse<Concert>> {
+  const res = await apiClient.get<PaginatedResponse<Concert>>('/admin/concerts', {
+    params: { page, limit, status },
+  });
+  return res.data;
+}
+
+/**
  * Lấy chi tiết một concert theo ID, kèm ticketTypes và uploadedFiles.
  */
 export async function getConcertById(id: string): Promise<Concert> {
   const res = await apiClient.get<Concert>(`/concerts/${id}`);
+  return res.data;
+}
+
+/**
+ * Lấy chi tiết một concert theo ID cho admin (không phân biệt status).
+ */
+export async function getAdminConcertById(id: string): Promise<Concert> {
+  const res = await apiClient.get<Concert>(`/admin/concerts/${id}`);
   return res.data;
 }
 
