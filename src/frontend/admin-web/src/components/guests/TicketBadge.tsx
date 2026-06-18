@@ -1,5 +1,5 @@
 import React from 'react';
-import { TicketType } from './types';
+import { TicketType } from '@/types/guests';
 
 export default function TicketBadge({ type }: { type: TicketType }) {
   const styles: Record<TicketType, { bg: string; color: string }> = {

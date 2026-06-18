@@ -1,5 +1,5 @@
 import React from 'react';
-import { GuestStatus } from './types';
+import { GuestStatus } from '@/types/guests';
 
 export default function StatusCell({ status }: { status: GuestStatus }) {
   if (status === 'Valid') {
