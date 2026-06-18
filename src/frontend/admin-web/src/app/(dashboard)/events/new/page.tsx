@@ -8,8 +8,6 @@ import { InlineSpinner } from '@/components/ui/Spinner';
 import FormSection from '@/components/events/FormSection';
 import TierCard from '@/components/events/TierCard';
 import { type TicketTierDraft, type EventFormErrors, makeTierId, validateEventForm } from '@/types/events';
-import { toIso } from '@/utils/format';
-
 // ── Success State ──────────────────────────────────────────────────────
 
 function SuccessState() {

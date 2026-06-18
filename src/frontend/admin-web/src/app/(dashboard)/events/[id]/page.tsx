@@ -7,7 +7,6 @@ import type { Concert, TicketType, UploadedFile, ConcertStatus } from '@/types/a
 import { formatVnd, formatDate, formatBytes } from '@/utils/format';
 import { ConcertStatusBadge, UploadStatusBadge } from '@/components/ui/Badge';
 import SectionCard from '@/components/ui/SectionCard';
-import { InlineSpinner } from '@/components/ui/Spinner';
 import { InfoRow } from '@/components/ui/FormField';
 import TicketTypeRow from '@/components/events/TicketTypeRow';
 import UploadDropzone from '@/components/events/UploadDropzone';
@@ -183,20 +182,20 @@ export default function EventDetailPage() {
   const [uploadingPdf, setUploadingPdf] = useState(false);
   const [uploadingCsv, setUploadingCsv] = useState(false);
 
-  const handlePdfUpload = useCallback(async (file: File) => {
+  const handlePdfUpload = useCallback(async (_file: File) => {
     setUploadingPdf(true);
     try {
-      // TODO: await uploadFile(concert.id, file, 'ARTIST_PRESS_KIT');
+      // TODO: await uploadFile(concert.id, _file, 'ARTIST_PRESS_KIT');
       await new Promise((r) => setTimeout(r, 1500));
     } finally {
       setUploadingPdf(false);
     }
   }, []);
 
-  const handleCsvUpload = useCallback(async (file: File) => {
+  const handleCsvUpload = useCallback(async (_file: File) => {
     setUploadingCsv(true);
     try {
-      // TODO: await uploadFile(concert.id, file, 'GUEST_LIST_CSV');
+      // TODO: await uploadFile(concert.id, _file, 'GUEST_LIST_CSV');
       await new Promise((r) => setTimeout(r, 1500));
     } finally {
       setUploadingCsv(false);
