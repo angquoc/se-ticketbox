@@ -1,206 +1,44 @@
 'use client';
-
-import { useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import type { Concert, TicketType, UploadedFile, ConcertStatus } from '@/types/api';
-import { formatVnd, formatDate, formatBytes } from '@/utils/format';
-import { ConcertStatusBadge, UploadStatusBadge } from '@/components/ui/Badge';
+import { ConcertStatusBadge } from '@/components/ui/Badge';
 import SectionCard from '@/components/ui/SectionCard';
 import { InfoRow } from '@/components/ui/FormField';
 import TicketTypeRow from '@/components/events/TicketTypeRow';
 import UploadDropzone from '@/components/events/UploadDropzone';
+import QuickStatCard from '@/components/events/QuickStatCard';
+import StatusStepper from '@/components/events/StatusStepper';
+import UploadedFileItem from '@/components/events/UploadedFileItem';
+import { useEventDetailData } from '@/hooks/useEventDetailData';
+import { formatVnd, formatDate } from '@/utils/format';
 
-// ── Mock Data (TODO: thay bằng getConcertById(params.id)) ──────────────
-
-const mockConcert: Concert = {
-  id: '1',
-  slug: 'neon-nights-festival-2024',
-  organizerId: 'org-1',
-  organizer: { id: 'org-1', fullName: 'TicketBox Admin', email: 'admin@ticketbox.vn' },
-  title: 'Neon Nights Festival',
-  description:
-    'An electrifying night of electronic music under the stars. Featuring top DJs from around the world, immersive light installations, and an unforgettable atmosphere.',
-  artistBio:
-    "Neon Nights Festival brings together the best in electronic and dance music. This year's lineup features acclaimed artists known for their boundary-pushing soundscapes and high-energy performances.",
-  venue: 'Echo Arena, Los Angeles',
-  startsAt: '2024-10-14T19:00:00Z',
-  endsAt: '2024-10-15T03:00:00Z',
-  saleStartsAt: '2024-08-01T09:00:00Z',
-  saleEndsAt: '2024-10-13T23:59:00Z',
-  status: 'SALE_OPEN',
-  coverImageUrl: null,
-  seatMapUrl: null,
-  ticketTypes: [
-    { id: 'tt-1', concertId: '1', name: 'VIP Pass',          price: 5_750_000, totalQty: 500,  soldQty: 423,  reservedQty: 12, maxPerUser: 4, status: 'ACTIVE',   createdAt: '2024-07-01T00:00:00Z', updatedAt: '2024-09-01T00:00:00Z' },
-    { id: 'tt-2', concertId: '1', name: 'Standard Admission', price: 1_955_000, totalQty: 5000, soldQty: 3210, reservedQty: 45, maxPerUser: 8, status: 'ACTIVE',   createdAt: '2024-07-01T00:00:00Z', updatedAt: '2024-09-01T00:00:00Z' },
-    { id: 'tt-3', concertId: '1', name: 'Early Bird',         price: 1_495_000, totalQty: 1000, soldQty: 1000, reservedQty: 0,  maxPerUser: 4, status: 'SOLD_OUT', createdAt: '2024-07-01T00:00:00Z', updatedAt: '2024-07-15T00:00:00Z' },
-  ],
-  uploadedFiles: [
-    { id: 'uf-1', concertId: '1', uploadedById: 'org-1', originalName: 'neon-nights-press-kit.pdf', objectKey: 'concerts/1/press-kit.pdf', mimeType: 'application/pdf', sizeBytes: 3_450_000, purpose: 'ARTIST_PRESS_KIT', status: 'COMPLETED',  errorMessage: null, createdAt: '2024-07-10T00:00:00Z', updatedAt: '2024-07-10T00:05:00Z' },
-    { id: 'uf-2', concertId: '1', uploadedById: 'org-1', originalName: 'vip-guest-list.csv',        objectKey: 'concerts/1/guest-list.csv', mimeType: 'text/csv',            sizeBytes: 48_000,     purpose: 'GUEST_LIST_CSV',    status: 'PROCESSING', errorMessage: null, createdAt: '2024-09-15T00:00:00Z', updatedAt: '2024-09-15T00:01:00Z' },
-  ],
-  createdAt: '2024-07-01T00:00:00Z',
-  updatedAt: '2024-09-15T00:00:00Z',
-};
-
-// ── Sub-components (dùng riêng trong trang này) ────────────────────────
-
-/** Stat card nhỏ trong Quick Stats row */
-function QuickStatCard({ icon, label, value }: { icon: string; label: string; value: string }) {
-  return (
-    <div
-      style={{
-        background: '#FFFFFF',
-        border: '1px solid #C3C5D7',
-        borderRadius: '8px',
-        padding: '20px',
-        boxShadow: '0px 1px 2px rgba(0,0,0,0.05)',
-      }}
-    >
-      <p
-        style={{
-          fontSize: '12px',
-          fontWeight: 500,
-          color: '#434654',
-          margin: '0 0 8px',
-          letterSpacing: '0.4px',
-          textTransform: 'uppercase',
-        }}
-      >
-        {icon} {label}
-      </p>
-      <p
-        style={{
-          fontSize: '22px',
-          fontWeight: 700,
-          color: '#191B23',
-          margin: 0,
-          letterSpacing: '-0.3px',
-        }}
-      >
-        {value}
-      </p>
-    </div>
-  );
+interface EventDetailPageProps {
+  params: {
+    id: string;
+  };
 }
 
-/** Stepper trạng thái concert trong sidebar */
-const CONCERT_STATUS_STEPS: ConcertStatus[] = [
-  'DRAFT', 'PUBLISHED', 'SALE_OPEN', 'SALE_CLOSED', 'COMPLETED',
-];
-
-const concertStatusLabel: Record<ConcertStatus, string> = {
-  DRAFT: 'Draft', PUBLISHED: 'Published', SALE_OPEN: 'Sale Open',
-  SALE_CLOSED: 'Sale Closed', COMPLETED: 'Completed', CANCELLED: 'Cancelled',
-};
-
-function StatusStepper({ current }: { current: ConcertStatus }) {
-  const currentIdx = CONCERT_STATUS_STEPS.indexOf(current);
-  return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-      {CONCERT_STATUS_STEPS.map((step, i) => {
-        const isPast = i < currentIdx;
-        const isCurrent = step === current;
-        return (
-          <div key={step} style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-            <div
-              style={{
-                width: '22px', height: '22px', borderRadius: '50%', flexShrink: 0,
-                border: isCurrent ? '2px solid #003298' : isPast ? '2px solid #22C55E' : '2px solid #D1D5DB',
-                background: isCurrent ? '#003298' : isPast ? '#22C55E' : 'transparent',
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-              }}
-            >
-              {isPast && (
-                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3" strokeLinecap="round">
-                  <polyline points="20 6 9 17 4 12" />
-                </svg>
-              )}
-              {isCurrent && (
-                <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: 'white' }} />
-              )}
-            </div>
-            <span
-              style={{
-                fontSize: '13px',
-                fontWeight: isCurrent ? 600 : 400,
-                color: isCurrent ? '#191B23' : isPast ? '#434654' : '#9CA3AF',
-              }}
-            >
-              {concertStatusLabel[step]}
-            </span>
-          </div>
-        );
-      })}
-    </div>
-  );
-}
-
-/** File item hiển thị trong danh sách uploaded files */
-function UploadedFileItem({ file }: { file: UploadedFile }) {
-  return (
-    <div
-      style={{
-        display: 'flex', alignItems: 'flex-start', gap: '10px',
-        padding: '10px 12px',
-        background: '#FAFAFA', borderRadius: '6px',
-        border: '1px solid #E7E7F3',
-      }}
-    >
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#9CA3AF" strokeWidth="1.8" strokeLinecap="round" style={{ flexShrink: 0, marginTop: '1px' }}>
-        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-        <polyline points="14 2 14 8 20 8" />
-      </svg>
-      <div style={{ flex: 1, minWidth: 0 }}>
-        <p style={{ fontSize: '12px', fontWeight: 500, color: '#191B23', margin: '0 0 4px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-          {file.originalName}
-        </p>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-          <UploadStatusBadge status={file.status} />
-          <span style={{ fontSize: '11px', color: '#9CA3AF' }}>{formatBytes(file.sizeBytes)}</span>
-        </div>
-        {file.errorMessage && (
-          <p style={{ fontSize: '11px', color: '#991B1B', margin: '4px 0 0' }}>{file.errorMessage}</p>
-        )}
-      </div>
-    </div>
-  );
-}
-
-// ── Main Page ──────────────────────────────────────────────────────────
-
-export default function EventDetailPage() {
+export default function EventDetailPage({ params }: EventDetailPageProps) {
   const router = useRouter();
+  const {
+    concert,
+    loading,
+    uploadingPdf,
+    uploadingCsv,
+    handlePdfUpload,
+    handleCsvUpload,
+  } = useEventDetailData(params.id);
 
-  // TODO: const params = useParams<{ id: string }>();
-  // TODO: useEffect(() => { getConcertById(params.id).then(setConcert); }, [params.id]);
-  const concert: Concert = mockConcert;
-  const ticketTypes: TicketType[] = mockConcert.ticketTypes ?? [];
-  const uploadedFiles: UploadedFile[] = mockConcert.uploadedFiles ?? [];
+  if (loading) {
+    return <div style={{ padding: '40px', textAlign: 'center', color: '#434654' }}>Loading event details...</div>;
+  }
 
-  const [uploadingPdf, setUploadingPdf] = useState(false);
-  const [uploadingCsv, setUploadingCsv] = useState(false);
+  if (!concert) {
+    return <div style={{ padding: '40px', textAlign: 'center', color: '#BA1A1A' }}>Event not found.</div>;
+  }
 
-  const handlePdfUpload = useCallback(async (_file: File) => {
-    setUploadingPdf(true);
-    try {
-      // TODO: await uploadFile(concert.id, _file, 'ARTIST_PRESS_KIT');
-      await new Promise((r) => setTimeout(r, 1500));
-    } finally {
-      setUploadingPdf(false);
-    }
-  }, []);
-
-  const handleCsvUpload = useCallback(async (_file: File) => {
-    setUploadingCsv(true);
-    try {
-      // TODO: await uploadFile(concert.id, _file, 'GUEST_LIST_CSV');
-      await new Promise((r) => setTimeout(r, 1500));
-    } finally {
-      setUploadingCsv(false);
-    }
-  }, []);
+  const ticketTypes = concert.ticketTypes ?? [];
+  const uploadedFiles = concert.uploadedFiles ?? [];
 
   // Computed stats
   const totalRevenue = ticketTypes.reduce((sum, tt) => sum + tt.soldQty * tt.price, 0);
@@ -246,17 +84,6 @@ export default function EventDetailPage() {
             }}
           >
             ← Back
-          </button>
-          <button
-            style={{
-              height: '34px', padding: '0 16px',
-              border: 'none', borderRadius: '4px',
-              background: '#003298', color: '#FFFFFF',
-              fontSize: '13px', fontWeight: 500, cursor: 'pointer',
-              fontFamily: 'var(--font-sans)',
-            }}
-          >
-            Edit Event
           </button>
         </div>
       </div>
@@ -318,26 +145,6 @@ export default function EventDetailPage() {
             {ticketTypes.map((tt) => (
               <TicketTypeRow key={tt.id} ticketType={tt} />
             ))}
-
-            {/* Add Ticket Type button */}
-            <div style={{ padding: '12px' }}>
-              <button
-                style={{
-                  display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px',
-                  padding: '8px 12px', width: '100%',
-                  border: '1px dashed #C3C5D7', borderRadius: '4px',
-                  background: 'transparent', color: '#003298',
-                  fontSize: '12px', fontWeight: 500,
-                  cursor: 'pointer', fontFamily: 'var(--font-sans)',
-                  transition: 'border-color 0.15s',
-                }}
-              >
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
-                  <line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" />
-                </svg>
-                Add Ticket Type
-              </button>
-            </div>
           </SectionCard>
 
           {/* Artist Bio */}
@@ -413,12 +220,14 @@ export default function EventDetailPage() {
           </SectionCard>
 
           {/* Organizer */}
-          <SectionCard title="Organizer">
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-              <InfoRow label="Name"  value={concert.organizer?.fullName ?? '—'} />
-              <InfoRow label="Email" value={concert.organizer?.email ?? '—'} />
-            </div>
-          </SectionCard>
+          {concert.organizer && (
+            <SectionCard title="Organizer">
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                <InfoRow label="Name"  value={concert.organizer.fullName ?? '—'} />
+                <InfoRow label="Email" value={concert.organizer.email ?? '—'} />
+              </div>
+            </SectionCard>
+          )}
         </div>
       </div>
     </div>

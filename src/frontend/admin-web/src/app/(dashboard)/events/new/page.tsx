@@ -1,130 +1,35 @@
 'use client';
 
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Field, TextInput, TextArea } from '@/components/ui/FormField';
 import { InlineSpinner } from '@/components/ui/Spinner';
 import FormSection from '@/components/events/FormSection';
 import TierCard from '@/components/events/TierCard';
-import { type TicketTierDraft, type EventFormErrors, makeTierId, validateEventForm } from '@/types/events';
-// ── Success State ──────────────────────────────────────────────────────
-
-function SuccessState() {
-  return (
-    <div
-      style={{
-        display: 'flex', flexDirection: 'column', alignItems: 'center',
-        justifyContent: 'center', gap: '16px', minHeight: '400px',
-      }}
-    >
-      <div
-        style={{
-          width: '56px', height: '56px', borderRadius: '50%',
-          background: '#DCFCE7', display: 'flex', alignItems: 'center', justifyContent: 'center',
-        }}
-      >
-        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#166534" strokeWidth="2.5" strokeLinecap="round">
-          <polyline points="20 6 9 17 4 12" />
-        </svg>
-      </div>
-      <p style={{ fontSize: '18px', fontWeight: 600, color: '#191B23', margin: 0 }}>Event Created!</p>
-      <p style={{ fontSize: '13px', color: '#434654', margin: 0 }}>Redirecting to event list…</p>
-    </div>
-  );
-}
-
-// ── Validation Summary ─────────────────────────────────────────────────
-
-function ValidationSummary({ errors }: { errors: EventFormErrors }) {
-  const messages = Object.values(errors);
-  if (messages.length === 0) return null;
-  return (
-    <div
-      style={{
-        padding: '12px 16px',
-        background: '#FEF2F2',
-        border: '1px solid #FECACA',
-        borderRadius: '6px',
-      }}
-    >
-      <p style={{ fontSize: '12px', fontWeight: 600, color: '#991B1B', margin: '0 0 6px' }}>
-        Please fix the following errors:
-      </p>
-      <ul style={{ margin: 0, paddingLeft: '16px' }}>
-        {messages.map((msg, i) => (
-          <li key={i} style={{ fontSize: '12px', color: '#BA1A1A' }}>
-            {msg}
-          </li>
-        ))}
-      </ul>
-    </div>
-  );
-}
+import SuccessState from '@/components/events/SuccessState';
+import ValidationSummary from '@/components/events/ValidationSummary';
+import { useNewEventForm } from '@/hooks/useNewEventForm';
 
 // ── Main Page ──────────────────────────────────────────────────────────
 
 export default function NewEventPage() {
-  const router = useRouter();
-
-  // Form state
-  const [title,       setTitle]       = useState('');
-  const [description, setDescription] = useState('');
-  const [venue,       setVenue]       = useState('');
-  const [eventDate,   setEventDate]   = useState('');
-  const [startTime,   setStartTime]   = useState('19:00');
-  const [endTime,     setEndTime]     = useState('23:00');
-  const [saleDate,    setSaleDate]    = useState('');
-  const [saleEndDate, setSaleEndDate] = useState('');
-
-  const [tiers, setTiers] = useState<TicketTierDraft[]>([
-    { id: makeTierId(), name: 'General Admission', price: '500000', totalQty: '1000', maxPerUser: 4 },
-  ]);
-
-  const [errors,     setErrors]     = useState<EventFormErrors>({});
-  const [submitting, setSubmitting] = useState(false);
-  const [submitted,  setSubmitted]  = useState(false);
-
-  // Tier helpers
-  const addTier = () =>
-    setTiers((prev) => [...prev, { id: makeTierId(), name: '', price: '', totalQty: '', maxPerUser: 4 }]);
-
-  const removeTier = (id: string) =>
-    setTiers((prev) => prev.filter((t) => t.id !== id));
-
-  const updateTier = (id: string, field: keyof TicketTierDraft, value: string | number) =>
-    setTiers((prev) => prev.map((t) => (t.id === id ? { ...t, [field]: value } : t)));
-
-  // Submit
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    const errs = validateEventForm({ title, venue, eventDate, startTime, endTime, tiers });
-    setErrors(errs);
-    if (Object.keys(errs).length > 0) return;
-
-    setSubmitting(true);
-    try {
-      // TODO: Replace with real API calls
-      // const dto: CreateConcertDto = {
-      //   title, description: description || undefined, venue,
-      //   startsAt: toIso(eventDate, startTime),
-      //   endsAt: toIso(eventDate, endTime),
-      //   saleStartsAt: saleDate ? toIso(saleDate, '00:00') : undefined,
-      //   saleEndsAt: saleEndDate ? toIso(saleEndDate, '23:59') : undefined,
-      // };
-      // const concert = await createConcert(dto);
-      // await Promise.all(tiers.map((t) => createTicketType(concert.id, {
-      //   name: t.name, price: Number(t.price), totalQty: Number(t.totalQty), maxPerUser: t.maxPerUser,
-      // })));
-      // router.push(`/events/${concert.id}`);
-
-      await new Promise((r) => setTimeout(r, 1200)); // simulate
-      setSubmitted(true);
-      setTimeout(() => router.push('/events'), 1000);
-    } finally {
-      setSubmitting(false);
-    }
-  };
+  const {
+    title, setTitle,
+    description, setDescription,
+    venue, setVenue,
+    eventDate, setEventDate,
+    startTime, setStartTime,
+    endTime, setEndTime,
+    saleDate, setSaleDate,
+    saleEndDate, setSaleEndDate,
+    tiers,
+    addTier,
+    removeTier,
+    updateTier,
+    errors,
+    submitting,
+    submitted,
+    handleSubmit,
+  } = useNewEventForm();
 
   if (submitted) return <SuccessState />;
 
