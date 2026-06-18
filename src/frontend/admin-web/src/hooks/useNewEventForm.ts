@@ -8,6 +8,21 @@ function toIso(dateStr: string, timeStr: string): string {
   return new Date(`${dateStr}T${timeStr}:00`).toISOString();
 }
 
+function slugify(text: string): string {
+  const baseSlug = text
+    .toString()
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[đĐ]/g, 'd')
+    .replace(/[^a-z0-9 -]/g, '')
+    .replace(/\s+/g, '-')
+    .replace(/-+/g, '-')
+    .trim();
+  const randomSuffix = Math.random().toString(36).substring(2, 8);
+  return `${baseSlug}-${randomSuffix}`;
+}
+
 export function useNewEventForm() {
   const router = useRouter();
 
@@ -20,6 +35,9 @@ export function useNewEventForm() {
   const [endTime, setEndTime] = useState('23:00');
   const [saleDate, setSaleDate] = useState('');
   const [saleEndDate, setSaleEndDate] = useState('');
+  const [coverImageUrl, setCoverImageUrl] = useState('');
+  const [seatMapUrl, setSeatMapUrl] = useState('');
+  const [status, setStatus] = useState<'DRAFT' | 'PUBLISHED'>('DRAFT');
 
   const [tiers, setTiers] = useState<TicketTierDraft[]>([
     { id: makeTierId(), name: 'General Admission', price: '500000', totalQty: '1000', maxPerUser: 4 },
@@ -49,15 +67,23 @@ export function useNewEventForm() {
       // 1. Create Concert DTO
       const dto = {
         title,
+        slug: slugify(title),
         description: description || undefined,
         venue,
         startsAt: toIso(eventDate, startTime),
         endsAt: toIso(eventDate, endTime),
         saleStartsAt: saleDate ? toIso(saleDate, '00:00') : undefined,
         saleEndsAt: saleEndDate ? toIso(saleEndDate, '23:59') : undefined,
+        coverImageUrl: coverImageUrl || undefined,
+        seatMapUrl: seatMapUrl || undefined,
+        status,
       };
 
       const concert = await createConcert(dto);
+
+
+      const eventSaleStartsAt = saleDate ? toIso(saleDate, '00:00') : new Date().toISOString();
+      const eventSaleEndsAt = saleEndDate ? toIso(saleEndDate, '23:59') : undefined;
 
       // 2. Create Ticket Types for each tier
       await Promise.all(
@@ -67,9 +93,12 @@ export function useNewEventForm() {
             price: Number(t.price),
             totalQty: Number(t.totalQty),
             maxPerUser: Number(t.maxPerUser),
+            saleStartsAt: eventSaleStartsAt,
+            saleEndsAt: eventSaleEndsAt,
           })
         )
       );
+
 
       setSubmitted(true);
       setTimeout(() => router.push('/events'), 1000);
@@ -90,6 +119,9 @@ export function useNewEventForm() {
     endTime, setEndTime,
     saleDate, setSaleDate,
     saleEndDate, setSaleEndDate,
+    coverImageUrl, setCoverImageUrl,
+    seatMapUrl, setSeatMapUrl,
+    status, setStatus,
     tiers,
     addTier,
     removeTier,

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { getAdminConcerts } from '@/services/concertService';
 import type { Concert } from '@/types/api';
 
@@ -9,24 +9,25 @@ export function useEventsData() {
   const [currentPage, setCurrentPage] = useState(1);
   const [editingEvent, setEditingEvent] = useState<Concert | null>(null);
 
-  const limit = 10;
+  const limit = 5;
   const totalPages = Math.ceil(total / limit) || 1;
 
-  useEffect(() => {
-    async function fetchConcerts() {
-      try {
-        setLoading(true);
-        const res = await getAdminConcerts(currentPage, limit);
-        setConcerts(res.data);
-        setTotal(res.total);
-      } catch (err) {
-        console.error('Failed to load events data:', err);
-      } finally {
-        setLoading(false);
-      }
+  const fetchConcerts = useCallback(async () => {
+    try {
+      setLoading(true);
+      const res = await getAdminConcerts(currentPage, limit);
+      setConcerts(res.data);
+      setTotal(res.total);
+    } catch (err) {
+      console.error('Failed to load events data:', err);
+    } finally {
+      setLoading(false);
     }
-    fetchConcerts();
   }, [currentPage]);
+
+  useEffect(() => {
+    fetchConcerts();
+  }, [fetchConcerts]);
 
   const handleEdit = (event: Concert) => {
     setEditingEvent((prev) => (prev?.id === event.id ? null : event));
@@ -48,5 +49,7 @@ export function useEventsData() {
     handleEdit,
     setEditingEvent,
     handlePageChange,
+    refresh: fetchConcerts,
   };
 }
+

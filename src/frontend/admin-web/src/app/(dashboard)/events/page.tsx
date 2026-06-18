@@ -17,6 +17,7 @@ export default function EventsPage() {
     handleEdit,
     setEditingEvent,
     handlePageChange,
+    refresh,
   } = useEventsData();
 
   return (
@@ -239,8 +240,10 @@ export default function EventsPage() {
           <TicketConfigPanel
             event={editingEvent}
             onClose={() => setEditingEvent(null)}
+            onSaveSuccess={refresh}
           />
         )}
+
       </div>
     </div>
   );

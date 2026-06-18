@@ -97,6 +97,7 @@ export interface Concert {
 
 export interface CreateConcertDto {
   title: string;
+  slug: string;
   description?: string;
   venue: string;
   startsAt: string; // ISO 8601
@@ -104,7 +105,10 @@ export interface CreateConcertDto {
   saleStartsAt?: string;
   saleEndsAt?: string;
   coverImageUrl?: string;
+  seatMapUrl?: string;
+  status?: ConcertStatus;
 }
+
 
 export interface UpdateConcertDto extends Partial<CreateConcertDto> {
   status?: ConcertStatus;
@@ -116,7 +120,10 @@ export interface CreateTicketTypeDto {
   price: number;
   totalQty: number;
   maxPerUser: number;
+  saleStartsAt?: string;
+  saleEndsAt?: string;
 }
+
 
 export interface UpdateTicketTypeDto extends Partial<CreateTicketTypeDto> {
   status?: TicketTypeStatus;

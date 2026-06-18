@@ -1,7 +1,7 @@
 import React from 'react';
 
 interface QuickStatCardProps {
-  icon: string;
+  icon: React.ReactNode;
   label: string;
   value: string;
 }
@@ -13,33 +13,55 @@ export default function QuickStatCard({ icon, label, value }: QuickStatCardProps
         background: '#FFFFFF',
         border: '1px solid #C3C5D7',
         borderRadius: '8px',
-        padding: '20px',
+        padding: '16px 20px',
         boxShadow: '0px 1px 2px rgba(0,0,0,0.05)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        gap: '16px',
+        flex: 1,
+        minWidth: 0,
       }}
     >
-      <p
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', flex: 1, minWidth: 0 }}>
+        <span
+          style={{
+            fontSize: '11px',
+            fontWeight: 600,
+            color: '#434654',
+            letterSpacing: '0.6px',
+            textTransform: 'uppercase',
+            display: 'block',
+          }}
+        >
+          {label}
+        </span>
+        <span
+          style={{
+            fontSize: '22px',
+            fontWeight: 700,
+            color: '#191B23',
+            letterSpacing: '-0.3px',
+            display: 'block',
+          }}
+        >
+          {value}
+        </span>
+      </div>
+      <div
         style={{
-          fontSize: '12px',
-          fontWeight: 500,
-          color: '#434654',
-          margin: '0 0 8px',
-          letterSpacing: '0.4px',
-          textTransform: 'uppercase',
+          background: '#DCE1FF',
+          borderRadius: '6px',
+          padding: '6px',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          flexShrink: 0,
         }}
       >
-        {icon} {label}
-      </p>
-      <p
-        style={{
-          fontSize: '22px',
-          fontWeight: 700,
-          color: '#191B23',
-          margin: 0,
-          letterSpacing: '-0.3px',
-        }}
-      >
-        {value}
-      </p>
+        {icon}
+      </div>
     </div>
   );
 }
+

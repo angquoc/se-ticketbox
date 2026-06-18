@@ -14,13 +14,21 @@ export function formatVnd(amount: number): string {
 }
 
 /** Định dạng ISO string thành ngày giờ tiếng Việt (GMT+7) */
-export function formatDate(iso: string): string {
-  return new Intl.DateTimeFormat('vi-VN', {
-    dateStyle: 'medium',
-    timeStyle: 'short',
-    timeZone: 'Asia/Ho_Chi_Minh',
-  }).format(new Date(iso));
+export function formatDate(iso?: string | null): string {
+  if (!iso) return '—';
+  try {
+    const d = new Date(iso);
+    if (isNaN(d.getTime())) return '—';
+    return new Intl.DateTimeFormat('vi-VN', {
+      dateStyle: 'medium',
+      timeStyle: 'short',
+      timeZone: 'Asia/Ho_Chi_Minh',
+    }).format(d);
+  } catch (e) {
+    return '—';
+  }
 }
+
 
 /** Định dạng số bytes thành B / KB / MB */
 export function formatBytes(bytes: number): string {

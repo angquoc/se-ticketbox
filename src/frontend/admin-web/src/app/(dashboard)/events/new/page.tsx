@@ -21,6 +21,9 @@ export default function NewEventPage() {
     endTime, setEndTime,
     saleDate, setSaleDate,
     saleEndDate, setSaleEndDate,
+    coverImageUrl, setCoverImageUrl,
+    seatMapUrl, setSeatMapUrl,
+    status, setStatus,
     tiers,
     addTier,
     removeTier,
@@ -144,6 +147,79 @@ export default function NewEventPage() {
               <TextInput value={saleEndDate} onChange={setSaleEndDate} type="date" />
             </Field>
           </div>
+        </FormSection>
+
+        {/* Media & Assets */}
+        <FormSection title="Media & Assets" description="Cover image and seat map URLs. Can be updated after creation.">
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+            <Field label="Cover Image URL">
+              <TextInput
+                value={coverImageUrl}
+                onChange={setCoverImageUrl}
+                placeholder="https://example.com/cover.jpg"
+              />
+            </Field>
+            <Field label="Seat Map URL">
+              <TextInput
+                value={seatMapUrl}
+                onChange={setSeatMapUrl}
+                placeholder="https://example.com/seatmap.png"
+              />
+            </Field>
+          </div>
+          {coverImageUrl && (
+            <div style={{ marginTop: '8px' }}>
+              <p style={{ fontSize: '11px', fontWeight: 500, letterSpacing: '0.4px', textTransform: 'uppercase', color: '#9CA3AF', margin: '0 0 8px' }}>Cover Preview</p>
+              <img
+                src={coverImageUrl}
+                alt="Cover preview"
+                style={{
+                  width: '100%',
+                  maxHeight: '160px',
+                  objectFit: 'cover',
+                  borderRadius: '6px',
+                  border: '1px solid #C3C5D7',
+                }}
+                onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }}
+              />
+            </div>
+          )}
+        </FormSection>
+
+        {/* Initial Status */}
+        <FormSection title="Publishing Status" description="Set the initial status of the event. Use DRAFT to continue editing before publishing.">
+          <Field label="Event Status">
+            <select
+              value={status}
+              onChange={(e) => setStatus(e.target.value as 'DRAFT' | 'PUBLISHED')}
+              style={{
+                height: '36px',
+                border: '1px solid #C3C5D7',
+                borderRadius: '4px',
+                padding: '0 10px',
+                fontSize: '13px',
+                color: '#191B23',
+                background: '#FFFFFF',
+                fontFamily: 'var(--font-sans)',
+                outline: 'none',
+                boxSizing: 'border-box',
+                width: '100%',
+                cursor: 'pointer',
+                transition: 'border-color 0.15s',
+                appearance: 'none',
+              }}
+              onFocus={(e) => (e.target.style.borderColor = '#003298')}
+              onBlur={(e) => (e.target.style.borderColor = '#C3C5D7')}
+            >
+              <option value="DRAFT">Draft — not visible to public</option>
+              <option value="PUBLISHED">Published — visible to public</option>
+            </select>
+          </Field>
+          <p style={{ fontSize: '12px', color: '#6B7280', margin: 0 }}>
+            {status === 'DRAFT'
+              ? '📝 Draft: Event is saved but hidden from customers.'
+              : '🌐 Published: Event will be visible on the customer site.'}
+          </p>
         </FormSection>
 
         {/* Ticket Types */}

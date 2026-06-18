@@ -11,16 +11,15 @@ import { formatVnd } from '@/utils/format';
 
 export interface TicketTypeRowProps {
   ticketType: TicketType;
-  onEdit?: (ticketType: TicketType) => void;
 }
 
-export default function TicketTypeRow({ ticketType, onEdit }: TicketTypeRowProps) {
+export default function TicketTypeRow({ ticketType }: TicketTypeRowProps) {
   const tt = ticketType;
   return (
     <div
       style={{
         display: 'grid',
-        gridTemplateColumns: '1.8fr 1fr 1.5fr 0.8fr 0.6fr',
+        gridTemplateColumns: '1.8fr 1fr 1.5fr 0.8fr',
         padding: '14px 12px',
         borderTop: '1px solid #F3F4F6',
         alignItems: 'center',
@@ -46,24 +45,6 @@ export default function TicketTypeRow({ ticketType, onEdit }: TicketTypeRowProps
 
       {/* Status badge */}
       <TicketStatusBadge status={tt.status} />
-
-      {/* Edit action */}
-      <button
-        onClick={() => onEdit?.(tt)}
-        style={{
-          background: 'none',
-          border: 'none',
-          cursor: 'pointer',
-          fontSize: '12px',
-          color: '#003298',
-          fontWeight: 500,
-          fontFamily: 'var(--font-sans)',
-          padding: 0,
-          textAlign: 'left',
-        }}
-      >
-        Edit
-      </button>
     </div>
   );
 }

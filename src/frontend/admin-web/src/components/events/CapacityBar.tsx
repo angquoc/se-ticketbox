@@ -15,7 +15,8 @@ export default function CapacityBar({ sold, reserved, total }: CapacityBarProps)
   const reservedPct = total > 0 ? Math.min((reserved / total) * 100, 100 - soldPct) : 0;
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', minWidth: '120px' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', minWidth: '120px', maxWidth: '160px' }}>
+
       {/* Track */}
       <div
         style={{

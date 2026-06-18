@@ -1,16 +1,20 @@
 import React, { useState } from 'react';
 import type { Concert, TicketType } from '@/types/api';
+import { createTicketType, updateTicketType, deleteTicketType } from '@/services/concertService';
 
 interface TicketConfigPanelProps {
   event: Concert;
   onClose: () => void;
+  onSaveSuccess?: () => void;
 }
 
-export default function TicketConfigPanel({ event, onClose }: TicketConfigPanelProps) {
+export default function TicketConfigPanel({ event, onClose, onSaveSuccess }: TicketConfigPanelProps) {
   // Use either the event's ticketTypes or an empty array
   const [tiers, setTiers] = useState<TicketType[]>(event.ticketTypes ?? []);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const updateTier = (id: string, field: 'price' | 'totalQty' | 'maxPerUser', val: number) => {
+  const updateTier = (id: string, field: keyof TicketType, val: any) => {
     setTiers((prev) =>
       prev.map((t) => (t.id === id ? { ...t, [field]: val } : t))
     );
@@ -36,6 +40,83 @@ export default function TicketConfigPanel({ event, onClose }: TicketConfigPanelP
   const removeTier = (id: string) => {
     setTiers((prev) => prev.filter((t) => t.id !== id));
   };
+
+  const handleSave = async () => {
+    setSaving(true);
+    setError(null);
+    const safeNum = (val: any) => {
+      const num = Number(val);
+      return isNaN(num) ? 0 : num;
+    };
+    try {
+      const originalTiers = event.ticketTypes ?? [];
+      const deletedTiers = originalTiers.filter(
+        (orig) => !tiers.some((t) => t.id === orig.id)
+      );
+
+      // Delete removed tiers
+      for (const t of deletedTiers) {
+        await deleteTicketType(event.id, t.id);
+      }
+
+      // Add or update existing tiers
+      for (const t of tiers) {
+        if (t.id.startsWith('new-')) {
+          await createTicketType(event.id, {
+            name: t.name,
+            price: safeNum(t.price),
+            totalQty: safeNum(t.totalQty),
+            maxPerUser: safeNum(t.maxPerUser) || 4,
+            saleStartsAt: event.saleStartsAt || new Date().toISOString(),
+            saleEndsAt: event.saleEndsAt || undefined,
+          });
+
+        } else {
+          const orig = originalTiers.find((o) => o.id === t.id);
+          if (orig) {
+            const priceChanged = safeNum(orig.price) !== safeNum(t.price);
+            const totalQtyChanged = safeNum(orig.totalQty) !== safeNum(t.totalQty);
+            const maxPerUserChanged = safeNum(orig.maxPerUser) !== safeNum(t.maxPerUser);
+            const nameChanged = String(orig.name || '') !== String(t.name || '');
+
+            console.log(`Checking tier ${t.id} (${t.name}):`, {
+              priceChanged,
+              totalQtyChanged,
+              maxPerUserChanged,
+              nameChanged,
+              orig: { name: orig.name, price: orig.price, totalQty: orig.totalQty, maxPerUser: orig.maxPerUser },
+              new: { name: t.name, price: t.price, totalQty: t.totalQty, maxPerUser: t.maxPerUser }
+            });
+
+            if (priceChanged || totalQtyChanged || maxPerUserChanged || nameChanged) {
+              console.log(`Updating tier ${t.id} in DB...`);
+              await updateTicketType(event.id, t.id, {
+                name: t.name,
+                price: safeNum(t.price),
+                totalQty: safeNum(t.totalQty),
+                maxPerUser: safeNum(t.maxPerUser) || 4,
+              });
+            }
+          }
+        }
+      }
+
+      if (onSaveSuccess) {
+        onSaveSuccess();
+      }
+      onClose();
+    } catch (err: any) {
+      console.error('Failed to save ticket config:', err);
+      setError(
+        err?.response?.data?.message ||
+          'Failed to save configuration. Check capacity limits or if tickets are already sold.'
+      );
+    } finally {
+      setSaving(false);
+    }
+  };
+
+
 
   return (
     <div style={{
@@ -110,7 +191,23 @@ export default function TicketConfigPanel({ event, onClose }: TicketConfigPanelP
             {/* Tier name + delete */}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <span style={{ fontWeight: 600, fontSize: '14px', color: '#191B23' }}>{tier.name}</span>
+                <input
+                  type="text"
+                  value={tier.name}
+                  onChange={(e) => updateTier(tier.id, 'name', e.target.value)}
+                  disabled={saving || tier.status === 'SOLD_OUT'}
+                  style={{
+                    fontWeight: 600,
+                    fontSize: '14px',
+                    color: '#191B23',
+                    background: 'transparent',
+                    border: 'none',
+                    borderBottom: '1px dashed #C3C5D7',
+                    padding: '2px 0',
+                    outline: 'none',
+                    width: '120px',
+                  }}
+                />
                 {tier.status === 'SOLD_OUT' && (
                   <span style={{
                     padding: '1px 6px',
@@ -125,9 +222,11 @@ export default function TicketConfigPanel({ event, onClose }: TicketConfigPanelP
               </div>
               <button
                 onClick={() => removeTier(tier.id)}
+                disabled={saving}
                 style={{
-                  background: 'none', border: 'none', cursor: 'pointer',
+                  background: 'none', border: 'none', cursor: saving ? 'default' : 'pointer',
                   color: '#6B7280', padding: '2px', display: 'flex',
+                  opacity: saving ? 0.5 : 1,
                 }}
               >
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
@@ -149,7 +248,7 @@ export default function TicketConfigPanel({ event, onClose }: TicketConfigPanelP
                   type="number"
                   value={tier.price}
                   onChange={(e) => updateTier(tier.id, 'price', Number(e.target.value))}
-                  disabled={tier.status === 'SOLD_OUT'}
+                  disabled={saving || tier.status === 'SOLD_OUT'}
                   style={{
                     width: '100%',
                     height: '34px',
@@ -157,8 +256,8 @@ export default function TicketConfigPanel({ event, onClose }: TicketConfigPanelP
                     borderRadius: '4px',
                     padding: '0 10px',
                     fontSize: '13px',
-                    color: tier.status === 'SOLD_OUT' ? '#9CA3AF' : '#191B23',
-                    background: tier.status === 'SOLD_OUT' ? '#F9FAFB' : '#FFFFFF',
+                    color: (saving || tier.status === 'SOLD_OUT') ? '#9CA3AF' : '#191B23',
+                    background: (saving || tier.status === 'SOLD_OUT') ? '#F9FAFB' : '#FFFFFF',
                     fontFamily: 'var(--font-mono)',
                     outline: 'none',
                     boxSizing: 'border-box',
@@ -173,7 +272,7 @@ export default function TicketConfigPanel({ event, onClose }: TicketConfigPanelP
                   type="number"
                   value={tier.totalQty}
                   onChange={(e) => updateTier(tier.id, 'totalQty', Number(e.target.value))}
-                  disabled={tier.status === 'SOLD_OUT'}
+                  disabled={saving || tier.status === 'SOLD_OUT'}
                   style={{
                     width: '100%',
                     height: '34px',
@@ -181,8 +280,8 @@ export default function TicketConfigPanel({ event, onClose }: TicketConfigPanelP
                     borderRadius: '4px',
                     padding: '0 10px',
                     fontSize: '13px',
-                    color: tier.status === 'SOLD_OUT' ? '#9CA3AF' : '#191B23',
-                    background: tier.status === 'SOLD_OUT' ? '#F9FAFB' : '#FFFFFF',
+                    color: (saving || tier.status === 'SOLD_OUT') ? '#9CA3AF' : '#191B23',
+                    background: (saving || tier.status === 'SOLD_OUT') ? '#F9FAFB' : '#FFFFFF',
                     fontFamily: 'var(--font-mono)',
                     outline: 'none',
                     boxSizing: 'border-box',
@@ -200,7 +299,7 @@ export default function TicketConfigPanel({ event, onClose }: TicketConfigPanelP
                 <select
                   value={tier.maxPerUser}
                   onChange={(e) => updateTier(tier.id, 'maxPerUser', Number(e.target.value))}
-                  disabled={tier.status === 'SOLD_OUT'}
+                  disabled={saving || tier.status === 'SOLD_OUT'}
                   style={{
                     width: '100%',
                     height: '34px',
@@ -208,12 +307,12 @@ export default function TicketConfigPanel({ event, onClose }: TicketConfigPanelP
                     borderRadius: '4px',
                     padding: '0 32px 0 10px',
                     fontSize: '13px',
-                    color: tier.status === 'SOLD_OUT' ? '#9CA3AF' : '#191B23',
-                    background: tier.status === 'SOLD_OUT' ? '#F9FAFB' : '#FFFFFF',
+                    color: (saving || tier.status === 'SOLD_OUT') ? '#9CA3AF' : '#191B23',
+                    background: (saving || tier.status === 'SOLD_OUT') ? '#F9FAFB' : '#FFFFFF',
                     fontFamily: 'var(--font-sans)',
                     outline: 'none',
                     appearance: 'none',
-                    cursor: tier.status === 'SOLD_OUT' ? 'default' : 'pointer',
+                    cursor: (saving || tier.status === 'SOLD_OUT') ? 'default' : 'pointer',
                     boxSizing: 'border-box',
                   }}
                 >
@@ -228,6 +327,7 @@ export default function TicketConfigPanel({ event, onClose }: TicketConfigPanelP
                 </span>
               </div>
             </div>
+
           </div>
         ))}
       </div>
@@ -237,9 +337,15 @@ export default function TicketConfigPanel({ event, onClose }: TicketConfigPanelP
         <p style={{ fontWeight: 600, fontSize: '11px', letterSpacing: '0.6px', textTransform: 'uppercase', color: '#434654', margin: '0 0 12px' }}>
           Sales Status
         </p>
+        {error && (
+          <p style={{ color: '#BA1A1A', fontSize: '12px', margin: '0 0 12px', fontWeight: 500, lineHeight: '16px' }}>
+            {error}
+          </p>
+        )}
         <div style={{ display: 'flex', gap: '8px' }}>
           <button
             onClick={onClose}
+            disabled={saving}
             style={{
               flex: 1,
               height: '36px',
@@ -249,34 +355,38 @@ export default function TicketConfigPanel({ event, onClose }: TicketConfigPanelP
               color: '#434654',
               fontSize: '13px',
               fontWeight: 500,
-              cursor: 'pointer',
+              cursor: saving ? 'default' : 'pointer',
               fontFamily: 'var(--font-sans)',
+              opacity: saving ? 0.6 : 1,
             }}
           >
             Discard Changes
           </button>
           <button
-            onClick={() => {
-              // Simulating save
-              onClose();
-            }}
+            onClick={handleSave}
+            disabled={saving}
             style={{
               flex: 1,
               height: '36px',
               border: 'none',
               borderRadius: '4px',
-              background: '#003298',
+              background: saving ? '#6B8CC7' : '#003298',
               color: '#FFFFFF',
               fontSize: '13px',
               fontWeight: 500,
-              cursor: 'pointer',
+              cursor: saving ? 'not-allowed' : 'pointer',
               fontFamily: 'var(--font-sans)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '6px',
             }}
           >
-            Save Configuration
+            {saving ? 'Saving…' : 'Save Configuration'}
           </button>
         </div>
       </div>
+
     </div>
   );
 }

@@ -152,26 +152,31 @@ export async function getUploadedFiles(
   return res.data;
 }
 
-/**
- * Upload file (PDF press kit hoặc CSV guest list).
- * Dùng multipart/form-data.
- */
 export async function uploadFile(
   concertId: string,
   file: File,
   purpose: 'ARTIST_PRESS_KIT' | 'GUEST_LIST_CSV' | 'COVER_IMAGE',
-): Promise<UploadedFile> {
+): Promise<any> {
   const formData = new FormData();
   formData.append('file', file);
-  formData.append('purpose', purpose);
 
-  const res = await apiClient.post<UploadedFile>(
-    `/uploads/${concertId}`,
+  let url = '';
+  if (purpose === 'ARTIST_PRESS_KIT') {
+    url = `/organizer/concerts/${concertId}/upload-pdf`;
+  } else if (purpose === 'GUEST_LIST_CSV') {
+    url = `/organizer/concerts/${concertId}/upload-csv`;
+  } else {
+    url = `/organizer/concerts/${concertId}/upload-pdf`;
+  }
+
+  const res = await apiClient.post<any>(
+    url,
     formData,
     { headers: { 'Content-Type': 'multipart/form-data' } },
   );
   return res.data;
 }
+
 
 // ── Dashboard Stats ───────────────────────────────────────────────────
 

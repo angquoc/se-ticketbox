@@ -64,6 +64,7 @@ export interface TicketStatusBadgeProps {
 }
 
 export function TicketStatusBadge({ status }: TicketStatusBadgeProps) {
+
   const cfg = ticketStatusConfig[status];
   return (
     <span
@@ -75,12 +76,15 @@ export function TicketStatusBadge({ status }: TicketStatusBadgeProps) {
         background: cfg.bg,
         color: cfg.color,
         whiteSpace: 'nowrap',
+        justifySelf: 'start',
+        display: 'inline-block',
       }}
     >
       {cfg.label}
     </span>
   );
 }
+
 
 export interface UploadStatusBadgeProps {
   status: UploadedFileStatus;

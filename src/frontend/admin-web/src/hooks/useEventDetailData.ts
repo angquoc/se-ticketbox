@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
-import { getAdminConcertById, uploadFile } from '@/services/concertService';
+import { getAdminConcertById, uploadFile, updateConcert } from '@/services/concertService';
+import type { ConcertStatus } from '@/types/api';
 import type { Concert } from '@/types/api';
 
 export function useEventDetailData(id: string) {
@@ -7,6 +8,7 @@ export function useEventDetailData(id: string) {
   const [loading, setLoading] = useState(true);
   const [uploadingPdf, setUploadingPdf] = useState(false);
   const [uploadingCsv, setUploadingCsv] = useState(false);
+  const [updatingStatus, setUpdatingStatus] = useState(false);
 
   const fetchConcert = useCallback(async () => {
     if (!id) return;
@@ -55,6 +57,20 @@ export function useEventDetailData(id: string) {
     }
   }, [concert]);
 
+  const handleStatusChange = useCallback(async (newStatus: ConcertStatus) => {
+    if (!concert) return;
+    setUpdatingStatus(true);
+    try {
+      await updateConcert(concert.id, { status: newStatus });
+      const data = await getAdminConcertById(concert.id);
+      setConcert(data);
+    } catch (err) {
+      console.error('Failed to update concert status:', err);
+    } finally {
+      setUpdatingStatus(false);
+    }
+  }, [concert]);
+
   return {
     concert,
     loading,
@@ -62,6 +78,8 @@ export function useEventDetailData(id: string) {
     uploadingCsv,
     handlePdfUpload,
     handleCsvUpload,
+    handleStatusChange,
+    updatingStatus,
     refreshConcert: fetchConcert,
   };
 }
