@@ -41,7 +41,15 @@ export default function UpcomingEvents({ events = [], loading = false }: Upcomin
       </div>
 
       {/* Event rows */}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', overflow: 'hidden' }}>
+      <div style={{
+        display: 'flex',
+        flexDirection: 'column',
+        gap: '4px',
+        flex: 1,
+        minHeight: 0,
+        overflowY: 'auto',
+        paddingRight: '4px',
+      }}>
         {loading ? (
           // Loading skeletons
           Array.from({ length: 4 }).map((_, i) => (

@@ -181,7 +181,7 @@ export default function DashboardPage() {
       </div>
 
       {/* ── Middle: Chart + Events ── */}
-      <div style={{ display: 'flex', gap: '27px', alignItems: 'stretch' }}>
+      <div style={{ display: 'flex', gap: '27px', alignItems: 'stretch', height: '380px' }}>
 
         {/* Revenue Trend Chart */}
         <RevenueChart data={chartData} activeRange={activeRange} />
