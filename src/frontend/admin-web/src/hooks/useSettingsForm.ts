@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { getStoredUser, updateProfile } from '@/services/authService';
 
 export interface ProfileForm {
   fullName: string;
@@ -9,21 +10,40 @@ export interface ProfileForm {
   organizationWebsite: string;
 }
 
+const DEFAULT_PROFILE: ProfileForm = {
+  fullName: '',
+  email: '',
+  phone: '',
+  role: 'ORGANIZER',
+  organizationName: 'TicketBox Events',
+  organizationWebsite: 'https://ticketbox.vn',
+};
+
 export function useSettingsForm() {
   const [editing, setEditing] = useState(false);
   const [showPasswordModal, setShowPasswordModal] = useState(false);
   const [savingProfile, setSavingProfile] = useState(false);
   const [savedProfile, setSavedProfile] = useState(false);
 
-  const [profile, setProfile] = useState<ProfileForm>({
-    fullName: 'Admin User',
-    email: 'admin@ticketbox.vn',
-    phone: '+84 90 000 0000',
-    role: 'ORGANIZER',
-    organizationName: 'TicketBox Events',
-    organizationWebsite: 'https://ticketbox.vn',
-  });
-  const [draft, setDraft] = useState<ProfileForm>(profile);
+  // Load profile từ localStorage (user object được lưu khi login)
+  const [profile, setProfile] = useState<ProfileForm>(DEFAULT_PROFILE);
+  const [draft, setDraft] = useState<ProfileForm>(DEFAULT_PROFILE);
+
+  useEffect(() => {
+    const stored = getStoredUser();
+    if (stored) {
+      const loaded: ProfileForm = {
+        fullName: stored.fullName || '',
+        email: stored.email || '',
+        phone: '',         // chưa có trong JWT payload
+        role: stored.role || 'ORGANIZER',
+        organizationName: 'TicketBox Events',
+        organizationWebsite: 'https://ticketbox.vn',
+      };
+      setProfile(loaded);
+      setDraft(loaded);
+    }
+  }, []);
 
   const [notifications, setNotifications] = useState({
     newOrder: true,
@@ -43,11 +63,17 @@ export function useSettingsForm() {
   const handleSaveProfile = async () => {
     setSavingProfile(true);
     try {
-      await new Promise((r) => setTimeout(r, 800)); // TODO: call API
+      // Gọi API updateProfile — cập nhật localStorage + thử PATCH /auth/profile
+      await updateProfile({
+        fullName: draft.fullName || undefined,
+        phone: draft.phone || undefined,
+      });
       setProfile({ ...draft });
       setSavedProfile(true);
       setEditing(false);
       setTimeout(() => setSavedProfile(false), 2500);
+    } catch (err) {
+      console.error('Failed to update profile:', err);
     } finally {
       setSavingProfile(false);
     }
