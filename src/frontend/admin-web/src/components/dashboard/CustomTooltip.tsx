@@ -2,6 +2,13 @@ import React from 'react';
 
 export default function CustomTooltip({ active, payload, label }: { active?: boolean; payload?: Array<{ value: number }>; label?: string }) {
   if (!active || !payload?.length) return null;
+  
+  const formattedValue = new Intl.NumberFormat('vi-VN', {
+    style: 'currency',
+    currency: 'VND',
+    maximumFractionDigits: 0,
+  }).format(payload[0].value);
+
   return (
     <div style={{
       background: '#FFFFFF',
@@ -12,7 +19,7 @@ export default function CustomTooltip({ active, payload, label }: { active?: boo
     }}>
       <p style={{ fontSize: '12px', color: '#434654', margin: '0 0 2px' }}>{label}</p>
       <p style={{ fontSize: '14px', fontWeight: 600, color: '#191B23', margin: 0 }}>
-        ${(payload[0].value / 1000).toFixed(0)}k
+        {formattedValue}
       </p>
     </div>
   );

@@ -49,7 +49,24 @@ export default function RevenueChart({ data, activeRange }: RevenueChartProps) {
             </defs>
             <CartesianGrid vertical={false} stroke="#E2E1ED" strokeDasharray="4 4" />
             <XAxis dataKey="day" tick={{ fontFamily: 'var(--font-mono)', fontSize: 12, fill: '#434654' }} axisLine={false} tickLine={false} dy={8} />
-            <YAxis tickFormatter={(v: number) => `${v / 1000}k`} tick={{ fontFamily: 'var(--font-mono)', fontSize: 12, fill: '#434654' }} axisLine={false} tickLine={false} width={48} ticks={[0, 50000, 100000, 150000]} />
+            <YAxis 
+              tickFormatter={(v: number) => {
+                if (v >= 1_000_000_000) {
+                  return `${(v / 1_000_000_000).toFixed(1).replace('.0', '')}B`;
+                }
+                if (v >= 1_000_000) {
+                  return `${(v / 1_000_000).toFixed(0)}M`;
+                }
+                if (v >= 1_000) {
+                  return `${(v / 1_000).toFixed(0)}k`;
+                }
+                return v.toString();
+              }} 
+              tick={{ fontFamily: 'var(--font-mono)', fontSize: 12, fill: '#434654' }} 
+              axisLine={false} 
+              tickLine={false} 
+              width={64} 
+            />
             <Tooltip content={<CustomTooltip />} />
             <Area
               type="monotone" dataKey="value" stroke="#003298" strokeWidth={1.8} fill="url(#revGrad)"

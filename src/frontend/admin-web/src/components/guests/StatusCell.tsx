@@ -1,14 +1,13 @@
 import React from 'react';
-import { GuestStatus } from './types';
 
-export default function StatusCell({ status }: { status: GuestStatus }) {
-  if (status === 'Valid') {
+export default function StatusCell({ status }: { status: string }) {
+  if (status === 'Valid' || status === 'Checked In') {
     return (
       <span style={{ display: 'flex', alignItems: 'center', gap: '4px', color: '#166534', fontSize: '13px', fontWeight: 500 }}>
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
           <polyline points="20 6 9 17 4 12" />
         </svg>
-        Valid
+        {status}
       </span>
     );
   }

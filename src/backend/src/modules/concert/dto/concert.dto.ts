@@ -10,6 +10,7 @@ import {
   Max,
 } from 'class-validator';
 import { ConcertStatus } from '@prisma/client';
+import { Type } from 'class-transformer';
 
 export class CreateConcertDto {
   @IsString()
@@ -112,11 +113,13 @@ export class ConcertQueryDto {
   @IsOptional()
   status?: ConcertStatus;
 
+  @Type(() => Number)
   @IsInt()
   @Min(1)
   @IsOptional()
   page?: number = 1;
 
+  @Type(() => Number)
   @IsInt()
   @Min(1)
   @Max(100)

@@ -1,56 +1,71 @@
 'use client';
 import { useState } from 'react';
-import StatCard, { StatCardProps } from '@/components/dashboard/StatCard.tsx';
-import RevenueChart from '@/components/dashboard/RevenueChart.tsx';
-import UpcomingEvents from '@/components/dashboard/UpcomingEvents.tsx';
+import StatCard, { StatCardProps } from '@/components/dashboard/StatCard';
+import RevenueChart from '@/components/dashboard/RevenueChart';
+import UpcomingEvents from '@/components/dashboard/UpcomingEvents';
+import { useDashboardData } from '@/hooks/useDashboardData';
 
-// ── Data ──────────────────────────────────────────────────────────────
-const revenueData30 = [
-  { day: 'May 9',  value: 52000 },
-  { day: 'May 12', value: 58000 },
-  { day: 'May 15', value: 63000 },
-  { day: 'May 18', value: 61000 },
-  { day: 'May 21', value: 75000 },
-  { day: 'May 24', value: 82000 },
-  { day: 'May 27', value: 95000 },
-  { day: 'May 30', value: 103000 },
-  { day: 'Jun 2',  value: 112000 },
-  { day: 'Jun 5',  value: 124592 },
-];
+// Helper to format trend text based on range
+function getTrendText(change: number, rangeLabel: string) {
+  const period = rangeLabel === '30 Days' ? 'last month' : rangeLabel === '7 Days' ? 'last week' : 'yesterday';
+  if (change > 0) {
+    return `+${change}% from ${period}`;
+  }
+  if (change < 0) {
+    return `${change}% from ${period}`;
+  }
+  return '— No change';
+}
 
-const revenueData7 = [
-  { day: 'May 30', value: 103000 },
-  { day: 'May 31', value: 107000 },
-  { day: 'Jun 1',  value: 109000 },
-  { day: 'Jun 2',  value: 112000 },
-  { day: 'Jun 3',  value: 116000 },
-  { day: 'Jun 4',  value: 120000 },
-  { day: 'Jun 5',  value: 124592 },
-];
+function getTrendIcon(change: number): 'up' | 'down' | 'flat' {
+  if (change > 0) return 'up';
+  if (change < 0) return 'down';
+  return 'flat';
+}
 
-const revenueData24 = [
-  { day: '6am',  value: 118000 },
-  { day: '9am',  value: 120000 },
-  { day: '12pm', value: 121500 },
-  { day: '3pm',  value: 123000 },
-  { day: '6pm',  value: 124000 },
-  { day: '9pm',  value: 124592 },
-];
-
-const dataMap = { '30 Days': revenueData30, '7 Days': revenueData7, '24 Hours': revenueData24 };
+function getTrendColor(change: number): string {
+  if (change > 0) return '#1D52D7';
+  if (change < 0) return '#BA1A1A';
+  return '#434654';
+}
 
 // ── Main Page ──────────────────────────────────────────────────────────
 export default function DashboardPage() {
   const [activeRange, setActiveRange] = useState<'30 Days' | '7 Days' | '24 Hours'>('30 Days');
-  const chartData = dataMap[activeRange];
+  
+  const {
+    loading,
+    totals,
+    upcomingEventsList,
+    chartData,
+    revenueChange,
+    ticketsChange,
+    eventsChange,
+  } = useDashboardData(activeRange);
+
+  // Format total revenue as VND
+  const formattedRevenue = loading
+    ? '...'
+    : new Intl.NumberFormat('vi-VN', {
+      style: 'currency',
+      currency: 'VND',
+      maximumFractionDigits: 0,
+    }).format(totals.totalRevenue);
+
+  const formattedTickets = loading
+    ? '...'
+    : new Intl.NumberFormat('en-US').format(totals.ticketsSold);
+
+  const formattedEvents = loading ? '...' : totals.activeEvents.toString();
+  const formattedUsers = loading ? '...' : new Intl.NumberFormat('en-US').format(totals.newUsers);
 
   const stats: StatCardProps[] = [
     {
       label: 'Total Revenue',
-      value: '$124,592.00',
-      trend: '+14.5% from last month',
-      trendColor: '#1D52D7',
-      trendIcon: 'up',
+      value: formattedRevenue,
+      trend: getTrendText(revenueChange, activeRange),
+      trendColor: getTrendColor(revenueChange),
+      trendIcon: getTrendIcon(revenueChange),
       icon: (
         <svg width="22" height="16" viewBox="0 0 24 18" fill="none" stroke="#003298" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
           <rect x="1" y="3" width="22" height="14" rx="2" />
@@ -60,10 +75,10 @@ export default function DashboardPage() {
     },
     {
       label: 'Tickets Sold',
-      value: '12,403',
-      trend: '+8.2% from last month',
-      trendColor: '#1D52D7',
-      trendIcon: 'up',
+      value: formattedTickets,
+      trend: getTrendText(ticketsChange, activeRange),
+      trendColor: getTrendColor(ticketsChange),
+      trendIcon: getTrendIcon(ticketsChange),
       icon: (
         <svg width="20" height="16" viewBox="0 0 24 18" fill="none" stroke="#003298" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
           <path d="M2 9h20M9 1v16M15 1v16" />
@@ -73,10 +88,10 @@ export default function DashboardPage() {
     },
     {
       label: 'Active Events',
-      value: '42',
-      trend: '— No change',
-      trendColor: '#434654',
-      trendIcon: 'flat',
+      value: formattedEvents,
+      trend: getTrendText(eventsChange, activeRange),
+      trendColor: getTrendColor(eventsChange),
+      trendIcon: getTrendIcon(eventsChange),
       icon: (
         <svg width="18" height="20" viewBox="0 0 22 24" fill="none" stroke="#003298" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
           <rect x="1" y="4" width="20" height="19" rx="2" />
@@ -86,7 +101,7 @@ export default function DashboardPage() {
     },
     {
       label: 'New Users',
-      value: '892',
+      value: formattedUsers,
       trend: '-2.4% from last month',
       trendColor: '#BA1A1A',
       trendIcon: 'down',
@@ -166,13 +181,13 @@ export default function DashboardPage() {
       </div>
 
       {/* ── Middle: Chart + Events ── */}
-      <div style={{ display: 'flex', gap: '27px', alignItems: 'stretch' }}>
+      <div style={{ display: 'flex', gap: '27px', alignItems: 'stretch', height: '380px' }}>
 
         {/* Revenue Trend Chart */}
         <RevenueChart data={chartData} activeRange={activeRange} />
 
         {/* Upcoming Events */}
-        <UpcomingEvents />
+        <UpcomingEvents events={upcomingEventsList} loading={loading} />
       </div>
     </div>
   );

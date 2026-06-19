@@ -1,5 +1,5 @@
-export type TicketType = 'VIP ALL-ACCESS' | 'GENERAL' | 'STAFF';
-export type GuestStatus = 'Valid' | 'Duplicate Email' | 'Invalid Phone';
+export type TicketType = string;
+export type GuestStatus = 'Valid' | 'Checked In' | 'Duplicate Email' | 'Invalid Phone';
 
 export interface Guest {
     row: number;
@@ -17,4 +17,4 @@ export interface Transfer {
     name: string;
     progress?: number;
     complete: boolean;
-}
+}

@@ -1,5 +1,36 @@
 import { ConcertStatus } from '@prisma/client';
 
+export class TicketTypeSummary {
+  id!: string;
+  name!: string;
+  price!: number;
+  totalQty!: number;
+  soldQty!: number;
+  reservedQty!: number;
+  status!: string;
+  saleStartsAt!: Date;
+  saleEndsAt!: Date | null;
+}
+
+export class UploadedFileSummary {
+  id!: string;
+  concertId!: string | null;
+  originalName!: string;
+  objectKey!: string;
+  mimeType!: string;
+  sizeBytes!: number;
+  purpose!: string;
+  status!: string;
+  errorMessage!: string | null;
+  createdAt!: Date;
+}
+
+export class OrganizerSummary {
+  id!: string;
+  fullName!: string | null;
+  email!: string;
+}
+
 export class ConcertResponseDto {
   id!: string;
   title!: string;
@@ -18,18 +49,8 @@ export class ConcertResponseDto {
   createdAt!: Date;
   updatedAt!: Date;
   ticketTypes?: TicketTypeSummary[];
-}
-
-export class TicketTypeSummary {
-  id!: string;
-  name!: string;
-  price!: number;
-  totalQty!: number;
-  soldQty!: number;
-  reservedQty!: number;
-  status!: string;
-  saleStartsAt!: Date;
-  saleEndsAt!: Date | null;
+  organizer?: OrganizerSummary | null;
+  uploadedFiles?: UploadedFileSummary[];
 }
 
 export class ConcertListResponseDto {
@@ -39,3 +60,4 @@ export class ConcertListResponseDto {
   limit!: number;
   totalPages!: number;
 }
+

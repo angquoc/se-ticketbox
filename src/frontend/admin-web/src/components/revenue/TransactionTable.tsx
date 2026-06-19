@@ -1,8 +1,10 @@
 // src/components/revenue/TransactionTable.tsx
 'use client';
 
+import { useState } from 'react';
 import { Transaction } from '@/types/revenue';
 import PaymentStatusBadge from './PaymentStatusBadge';
+import { formatVnd } from '@/utils/format';
 
 interface Props {
   transactions: Transaction[];
@@ -10,9 +12,10 @@ interface Props {
   totalPages: number;
   totalCount: number;
   onPageChange: (page: number) => void;
+  loading?: boolean;
 }
 
-const COL_WIDTHS = '140px 1.6fr 1.2fr 100px 1.3fr 110px';
+const COL_WIDTHS = '180px 1.6fr 1fr 130px 1.3fr 110px';
 
 function ColHeader({ children }: { children: React.ReactNode }) {
   return (
@@ -39,10 +42,13 @@ function PageBtn({
   onClick?: () => void;
   disabled?: boolean;
 }) {
+  const [hovered, setHovered] = useState(false);
   return (
     <button
       onClick={onClick}
       disabled={disabled}
+      onMouseEnter={() => !disabled && setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
       style={{
         width: '30px',
         height: '30px',
@@ -51,12 +57,13 @@ function PageBtn({
         justifyContent: 'center',
         borderRadius: '4px',
         border: active ? '1px solid #003298' : '1px solid #C3C5D7',
-        background: active ? '#003298' : '#FFFFFF',
+        background: active ? '#003298' : hovered ? '#F3F4F6' : '#FFFFFF',
         color: active ? '#FFFFFF' : disabled ? '#C3C5D7' : '#434654',
         fontSize: '13px',
-        fontWeight: active ? 600 : 400,
+        fontWeight: active ? 600 : 500,
         cursor: disabled ? 'default' : 'pointer',
         fontFamily: 'var(--font-sans)',
+        transition: 'background 0.15s, color 0.15s, border-color 0.15s',
       }}
     >
       {children}
@@ -70,9 +77,12 @@ export default function TransactionTable({
   totalPages,
   totalCount,
   onPageChange,
+  loading = false,
 }: Props) {
+  const [hoveredRowId, setHoveredRowId] = useState<string | null>(null);
+
   const perPage = 5;
-  const start = (currentPage - 1) * perPage + 1;
+  const start = totalCount > 0 ? (currentPage - 1) * perPage + 1 : 0;
   const end = Math.min(currentPage * perPage, totalCount);
 
   // Show at most 3 page buttons around current
@@ -103,52 +113,72 @@ export default function TransactionTable({
         borderBottom: '1px solid #C3C5D7',
         background: '#FAFAFA',
         gap: '12px',
+        alignItems: 'center',
       }}>
         <ColHeader>Transaction ID</ColHeader>
         <ColHeader>Event</ColHeader>
-        <ColHeader>Ticket Type</ColHeader>
+        <ColHeader>Customer</ColHeader>
         <ColHeader>Amount</ColHeader>
         <ColHeader>Date</ColHeader>
-        <ColHeader>Payment Status</ColHeader>
+        <ColHeader>Status</ColHeader>
       </div>
 
       {/* Rows */}
-      {transactions.length === 0 ? (
-        <div style={{ padding: '48px 20px', textAlign: 'center', color: '#6B7280', fontSize: '14px' }}>
+      {loading ? (
+        <div style={{ padding: '64px 20px', textAlign: 'center', color: '#6B7280', fontSize: '14px' }}>
+          <div style={{ display: 'inline-block', width: '20px', height: '20px', border: '2px solid #C3C5D7', borderTopColor: '#003298', borderRadius: '50%', animation: 'spin 0.8s linear infinite', marginBottom: '8px' }} />
+          <div>Loading transactions...</div>
+        </div>
+      ) : transactions.length === 0 ? (
+        <div style={{ padding: '64px 20px', textAlign: 'center', color: '#6B7280', fontSize: '14px' }}>
           No transactions found.
         </div>
       ) : (
         transactions.map((tx, i) => (
           <div
             key={tx.id}
+            onMouseEnter={() => setHoveredRowId(tx.id)}
+            onMouseLeave={() => setHoveredRowId(null)}
             style={{
               display: 'grid',
               gridTemplateColumns: COL_WIDTHS,
               padding: '13px 20px',
-              borderBottom: i < transactions.length - 1 ? '1px solid #C3C5D7' : 'none',
+              borderBottom: i < transactions.length - 1 ? '1px solid rgba(195, 197, 215, 0.3)' : 'none',
               alignItems: 'center',
               gap: '12px',
-              background: '#FFFFFF',
+              background: hoveredRowId === tx.id ? '#F8FAFC' : '#FFFFFF',
+              transition: 'background 0.15s ease',
             }}
           >
             {/* TX ID */}
-            <span style={{
-              fontFamily: 'var(--font-mono)',
-              fontSize: '13px',
-              color: '#003298',
-              fontWeight: 500,
-            }}>
-              {tx.id}
-            </span>
+            <div style={{ justifySelf: 'start' }}>
+              <span style={{
+                fontFamily: 'var(--font-mono)',
+                fontSize: '11px',
+                color: '#003298',
+                fontWeight: 600,
+                background: '#EFF6FF',
+                padding: '3px 8px',
+                borderRadius: '4px',
+                border: '1px solid #DBEAFE',
+                display: 'inline-block',
+                maxWidth: '160px',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                whiteSpace: 'nowrap',
+              }}>
+                {tx.id}
+              </span>
+            </div>
 
             {/* Event */}
             <span style={{ fontSize: '13px', fontWeight: 600, color: '#191B23' }}>
               {tx.event}
             </span>
 
-            {/* Ticket Type */}
-            <span style={{ fontSize: '13px', color: '#434654' }}>
-              {tx.ticketType}
+            {/* Customer */}
+            <span style={{ fontSize: '13px', color: '#434654', fontFamily: 'var(--font-mono)' }}>
+              {'customer' in tx ? (tx as any).customer : '—'}
             </span>
 
             {/* Amount */}
@@ -156,9 +186,9 @@ export default function TransactionTable({
               fontFamily: 'var(--font-mono)',
               fontSize: '13px',
               color: '#191B23',
-              fontWeight: 500,
+              fontWeight: 600,
             }}>
-              ${tx.amount.toFixed(2)}
+              {formatVnd(tx.amount)}
             </span>
 
             {/* Date */}
@@ -170,7 +200,9 @@ export default function TransactionTable({
             </span>
 
             {/* Status */}
-            <PaymentStatusBadge status={tx.paymentStatus} />
+            <div>
+              <PaymentStatusBadge status={tx.paymentStatus} />
+            </div>
           </div>
         ))
       )}
@@ -202,7 +234,7 @@ export default function TransactionTable({
 
           {pages.map((p, idx) =>
             p === '...' ? (
-              <span key={`ellipsis-${idx}`} style={{ width: '30px', textAlign: 'center', fontSize: '13px', color: '#6B7280' }}>
+              <span key={`ellipsis-${idx}`} style={{ width: '30px', textAlign: 'center', fontSize: '13px', color: '#434654' }}>
                 …
               </span>
             ) : (
@@ -227,6 +259,7 @@ export default function TransactionTable({
           </PageBtn>
         </div>
       </div>
+      <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
     </div>
   );
 }

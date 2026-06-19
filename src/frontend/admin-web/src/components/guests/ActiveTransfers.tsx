@@ -1,5 +1,5 @@
 import React from 'react';
-import { Transfer } from './types';
+import { Transfer } from '@/types/guests';
 
 export default function ActiveTransfers({ transfers, onRemove }: {
   transfers: Transfer[];
