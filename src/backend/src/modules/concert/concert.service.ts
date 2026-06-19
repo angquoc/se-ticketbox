@@ -5,13 +5,18 @@ import {
   BadRequestException,
 } from '@nestjs/common';
 import { PrismaService } from '../../database/prisma.service';
-import { ConcertStatus, Concert, TicketType, Prisma, User, UploadedFile } from '@prisma/client';
+import {
+  ConcertStatus,
+  Concert,
+  TicketType,
+  Prisma,
+  UploadedFile,
+} from '@prisma/client';
 import { CreateConcertDto, UpdateConcertDto, ConcertQueryDto } from './dto';
 import {
   ConcertResponseDto,
   ConcertListResponseDto,
 } from './dto/concert-response.dto';
-
 
 // Định nghĩa payload
 type ConcertPayload = Concert & {
@@ -83,8 +88,6 @@ export class ConcertService {
         : undefined,
     };
   }
-
-
 
   /**
    * List all public concerts with optional status filter and pagination.
@@ -192,7 +195,10 @@ export class ConcertService {
   /**
    * Create a new concert. Admin only.
    */
-  async create(dto: CreateConcertDto, fallbackOrganizerId: string): Promise<ConcertResponseDto> {
+  async create(
+    dto: CreateConcertDto,
+    fallbackOrganizerId: string,
+  ): Promise<ConcertResponseDto> {
     // Check for duplicate slug
     const existing = await this.prisma.concert.findUnique({
       where: { slug: dto.slug },
@@ -222,7 +228,6 @@ export class ConcertService {
       include: {
         organizer: true,
       },
-
     });
 
     return this.toResponse(concert);
@@ -429,4 +434,3 @@ export class ConcertService {
     });
   }
 }
-

@@ -20,7 +20,6 @@ import { AuthGuard } from '../auth/guards/auth.guard';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import type { AuthUser } from '../auth/decorators/current-user.decorator';
 
-
 @Controller()
 export class ConcertController {
   constructor(private readonly concertService: ConcertService) {}
@@ -102,7 +101,6 @@ export class ConcertController {
   async create(@Body() dto: CreateConcertDto, @CurrentUser() user: AuthUser) {
     return this.concertService.create(dto, user.sub);
   }
-
 
   /**
    * PATCH /admin/concerts/:id
