@@ -142,13 +142,22 @@ export async function deleteTicketType(
 
 /**
  * Lấy danh sách file đã upload của một concert.
+ * Backend trả về uploadedFiles kèm trong GET /admin/concerts/:id
  */
 export async function getUploadedFiles(
   concertId: string,
 ): Promise<UploadedFile[]> {
-  const res = await apiClient.get<UploadedFile[]>(
-    `/concerts/${concertId}/files`,
+  const res = await apiClient.get<{ uploadedFiles?: UploadedFile[] }>(
+    `/admin/concerts/${concertId}`,
   );
+  return res.data.uploadedFiles ?? [];
+}
+
+/**
+ * Lấy danh sách khách mời (GuestListEntry) của một concert từ DB.
+ */
+export async function getConcertGuests(concertId: string): Promise<any[]> {
+  const res = await apiClient.get<any[]>(`/admin/concerts/${concertId}/guests`);
   return res.data;
 }
 

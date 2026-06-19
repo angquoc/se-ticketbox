@@ -5,10 +5,8 @@ import Link from 'next/link';
 import SectionCard from '@/components/ui/SectionCard';
 import { InfoRow } from '@/components/ui/FormField';
 import TicketTypeRow from '@/components/events/TicketTypeRow';
-import UploadDropzone from '@/components/events/UploadDropzone';
 import QuickStatCard from '@/components/events/QuickStatCard';
 import StatusStepper from '@/components/events/StatusStepper';
-import UploadedFileItem from '@/components/events/UploadedFileItem';
 import TicketConfigPanel from '@/components/events/TicketConfigPanel';
 import { useEventDetailData } from '@/hooks/useEventDetailData';
 import { formatVnd, formatDate } from '@/utils/format';
@@ -25,10 +23,6 @@ export default function EventDetailPage({ params }: EventDetailPageProps) {
   const {
     concert,
     loading,
-    uploadingPdf,
-    uploadingCsv,
-    handlePdfUpload,
-    handleCsvUpload,
     handleStatusChange,
     updatingStatus,
     refreshConcert,
@@ -43,7 +37,6 @@ export default function EventDetailPage({ params }: EventDetailPageProps) {
   }
 
   const ticketTypes = concert.ticketTypes ?? [];
-  const uploadedFiles = concert.uploadedFiles ?? [];
 
   // Computed stats
   const totalRevenue = ticketTypes.reduce((sum, tt) => sum + tt.soldQty * tt.price, 0);
@@ -254,51 +247,7 @@ export default function EventDetailPage({ params }: EventDetailPageProps) {
             />
           </SectionCard>
 
-          {/* Uploads */}
-          <SectionCard title="File Uploads">
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
 
-              {/* Existing files list */}
-              {uploadedFiles.length > 0 && (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                  <p style={{ fontSize: '11px', fontWeight: 500, letterSpacing: '0.4px', textTransform: 'uppercase', color: '#9CA3AF', margin: 0 }}>
-                    Uploaded Files
-                  </p>
-                  {uploadedFiles.map((uf) => (
-                    <UploadedFileItem key={uf.id} file={uf} />
-                  ))}
-                </div>
-              )}
-
-              {/* PDF dropzone */}
-              <div>
-                <p style={{ fontSize: '11px', fontWeight: 500, letterSpacing: '0.4px', textTransform: 'uppercase', color: '#9CA3AF', margin: '0 0 8px' }}>
-                  PDF Press Kit
-                </p>
-                <UploadDropzone
-                  accept=".pdf,application/pdf"
-                  label="Upload PDF Press Kit"
-                  hint="AI will generate artist bio from this file"
-                  onFile={handlePdfUpload}
-                  loading={uploadingPdf}
-                />
-              </div>
-
-              {/* CSV dropzone */}
-              <div>
-                <p style={{ fontSize: '11px', fontWeight: 500, letterSpacing: '0.4px', textTransform: 'uppercase', color: '#9CA3AF', margin: '0 0 8px' }}>
-                  Guest List CSV
-                </p>
-                <UploadDropzone
-                  accept=".csv,text/csv"
-                  label="Upload Guest List CSV"
-                  hint="fullName, email, phone, sponsorName"
-                  onFile={handleCsvUpload}
-                  loading={uploadingCsv}
-                />
-              </div>
-            </div>
-          </SectionCard>
 
           {/* Seat Map */}
           {concert.seatMapUrl && (
