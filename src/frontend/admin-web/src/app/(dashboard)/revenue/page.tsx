@@ -1,62 +1,25 @@
 'use client';
-import { useState, useMemo } from 'react';
+import { useRevenueData } from '@/hooks/useRevenueData';
 import RevenueFilterBar from '@/components/revenue/RevenueFilterBar';
 import RevenueSummaryCard from '@/components/revenue/RevenueSummaryCard';
 import TransactionTable from '@/components/revenue/TransactionTable';
-import { RevenueFilters } from '@/types/revenue';
-import { ALL_TRANSACTIONS, TOTAL_COUNT, TOTAL_REVENUE } from '@/lib/revenueMockData';
-
-const PER_PAGE = 5;
 
 export default function RevenuePage() {
-  const [filters, setFilters] = useState<RevenueFilters>({
-    event: 'all',
-    dateFrom: '',
-    dateTo: '',
-    method: 'All Methods',
-  });
-  const [appliedFilters, setAppliedFilters] = useState<RevenueFilters>(filters);
-  const [currentPage, setCurrentPage] = useState(1);
-
-  // Client-side filter on mock data
-  const filtered = useMemo(() => {
-    return ALL_TRANSACTIONS.filter(tx => {
-      if (appliedFilters.event !== 'all') {
-        const slug = appliedFilters.event;
-        const eventMatch =
-          (slug === 'summer-music-2024' && tx.event.includes('Summer Music')) ||
-          (slug === 'tech-conference'   && tx.event.includes('Tech Conference')) ||
-          (slug === 'local-food-wine'   && tx.event.includes('Local Food'));
-        if (!eventMatch) return false;
-      }
-      if (appliedFilters.method !== 'All Methods' && tx.provider !== appliedFilters.method) {
-        return false;
-      }
-      if (appliedFilters.dateFrom) {
-        if (new Date(tx.date) < new Date(appliedFilters.dateFrom)) return false;
-      }
-      if (appliedFilters.dateTo) {
-        if (new Date(tx.date) > new Date(appliedFilters.dateTo + 'T23:59:59Z')) return false;
-      }
-      return true;
-    });
-  }, [appliedFilters]);
-
-  const totalPages = Math.max(1, Math.ceil(TOTAL_COUNT / PER_PAGE));
-  const pageTx = filtered.slice((currentPage - 1) * PER_PAGE, currentPage * PER_PAGE);
-
-  const filteredRevenue = appliedFilters.event === 'all' && appliedFilters.method === 'All Methods'
-    ? TOTAL_REVENUE
-    : filtered.filter(tx => tx.paymentStatus === 'Paid').reduce((s, tx) => s + tx.amount, 0);
-
-  const filteredCount = appliedFilters.event === 'all' && appliedFilters.method === 'All Methods'
-    ? TOTAL_COUNT
-    : filtered.length;
-
-  const handleApply = () => {
-    setAppliedFilters(filters);
-    setCurrentPage(1);
-  };
+  const {
+    loading,
+    error,
+    concerts,
+    pageTx,
+    totalRevenue,
+    transactionCount,
+    currentPage,
+    totalPages,
+    filters,
+    setFilters,
+    handleApply,
+    handleReset,
+    setCurrentPage,
+  } = useRevenueData();
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
@@ -73,7 +36,7 @@ export default function RevenuePage() {
           </p>
         </div>
 
-        {/* Export CSV */}
+        {/* Export CSV (placeholder — future feature) */}
         <button style={{
           display: 'flex', alignItems: 'center', gap: '6px',
           height: '34px', padding: '0 16px',
@@ -92,30 +55,43 @@ export default function RevenuePage() {
         </button>
       </div>
 
-      {/* ── Filters + Summary ── */}
-      <div style={{ display: 'flex', gap: '24px', alignItems: 'flex-start' }}>
-        {/* Filter bar takes remaining space */}
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <RevenueFilterBar
-            filters={filters}
-            onChange={setFilters}
-            onApply={handleApply}
-          />
+      {/* Error state */}
+      {error && (
+        <div style={{
+          padding: '12px 16px',
+          background: '#FEE2E2',
+          border: '1px solid #FECACA',
+          borderRadius: '8px',
+          color: '#991B1B',
+          fontSize: '13px',
+        }}>
+          {error}
         </div>
-        {/* Summary card fixed width */}
-        <RevenueSummaryCard
-          totalRevenue={filteredRevenue}
-          transactionCount={filteredCount}
-        />
-      </div>
+      )}
+
+      {/* ── Summary Cards Grid ── */}
+      <RevenueSummaryCard
+        totalRevenue={totalRevenue}
+        transactionCount={transactionCount}
+      />
+
+      {/* ── Filter Bar ── */}
+      <RevenueFilterBar
+        filters={filters}
+        onChange={setFilters}
+        onApply={handleApply}
+        onReset={handleReset}
+        concerts={concerts}
+      />
 
       {/* ── Transaction Table ── */}
       <TransactionTable
-        transactions={pageTx}
+        transactions={pageTx as any}
         currentPage={currentPage}
         totalPages={totalPages}
-        totalCount={filteredCount}
+        totalCount={transactionCount}
         onPageChange={setCurrentPage}
+        loading={loading}
       />
     </div>
   );
