@@ -79,6 +79,17 @@ export class ConcertController {
   }
 
   /**
+   * GET /admin/concerts/:id/guests
+   * Admin/Organizer only - returns the list of guests imported for this concert.
+   */
+  @Get('admin/concerts/:id/guests')
+  @UseGuards(AuthGuard, RolesGuard)
+  @Roles(Role.ADMIN, Role.ORGANIZER)
+  async findAdminGuests(@Param('id') id: string) {
+    return this.concertService.findAdminGuests(id);
+  }
+
+  /**
    * POST /admin/concerts
 
    * Admin only - creates a new concert.

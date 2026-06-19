@@ -411,5 +411,22 @@ export class ConcertService {
 
     return this.toResponse(concert);
   }
+
+  /**
+   * Get all guest list entries for a single concert.
+   */
+  async findAdminGuests(id: string) {
+    const concert = await this.prisma.concert.findUnique({
+      where: { id },
+    });
+    if (!concert) {
+      throw new NotFoundException(`Concert with ID "${id}" not found`);
+    }
+
+    return this.prisma.guestListEntry.findMany({
+      where: { concertId: id },
+      orderBy: { createdAt: 'asc' },
+    });
+  }
 }
 
