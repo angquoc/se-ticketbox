@@ -131,7 +131,6 @@ export default function CheckinPage() {
                   ticketId={scanResult.id}
                   gate={scanResult.gate}
                   ticketType={scanResult.type || 'General Admission'}
-                  holderName={scanResult.holderName}
                   isOffline={scanResult.isOffline}
                   onScanNext={() => setScanResult(null)}
                 />

@@ -36,7 +36,6 @@ export interface CheckinVerifyResponse {
   ticketId: string;
   concertId?: string;
   ticketTypeName?: string;
-  holderName?: string;
   status: 'CHECKED_IN' | 'ALREADY_CHECKED_IN' | 'INVALID_TICKET';
   message: string;
 }

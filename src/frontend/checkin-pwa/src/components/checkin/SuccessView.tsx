@@ -4,12 +4,11 @@ interface SuccessViewProps {
   ticketId: string;
   gate: string;
   ticketType: string;
-  holderName?: string;
   isOffline?: boolean;
   onScanNext: () => void;
 }
 
-export default function SuccessView({ ticketId, gate, ticketType, holderName, isOffline, onScanNext }: SuccessViewProps) {
+export default function SuccessView({ ticketId, gate, ticketType, isOffline, onScanNext }: SuccessViewProps) {
   return (
     <div className="flex flex-col items-center justify-center pt-5 pb-5 flex-1 w-full">
       {/* White circle with checkmark */}
@@ -42,9 +41,6 @@ export default function SuccessView({ ticketId, gate, ticketType, holderName, is
           <span className="text-2xl font-extrabold text-white mt-1.5 tracking-[0.5px]">
             {ticketId}
           </span>
-          {holderName && (
-            <span className="text-[13px] text-white/60 mt-1">{holderName}</span>
-          )}
         </div>
 
         <hr className="border-none border-t border-white/15 mb-5" />

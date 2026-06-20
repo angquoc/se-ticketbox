@@ -31,7 +31,6 @@ export interface ScanResult {
   id: string;
   gate: string;
   type?: string;
-  holderName?: string;
   time?: string;
   status: 'valid' | 'invalid';
   errorMsg?: string;
@@ -191,7 +190,6 @@ export function useOfflineCheckin() {
             id: parsed.ticketId,
             gate,
             type: res.ticketTypeName,
-            holderName: res.holderName,
             time: timeStr,
             status: res.success ? 'valid' : 'invalid',
             errorMsg: res.success ? undefined : res.message,
