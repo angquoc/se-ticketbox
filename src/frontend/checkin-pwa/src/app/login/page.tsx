@@ -1,5 +1,5 @@
 'use client';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   IconBadge,
@@ -10,6 +10,7 @@ import {
   IconSpinner,
   IconArrowRight,
 } from '@/components/icons';
+import { loginStaff, isAuthenticated } from '@/services/authService';
 
 // ── Gate options ───────────────────────────────────────────────────────
 const GATES = [
@@ -28,6 +29,13 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
+  // Redirect to checkin if already authenticated
+  useEffect(() => {
+    if (isAuthenticated()) {
+      router.replace('/checkin');
+    }
+  }, [router]);
+
   const handleSubmit = async () => {
     if (!staffId.trim() || !password.trim()) {
       setError('Vui lòng điền đầy đủ thông tin.');
@@ -35,10 +43,17 @@ export default function LoginPage() {
     }
     setError('');
     setLoading(true);
-    // Simulate auth delay — replace with real API call
-    await new Promise(r => setTimeout(r, 900));
-    setLoading(false);
-    router.push('/checkin');
+
+    try {
+      await loginStaff(staffId.trim(), password, gate);
+      router.push('/checkin');
+    } catch (err: unknown) {
+      const message =
+        err instanceof Error ? err.message : 'Đăng nhập thất bại. Vui lòng thử lại.';
+      setError(message);
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -49,7 +64,6 @@ export default function LoginPage() {
         <div className="flex items-center justify-center pt-[52px] px-6 pb-5">
           {/* Logo */}
           <div className="flex items-center gap-2">
-            {/* Bar chart icon */}
             <IconLogo />
             <span className="font-extrabold text-[15px] tracking-[1.5px] text-white">
               TICKETSCAN
@@ -90,17 +104,18 @@ export default function LoginPage() {
           {/* ── Staff ID field ── */}
           <div className="mb-4">
             <label className="block text-[10px] font-semibold tracking-wider text-white/45 mb-2 uppercase">
-              Mã nhân viên
+              Mã nhân viên / Email
             </label>
             <div className="relative">
               <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-white/30 flex items-center pointer-events-none">
                 <IconBadge />
               </span>
               <input
+                id="staff-id-input"
                 type="text"
                 value={staffId}
                 onChange={e => setStaffId(e.target.value)}
-                placeholder="VD: STF-9921"
+                placeholder="VD: staff@ticketbox.vn"
                 className="w-full h-[52px] bg-card-dark border border-white/10 rounded-lg pl-[46px] pr-3.5 text-[15px] text-white outline-none tracking-wide focus:border-brand/60 transition-colors duration-200 caret-brand"
               />
             </div>
@@ -116,12 +131,13 @@ export default function LoginPage() {
                 <IconLock />
               </span>
               <input
+                id="password-input"
                 type="password"
                 value={password}
                 onChange={e => setPassword(e.target.value)}
                 placeholder="••••••••"
                 className="w-full h-[52px] bg-card-dark border border-white/10 rounded-lg pl-[46px] pr-3.5 text-[15px] text-white outline-none focus:border-brand/60 transition-colors duration-200 caret-brand"
-                onKeyDown={e => { if (e.key === 'Enter') handleSubmit(); }}
+                onKeyDown={e => { if (e.key === 'Enter') void handleSubmit(); }}
               />
             </div>
           </div>
@@ -132,11 +148,11 @@ export default function LoginPage() {
               Cổng soát vé
             </label>
             <div className="relative">
-              {/* Gate icon */}
               <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-white/30 flex items-center pointer-events-none z-1">
                 <IconGate />
               </span>
               <select
+                id="gate-select"
                 value={gate}
                 onChange={e => setGate(e.target.value)}
                 className="w-full h-[52px] bg-card-dark border border-white/10 rounded-lg pl-[46px] pr-11 text-[15px] text-white outline-none cursor-pointer appearance-none focus:border-brand/60 transition-colors duration-200"
@@ -154,7 +170,8 @@ export default function LoginPage() {
 
           {/* ── Submit button ── */}
           <button
-            onClick={handleSubmit}
+            id="login-submit-btn"
+            onClick={() => void handleSubmit()}
             disabled={loading}
             className="w-full h-14 bg-gradient-to-r from-brand to-brand-hover text-white text-[15px] font-bold tracking-wider rounded-xl flex items-center justify-center gap-2.5 shadow-[0_4px_24px_rgba(124,92,252,0.4)] transition-all duration-200 cursor-pointer disabled:cursor-default active:scale-95 disabled:active:scale-100 disabled:opacity-75 disabled:brightness-100 disabled:shadow-none"
           >

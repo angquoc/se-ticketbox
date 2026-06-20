@@ -10,9 +10,10 @@ interface ScanLog {
 
 interface HistoryViewProps {
   logs: ScanLog[];
+  pendingSyncCount?: number;
 }
 
-export default function HistoryView({ logs }: HistoryViewProps) {
+export default function HistoryView({ logs, pendingSyncCount = 0 }: HistoryViewProps) {
   const [isPanelOpen, setIsPanelOpen] = useState(false);
   const [visibleCount, setVisibleCount] = useState(20);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
@@ -119,7 +120,7 @@ export default function HistoryView({ logs }: HistoryViewProps) {
               ĐÃ QUÉT
             </span>
             <span className="text-xl font-extrabold text-white">
-              {(1240 + logs.length).toLocaleString()}
+              {logs.length.toLocaleString()}
             </span>
           </div>
 
@@ -128,8 +129,8 @@ export default function HistoryView({ logs }: HistoryViewProps) {
             <span className="text-[10px] font-semibold text-white/40 tracking-wider uppercase">
               CHỜ ĐỒNG BỘ
             </span>
-            <span className="text-xl font-extrabold text-success">
-              0
+            <span className={`text-xl font-extrabold ${pendingSyncCount > 0 ? 'text-amber-400' : 'text-success'}`}>
+              {pendingSyncCount}
             </span>
           </div>
         </div>
