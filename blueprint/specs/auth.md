@@ -23,6 +23,7 @@ Các vai trò chính:
 Mục tiêu của tính năng này là đảm bảo:
 
 * Người dùng chỉ truy cập được các chức năng phù hợp với vai trò.
+* Người dùng có thể xem và cập nhật thông tin tài khoản của chính mình.
 * Mật khẩu không được lưu trực tiếp trong database.
 * JWT phải được kiểm tra tại các API cần bảo vệ.
 * Organizer không thể sửa concert của organizer khác.
@@ -136,7 +137,131 @@ Các bước xử lý:
    Authorization: Bearer <accessToken>
    ```
 
-### 3. Luồng truy cập API được bảo vệ
+### 3. Luồng lấy thông tin người dùng hiện tại
+
+Thành phần tham gia:
+
+* Client
+* Backend API
+* JwtAuthGuard
+* PostgreSQL
+
+Các bước xử lý:
+
+1. Client gửi request:
+
+   ```http
+   GET /auth/me
+   Authorization: Bearer <accessToken>
+   ```
+
+2. `JwtAuthGuard` xác thực JWT.
+
+3. Backend lấy `userId` từ JWT.
+
+4. Backend truy vấn thông tin user trong PostgreSQL.
+
+5. Backend trả thông tin người dùng hiện tại.
+
+Kết quả thành công:
+
+```json
+{
+  "id": "userId",
+  "email": "user@example.com",
+  "fullName": "Nguyen Van A",
+  "role": "CUSTOMER"
+}
+```
+
+### 4. Luồng cập nhật hồ sơ cá nhân
+
+Thành phần tham gia:
+
+* Client
+* Backend API
+* JwtAuthGuard
+* PostgreSQL
+
+Các bước xử lý:
+
+1. Client gửi request:
+
+   ```http
+   PATCH /auth/profile
+   Authorization: Bearer <accessToken>
+   ```
+
+2. Request body:
+
+   ```json
+   {
+     "fullName": "Nguyen Van B"
+   }
+   ```
+
+3. `JwtAuthGuard` xác thực JWT.
+
+4. Backend lấy `userId` từ JWT.
+
+5. Backend cập nhật thông tin của chính user đó.
+
+6. Backend trả profile đã cập nhật.
+
+Nguyên tắc:
+
+* User chỉ được sửa hồ sơ của chính mình.
+* Không được thay đổi role thông qua API này.
+* Chưa hỗ trợ thay đổi email trong phạm vi đồ án.
+
+### 5. Luồng đổi mật khẩu
+
+Thành phần tham gia:
+
+* Client
+* Backend API
+* JwtAuthGuard
+* PostgreSQL
+
+Các bước xử lý:
+
+1. Client gửi request:
+
+   ```http
+   POST /auth/change-password
+   Authorization: Bearer <accessToken>
+   ```
+
+2. Request body:
+
+   ```json
+   {
+     "currentPassword": "oldPassword",
+     "newPassword": "newPassword123"
+   }
+   ```
+
+3. `JwtAuthGuard` xác thực JWT.
+
+4. Backend lấy user hiện tại.
+
+5. Backend kiểm tra `currentPassword`.
+
+6. Nếu đúng, Backend hash `newPassword` bằng bcrypt.
+
+7. Backend cập nhật `passwordHash`.
+
+8. Backend trả kết quả thành công.
+
+Kết quả thành công:
+
+```json
+{
+  "message": "Password changed successfully"
+}
+```
+
+### 6. Luồng truy cập API được bảo vệ
 
 Thành phần tham gia:
 
@@ -175,12 +300,15 @@ Ví dụ:
 * Staff chỉ được gọi API check-in và sync log.
 * Admin có quyền quản trị toàn hệ thống.
 
-### 4. Luồng phân quyền theo role
+### 7. Luồng phân quyền theo role
 
 Một số endpoint tiêu biểu:
 
 | Endpoint                                     | Role được phép   | Kiểm tra bổ sung                          |
 | -------------------------------------------- | ---------------- | ----------------------------------------- |
+| `GET /auth/me`               | Authenticated User | Lấy user từ JWT                 |
+| `PATCH /auth/profile`        | Authenticated User | Chỉ sửa profile của chính mình  |
+| `POST /auth/change-password` | Authenticated User | Chỉ đổi mật khẩu của chính mình |
 | `GET /concerts`                              | Public           | Không yêu cầu đăng nhập                   |
 | `GET /concerts/:id`                          | Public           | Không yêu cầu đăng nhập                   |
 | `POST /orders`                               | CUSTOMER         | Kiểm tra userId từ JWT                    |
@@ -196,7 +324,9 @@ Một số endpoint tiêu biểu:
 | `GET /admin/users`                           | ADMIN            | Không                                     |
 | `GET /admin/system-health`                   | ADMIN            | Không                                     |
 
-### 5. Luồng kiểm tra quyền sở hữu tài nguyên
+**Ghi chú:** Authenticated User = CUSTOMER, ORGANIZER, STAFF hoặc ADMIN đã đăng nhập hợp lệ bằng JWT.
+
+### 8. Luồng kiểm tra quyền sở hữu tài nguyên
 
 Ví dụ với API sửa concert:
 
@@ -292,6 +422,27 @@ Thông báo:
 ```json
 {
   "message": "Sai email hoặc mật khẩu"
+}
+```
+
+### 3.1 Mật khẩu hiện tại không chính xác
+
+Điều kiện:
+
+* Người dùng gọi API đổi mật khẩu.
+* `currentPassword` không khớp với mật khẩu hiện tại.
+
+Cách xử lý:
+
+```http
+401 Unauthorized
+```
+
+Thông báo:
+
+```json
+{
+  "message": "Current password is incorrect"
 }
 ```
 
@@ -393,6 +544,7 @@ Cách xử lý:
 
 * Không lưu mật khẩu dạng plain text.
 * Mật khẩu phải được hash bằng bcrypt hoặc thuật toán tương đương.
+* API đổi mật khẩu phải xác thực mật khẩu hiện tại trước khi cập nhật mật khẩu mới.
 * Không trả `passwordHash` về client trong bất kỳ response nào.
 * Không log mật khẩu hoặc token trong log hệ thống.
 
@@ -460,6 +612,26 @@ Cách xử lý:
 * API bảo vệ chấp nhận token hợp lệ.
 * Backend lấy được `userId`, `email`, `role` từ JWT.
 
+### Thông tin người dùng hiện tại
+
+* Người dùng đã đăng nhập có thể gọi `GET /auth/me`.
+* Hệ thống trả đúng thông tin user từ database.
+* Không trả `passwordHash`.
+
+### Cập nhật hồ sơ cá nhân
+
+* Người dùng đã đăng nhập có thể cập nhật thông tin hồ sơ của chính mình.
+* Hệ thống cập nhật dữ liệu trong PostgreSQL.
+* Không cho phép thay đổi role thông qua API này.
+* Không trả passwordHash trong response.
+
+### Đổi mật khẩu
+
+* Người dùng có thể đổi mật khẩu khi cung cấp đúng mật khẩu hiện tại.
+* Mật khẩu mới được hash trước khi lưu.
+* Sai mật khẩu hiện tại trả `401 Unauthorized`.
+* Sau khi đổi mật khẩu, người dùng có thể đăng nhập bằng mật khẩu mới.
+
 ### Phân quyền RBAC
 
 * Customer không thể truy cập API của Organizer.
@@ -485,12 +657,16 @@ Cách xử lý:
 Các test case tối thiểu cần có:
 
 1. Register user mới thành công.
-2. Register email trùng trả `409`.
+2. Register email trùng trả 409.
 3. Login đúng trả JWT.
-4. Login sai trả `401`.
-5. Gọi API protected không token trả `401`.
-6. Gọi API protected có token hợp lệ trả `200`.
-7. Customer gọi API organizer trả `403`.
-8. Organizer sửa concert của mình thành công.
-9. Organizer sửa concert của người khác trả `403`.
-10. Customer xem order của người khác trả `403`.
+4. Login sai trả 401.
+5. GET /auth/me trả đúng thông tin user.
+6. PATCH /auth/profile cập nhật thành công.
+7. Change password thành công.
+8. Change password sai currentPassword trả 401.
+9. Gọi API protected không token trả 401.
+10. Gọi API protected có token hợp lệ trả 200.
+11. Customer gọi API organizer trả 403.
+12. Organizer sửa concert của mình thành công.
+13. Organizer sửa concert của người khác trả 403.
+14. Customer xem order của người khác trả 403.
