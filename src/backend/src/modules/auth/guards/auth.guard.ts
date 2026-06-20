@@ -6,15 +6,20 @@ import {
 } from '@nestjs/common';
 import { Request } from 'express';
 import { JwtService } from '@nestjs/jwt';
+import { Role } from '@prisma/client';
 
 interface JwtPayload {
   sub: string;
   email: string;
-  role: string;
+  role: Role;
 }
 
 @Injectable()
 export class AuthGuard implements CanActivate {
+  constructor(
+    private readonly jwtService: JwtService,
+  ) {}
+
   canActivate(context: ExecutionContext): boolean {
     const request = context
       .switchToHttp()
@@ -25,12 +30,8 @@ export class AuthGuard implements CanActivate {
       throw new UnauthorizedException('Không tìm thấy token truy cập');
     }
 
-    const jwtService = new JwtService({
-      secret: process.env['JWT_SECRET'] ?? 'ticketbox-super-secret',
-    });
-
     try {
-      const payload = jwtService.verify<JwtPayload>(token);
+      const payload = this.jwtService.verify<JwtPayload>(token);
       request.user = payload;
     } catch {
       throw new UnauthorizedException('Token không hợp lệ hoặc đã hết hạn');

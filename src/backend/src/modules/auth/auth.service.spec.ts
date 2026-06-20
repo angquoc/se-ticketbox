@@ -10,6 +10,7 @@ describe('AuthService', () => {
     user: {
       findUnique: jest.fn(),
       create: jest.fn(),
+      update: jest.fn(),
     },
   };
 
@@ -36,6 +37,7 @@ describe('AuthService', () => {
   });
 
   beforeEach(() => {
+    prismaServiceMock.user.update.mockClear();
     prismaServiceMock.user.findUnique.mockClear();
     prismaServiceMock.user.create.mockClear();
     jwtServiceMock.signAsync.mockClear();
