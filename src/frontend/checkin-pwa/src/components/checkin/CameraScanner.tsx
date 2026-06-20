@@ -1,21 +1,13 @@
 'use client';
 import { useEffect, useRef, useState, useCallback } from 'react';
+import jsQR from 'jsqr';
 
 type ScannerState = 'idle' | 'requesting' | 'active' | 'error';
 
 interface CameraScannerProps {
-  onScan?: (ticket: {
-    id: string;
-    gate: string;
-    type?: string;
-    time?: string;
-    status: 'valid' | 'invalid';
-    errorMsg?: string;
-  }) => void;
+  onScan?: (rawQr: string) => void;
   onViewHistory?: () => void;
 }
-
-let scanCounter = 0;
 
 export default function CameraScanner({ onScan, onViewHistory }: CameraScannerProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -155,32 +147,52 @@ export default function CameraScanner({ onScan, onViewHistory }: CameraScannerPr
     }
   }, []);
 
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
+
   useEffect(() => {
-    if (state === 'active' && onScan) {
-      console.log('[CameraScanner] Camera active. Simulating scan in 2.5 seconds...');
-      const timer = setTimeout(() => {
-        scanCounter += 1;
-        if (scanCounter % 2 === 1) {
-          onScan({
-            id: 'TCK-88902',
-            gate: 'Cổng A',
-            type: 'General Admission',
-            status: 'valid',
-          });
-        } else {
-          const now = new Date();
-          const timeStr = now.toTimeString().split(' ')[0];
-          onScan({
-            id: 'TCK-88899',
-            gate: 'Cổng C',
-            time: timeStr,
-            status: 'invalid',
-            errorMsg: 'Vé không hợp lệ cho cổng này',
-          });
+    let animId: number;
+    let hasScanned = false;
+
+    const scanFrame = () => {
+      if (hasScanned) return;
+      const video = videoRef.current;
+      if (video && video.readyState === video.HAVE_ENOUGH_DATA && state === 'active') {
+        let canvas = canvasRef.current;
+        if (!canvas) {
+          canvas = document.createElement('canvas');
+          canvasRef.current = canvas;
         }
-      }, 2500);
-      return () => clearTimeout(timer);
+        const ctx = canvas.getContext('2d');
+        if (ctx) {
+          canvas.width = video.videoWidth;
+          canvas.height = video.videoHeight;
+          ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+          const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+          const code = jsQR(imageData.data, imageData.width, imageData.height, {
+            inversionAttempts: 'dontInvert',
+          });
+
+          if (code && code.data) {
+            console.log('[CameraScanner] QR Code detected:', code.data);
+            hasScanned = true;
+            if (onScan) {
+              onScan(code.data);
+            }
+            return;
+          }
+        }
+      }
+      animId = requestAnimationFrame(scanFrame);
+    };
+
+    if (state === 'active') {
+      animId = requestAnimationFrame(scanFrame);
     }
+
+    return () => {
+      hasScanned = true;
+      cancelAnimationFrame(animId);
+    };
   }, [state, onScan]);
 
   useEffect(() => {

@@ -1,46 +1,55 @@
 'use client';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import CameraScanner from '@/components/checkin/CameraScanner';
 import HistoryView from '@/components/checkin/HistoryView';
 import SuccessView from '@/components/checkin/SuccessView';
 import FailureView from '@/components/checkin/FailureView';
+import { useOfflineCheckin, type ScanResult } from '@/hooks/useOfflineCheckin';
+import { isAuthenticated, getStoredUser, getStoredGate, clearSession } from '@/services/authService';
 
 export default function CheckinPage() {
+  const router = useRouter();
   const [activeTab, setActiveTab] = useState<'scan' | 'history' | 'settings'>('scan');
-  const [scanResult, setScanResult] = useState<{
-    id: string;
-    gate: string;
-    type?: string;
-    time?: string;
-    status: 'valid' | 'invalid';
-    errorMsg?: string;
-  } | null>(null);
-  const [logs, setLogs] = useState(() => {
-    const initialLogs = [
-      { id: 'TCK-88902', time: '14:22:10', type: 'General Admission', status: 'valid' },
-      { id: 'TCK-88901', time: '14:21:45', type: 'VIP Stage A', status: 'valid' },
-      { id: 'TCK-88899', time: '14:18:30', type: 'Staff Only', status: 'error' },
-      { id: 'TCK-88895', time: '14:15:12', type: 'General Admission', status: 'valid' },
-    ];
-    const types = ['General Admission', 'VIP Stage A', 'VIP Stage B', 'Staff Only', 'Press/Media'];
-    let currentId = 88894;
-    const baseTime = new Date();
-    baseTime.setHours(14, 12, 0); // Start going backwards from 14:12:00
-    
-    for (let i = 0; i < 50; i++) {
-      baseTime.setSeconds(baseTime.getSeconds() - Math.floor(Math.random() * 45) - 15);
-      const timeStr = baseTime.toTimeString().split(' ')[0];
-      const status = Math.random() > 0.15 ? 'valid' : 'error';
-      const type = status === 'error' ? 'Staff Only' : types[Math.floor(Math.random() * types.length)];
-      initialLogs.push({
-        id: `TCK-${currentId--}`,
-        time: timeStr,
-        type: type,
-        status: status,
-      });
+  const [scanResult, setScanResult] = useState<ScanResult | null>(null);
+  const [isScanning, setIsScanning] = useState(false);
+
+  const {
+    isOnline,
+    pendingSyncCount,
+    isSyncing,
+    logs,
+    handleScan,
+    triggerSync,
+  } = useOfflineCheckin();
+
+  // ── Protected route ──────────────────────────────────────────────────────
+  useEffect(() => {
+    if (!isAuthenticated()) {
+      router.replace('/login');
     }
-    return initialLogs;
-  });
+  }, [router]);
+
+  const user = getStoredUser();
+  const gate = getStoredGate();
+
+  // ── Handle QR scan callback ──────────────────────────────────────────────
+  const onQrDetected = async (rawQr: string) => {
+    if (isScanning) return;
+    setIsScanning(true);
+    try {
+      const result = await handleScan(rawQr);
+      setScanResult(result);
+    } finally {
+      setIsScanning(false);
+    }
+  };
+
+  // ── Logout ───────────────────────────────────────────────────────────────
+  const handleLogout = () => {
+    clearSession();
+    router.replace('/login');
+  };
 
   return (
     <div className="min-h-screen flex flex-col items-center font-sans text-white">
@@ -78,6 +87,39 @@ export default function CheckinPage() {
               TICKETSCAN
             </span>
           </div>
+
+          {/* Online/Offline + Pending sync badge */}
+          <div className="flex items-center gap-2">
+            {pendingSyncCount > 0 && !scanResult && (
+              <button
+                onClick={() => void triggerSync()}
+                disabled={isSyncing}
+                className="flex items-center gap-1.5 bg-amber-500/15 border border-amber-500/30 rounded-full px-2.5 py-1 transition-all active:scale-95 disabled:opacity-60"
+                title="Đồng bộ ngay"
+              >
+                {isSyncing ? (
+                  <div className="w-2.5 h-2.5 border border-amber-400 border-t-transparent rounded-full animate-spin" />
+                ) : (
+                  <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#fbbf24" strokeWidth="2.5" strokeLinecap="round">
+                    <polyline points="1 4 1 10 7 10" />
+                    <path d="M3.51 15a9 9 0 1 0 .49-3.1" />
+                  </svg>
+                )}
+                <span className="text-[10px] font-bold text-amber-400">{pendingSyncCount}</span>
+              </button>
+            )}
+
+            <div className="flex items-center gap-1.5">
+              <span className={`w-1.5 h-1.5 rounded-full transition-all duration-300 ${
+                isOnline ? 'bg-green-400 shadow-[0_0_6px_#4ade80]' : 'bg-red-400 shadow-[0_0_6px_#f87171]'
+              }`} />
+              <span className={`text-[10px] font-bold tracking-wide ${
+                isOnline ? 'text-green-400' : 'text-red-400'
+              }`}>
+                {isOnline ? 'ONLINE' : 'OFFLINE'}
+              </span>
+            </div>
+          </div>
         </header>
 
         {/* ── Body content based on active tab ── */}
@@ -89,13 +131,14 @@ export default function CheckinPage() {
                   ticketId={scanResult.id}
                   gate={scanResult.gate}
                   ticketType={scanResult.type || 'General Admission'}
+                  isOffline={scanResult.isOffline}
                   onScanNext={() => setScanResult(null)}
                 />
               ) : (
                 <FailureView
                   ticketId={scanResult.id}
                   gate={scanResult.gate}
-                  scanTime={scanResult.time || '12:00:00'}
+                  scanTime={scanResult.time || ''}
                   errorMsg={scanResult.errorMsg || 'Lỗi soát vé'}
                   onScanNext={() => setScanResult(null)}
                 />
@@ -106,18 +149,18 @@ export default function CheckinPage() {
                 <div className="relative z-10 bg-card-dark border border-white/10 rounded-2xl py-4 px-5 flex justify-between items-center mx-5 mt-2.5 mb-5 shadow-sm">
                   <div className="flex flex-col">
                     <span className="text-[10px] font-medium text-white/40 tracking-wider uppercase">
-                      CổNG HIệN TạI
+                      CỔNG HIỆN TẠI
                     </span>
                     <span className="text-[15px] font-bold text-white mt-1">
-                      GATE C1 - VIP NORTH
+                      {gate || 'Chưa chọn cổng'}
                     </span>
                   </div>
                   <div className="flex flex-col items-end">
                     <span className="text-[10px] font-medium text-white/40 tracking-wider uppercase">
-                      LƯợT QUÉT
+                      LƯỢT QUÉT
                     </span>
                     <span className="text-base font-extrabold text-success mt-0.5">
-                      {(1240 + logs.length).toLocaleString()}
+                      {logs.length.toLocaleString()}
                     </span>
                   </div>
                 </div>
@@ -125,26 +168,7 @@ export default function CheckinPage() {
                 {/* Scanner */}
                 <CameraScanner
                   onViewHistory={() => setActiveTab('history')}
-                  onScan={(ticket) => {
-                    setScanResult(ticket);
-                    const now = new Date();
-                    const timeStr = ticket.time || now.toTimeString().split(' ')[0];
-                    setLogs((prev) => {
-                      // Avoid double adding identical scans at the same second
-                      if (prev[0] && prev[0].id === ticket.id && prev[0].time === timeStr) {
-                        return prev;
-                      }
-                      return [
-                        {
-                          id: ticket.id,
-                          time: timeStr,
-                          type: ticket.type || (ticket.status === 'valid' ? 'General Admission' : 'Staff Only'),
-                          status: ticket.status
-                        },
-                        ...prev,
-                      ];
-                    });
-                  }}
+                  onScan={onQrDetected}
                 />
               </>
             )}
@@ -152,7 +176,7 @@ export default function CheckinPage() {
         )}
 
         {activeTab === 'history' && (
-          <HistoryView logs={logs} />
+          <HistoryView logs={logs} pendingSyncCount={pendingSyncCount} />
         )}
 
         {activeTab === 'settings' && (
@@ -167,25 +191,79 @@ export default function CheckinPage() {
               </p>
             </div>
 
+            {/* Staff Info card */}
             <div className="bg-card-dark border border-white/10 rounded-2xl p-5 flex flex-col gap-4">
               <div className="flex flex-col gap-1">
                 <span className="text-[11px] font-semibold text-white/40 tracking-wider uppercase">
-                  THIếT Bị SOÁT VÉ
+                  NHÂN VIÊN
                 </span>
                 <span className="text-[15px] font-bold text-white">
-                  iPhone 15 Pro Max - Scanner 01
+                  {user?.name || user?.email || 'Không xác định'}
+                </span>
+                {user?.email && user?.name && (
+                  <span className="text-[12px] text-white/40">{user.email}</span>
+                )}
+              </div>
+              <hr className="border-none border-t border-white/10" />
+              <div className="flex flex-col gap-1">
+                <span className="text-[11px] font-semibold text-white/40 tracking-wider uppercase">
+                  CỔNG HIỆN TẠI
+                </span>
+                <span className="text-[15px] font-bold text-white">
+                  {gate || 'Chưa chọn cổng'}
                 </span>
               </div>
               <hr className="border-none border-t border-white/10" />
               <div className="flex flex-col gap-1">
                 <span className="text-[11px] font-semibold text-white/40 tracking-wider uppercase">
-                  PHIÊN BảN ỨNG DụNG
+                  PHIÊN BẢN ỨNG DỤNG
                 </span>
                 <span className="text-[15px] font-bold text-white">
-                  v1.4.2-pwa
+                  v4.2.0-pwa
                 </span>
               </div>
             </div>
+
+            {/* Sync info card */}
+            <div className="bg-card-dark border border-white/10 rounded-2xl p-5 flex flex-col gap-4">
+              <div className="flex items-center justify-between">
+                <div className="flex flex-col gap-1">
+                  <span className="text-[11px] font-semibold text-white/40 tracking-wider uppercase">
+                    CHỜ ĐỒNG BỘ
+                  </span>
+                  <span className={`text-[15px] font-bold ${pendingSyncCount > 0 ? 'text-amber-400' : 'text-success'}`}>
+                    {pendingSyncCount} bản ghi
+                  </span>
+                </div>
+                {pendingSyncCount > 0 && isOnline && (
+                  <button
+                    onClick={() => void triggerSync()}
+                    disabled={isSyncing}
+                    className="flex items-center gap-2 bg-brand/15 border border-brand/30 rounded-xl px-4 py-2.5 text-[13px] font-semibold text-brand transition-all active:scale-95 disabled:opacity-50"
+                  >
+                    {isSyncing ? (
+                      <div className="w-3.5 h-3.5 border border-brand border-t-transparent rounded-full animate-spin" />
+                    ) : (
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+                        <polyline points="1 4 1 10 7 10" />
+                        <path d="M3.51 15a9 9 0 1 0 .49-3.1" />
+                      </svg>
+                    )}
+                    {isSyncing ? 'Đang sync...' : 'Đồng bộ ngay'}
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {/* Logout */}
+            <button
+              id="logout-btn"
+              onClick={handleLogout}
+              className="w-full py-4 rounded-2xl font-semibold text-white text-base transition-all active:scale-95 mt-auto"
+              style={{ background: 'rgba(239, 68, 68, 0.15)', border: '1px solid rgba(239, 68, 68, 0.35)' }}
+            >
+              Đăng xuất
+            </button>
           </main>
         )}
 
@@ -197,6 +275,7 @@ export default function CheckinPage() {
         }`}>
           {/* QR Tab */}
           <button
+            id="tab-scan"
             onClick={() => {
               setScanResult(null);
               setActiveTab('scan');
@@ -219,6 +298,7 @@ export default function CheckinPage() {
 
           {/* History Tab */}
           <button
+            id="tab-history"
             onClick={() => {
               setScanResult(null);
               setActiveTab('history');
@@ -239,6 +319,7 @@ export default function CheckinPage() {
 
           {/* Settings Tab */}
           <button
+            id="tab-settings"
             onClick={() => {
               setScanResult(null);
               setActiveTab('settings');

@@ -4,10 +4,11 @@ interface SuccessViewProps {
   ticketId: string;
   gate: string;
   ticketType: string;
+  isOffline?: boolean;
   onScanNext: () => void;
 }
 
-export default function SuccessView({ ticketId, gate, ticketType, onScanNext }: SuccessViewProps) {
+export default function SuccessView({ ticketId, gate, ticketType, isOffline, onScanNext }: SuccessViewProps) {
   return (
     <div className="flex flex-col items-center justify-center pt-5 pb-5 flex-1 w-full">
       {/* White circle with checkmark */}
@@ -17,14 +18,22 @@ export default function SuccessView({ ticketId, gate, ticketType, onScanNext }: 
         </svg>
       </div>
 
-      {/* HỢP LỆ text */}
-      <h2 className="text-[34px] font-black text-white tracking-[1.5px] mb-8 text-center uppercase">
+      {/* HỢP LỆ text + offline badge */}
+      <h2 className="text-[34px] font-black text-white tracking-[1.5px] mb-3 text-center uppercase">
         HỢP LỆ
       </h2>
+      {isOffline && (
+        <div className="flex items-center gap-1.5 mb-5 px-3 py-1.5 rounded-full" style={{ background: 'rgba(251, 191, 36, 0.12)', border: '1px solid rgba(251, 191, 36, 0.3)' }}>
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#fbbf24" strokeWidth="2.5" strokeLinecap="round">
+            <path d="M1 1l22 22M16.72 11.06A10.94 10.94 0 0 1 19 12.55M5 12.55a10.94 10.94 0 0 1 5.17-2.39M10.71 5.05A16 16 0 0 1 22.56 9M1.42 9a15.91 15.91 0 0 1 4.7-2.88M8.53 16.11a6 6 0 0 1 6.95 0M12 20h.01" />
+          </svg>
+          <span className="text-[10px] font-bold text-amber-400 tracking-wide">LƯU OFFLINE — CHỜ ĐỒNG BỘ</span>
+        </div>
+      )}
 
       {/* Details Card */}
       <div className="w-full bg-white/12 backdrop-blur-[20px] border border-white/15 rounded-[20px] p-5 mb-10 box-border">
-        {/* Ticket ID */}
+        {/* Ticket ID + holder name */}
         <div className="flex flex-col items-center mb-5">
           <span className="text-[11px] font-bold text-white/65 tracking-wider uppercase">
             MÃ VÉ
