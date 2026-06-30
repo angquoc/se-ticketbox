@@ -40,6 +40,7 @@ export default function PaymentWaitingPage({ orderId }: PaymentWaitingPageProps)
   const [creatingPaymentUrl, setCreatingPaymentUrl] = useState(false);
   const [localPaymentUrl, setLocalPaymentUrl] = useState<string | null>(null);
   const hasAutoOpenedRef = useRef(false);
+  const createPaymentLockRef = useRef(false);
 
   const { status, loading, error, refresh } = usePaymentStatus({
     orderId,
@@ -101,13 +102,22 @@ export default function PaymentWaitingPage({ orderId }: PaymentWaitingPageProps)
     return () => clearInterval(timer);
   }, [order?.expiresAt]);
 
-  async function handleCreatePaymentUrl() {
+  async function handleCreatePaymentUrl(button?: HTMLButtonElement) {
+    if (createPaymentLockRef.current) return;
+
+    createPaymentLockRef.current = true;
+    if (button) button.disabled = true;
+
+    const idempotencyKey = getPaymentIdempotencyKey(orderId);
     setCreatingPaymentUrl(true);
+
     try {
-      const response = await paymentApi.create(orderId, getPaymentIdempotencyKey(orderId));
+      const response = await paymentApi.create(orderId, idempotencyKey);
       setLocalPaymentUrl(response.paymentUrl);
       await refresh();
     } catch (err) {
+      createPaymentLockRef.current = false;
+      if (button) button.disabled = false;
       alert(err instanceof Error ? err.message : 'Không thể tạo payment URL');
     } finally {
       setCreatingPaymentUrl(false);
@@ -186,9 +196,10 @@ export default function PaymentWaitingPage({ orderId }: PaymentWaitingPageProps)
                   </p>
                   <button
                     type="button"
-                    onClick={() => void handleCreatePaymentUrl()}
+                    onClick={(event) => void handleCreatePaymentUrl(event.currentTarget)}
                     disabled={creatingPaymentUrl}
-                    className="inline-flex rounded-lg border border-indigo-300 bg-white px-4 py-2 text-sm font-medium text-indigo-800 hover:bg-indigo-100 disabled:opacity-50"
+                    aria-busy={creatingPaymentUrl}
+                    className="inline-flex rounded-lg border border-indigo-300 bg-white px-4 py-2 text-sm font-medium text-indigo-800 hover:bg-indigo-100 disabled:cursor-not-allowed disabled:opacity-50"
                   >
                     {creatingPaymentUrl ? 'Đang tạo...' : 'Tạo lại payment URL'}
                   </button>

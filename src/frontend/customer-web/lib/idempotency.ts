@@ -1,6 +1,9 @@
 const CHECKOUT_IDEM_PREFIX = 'ticketbox:checkout-idem:';
 const PAYMENT_IDEM_PREFIX = 'ticketbox:payment-idem:';
 
+const checkoutKeyMemory = new Map<string, string>();
+const paymentKeyMemory = new Map<string, string>();
+
 export function createIdempotencyKey(): string {
   if (typeof crypto !== 'undefined' && 'randomUUID' in crypto) {
     return crypto.randomUUID();
@@ -8,30 +11,48 @@ export function createIdempotencyKey(): string {
   return `${Date.now()}-${Math.random().toString(36).slice(2, 11)}`;
 }
 
-export function getCheckoutIdempotencyKey(concertId: string): string {
-  const storageKey = `${CHECKOUT_IDEM_PREFIX}${concertId}`;
+function getOrCreateScopedKey(
+  scopeId: string,
+  memory: Map<string, string>,
+  storagePrefix: string,
+): string {
+  const cached = memory.get(scopeId);
+  if (cached) return cached;
+
+  const storageKey = `${storagePrefix}${scopeId}`;
   const existing = sessionStorage.getItem(storageKey);
-  if (existing) return existing;
+  if (existing) {
+    memory.set(scopeId, existing);
+    return existing;
+  }
 
   const key = createIdempotencyKey();
+  memory.set(scopeId, key);
   sessionStorage.setItem(storageKey, key);
   return key;
+}
+
+function clearScopedKey(
+  scopeId: string,
+  memory: Map<string, string>,
+  storagePrefix: string,
+): void {
+  memory.delete(scopeId);
+  sessionStorage.removeItem(`${storagePrefix}${scopeId}`);
+}
+
+export function getCheckoutIdempotencyKey(concertId: string): string {
+  return getOrCreateScopedKey(concertId, checkoutKeyMemory, CHECKOUT_IDEM_PREFIX);
 }
 
 export function clearCheckoutIdempotencyKey(concertId: string): void {
-  sessionStorage.removeItem(`${CHECKOUT_IDEM_PREFIX}${concertId}`);
+  clearScopedKey(concertId, checkoutKeyMemory, CHECKOUT_IDEM_PREFIX);
 }
 
 export function getPaymentIdempotencyKey(orderId: string): string {
-  const storageKey = `${PAYMENT_IDEM_PREFIX}${orderId}`;
-  const existing = sessionStorage.getItem(storageKey);
-  if (existing) return existing;
-
-  const key = createIdempotencyKey();
-  sessionStorage.setItem(storageKey, key);
-  return key;
+  return getOrCreateScopedKey(orderId, paymentKeyMemory, PAYMENT_IDEM_PREFIX);
 }
 
 export function clearPaymentIdempotencyKey(orderId: string): void {
-  sessionStorage.removeItem(`${PAYMENT_IDEM_PREFIX}${orderId}`);
+  clearScopedKey(orderId, paymentKeyMemory, PAYMENT_IDEM_PREFIX);
 }
