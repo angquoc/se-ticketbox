@@ -4,8 +4,11 @@ import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import CustomerHeader from '@/components/layout/CustomerHeader';
+import PendingOrderBanner from '@/components/payment/PendingOrderBanner';
 import { useAuth } from '@/hooks/useAuth';
-import { concertApi, orderApi } from '@/lib/api-client';
+import { concertApi } from '@/lib/api-client';
+import { getCheckoutErrorMessage } from '@/lib/api-error';
+import { createOrderWithIdempotencyRetry } from '@/lib/create-order-retry';
 import {
   clearCheckoutIdempotencyKey,
   getCheckoutIdempotencyKey,
@@ -66,7 +69,7 @@ export default function CheckoutPage({ concertId }: CheckoutPageProps) {
 
       const idempotencyKey = getCheckoutIdempotencyKey(concertId);
 
-      const orderResponse = await orderApi.create(
+      const orderResponse = await createOrderWithIdempotencyRetry(
         {
           concertId: backendConcertId,
           items,
@@ -90,7 +93,7 @@ export default function CheckoutPage({ concertId }: CheckoutPageProps) {
       );
     } catch (err) {
       setStep('error');
-      setError(err instanceof Error ? err.message : 'Không thể tạo đơn hàng');
+      setError(getCheckoutErrorMessage(err));
     }
   }
 
@@ -112,6 +115,10 @@ export default function CheckoutPage({ concertId }: CheckoutPageProps) {
       <main className="mx-auto w-full max-w-2xl flex-1 px-4 py-8 sm:px-6">
         <h1 className="text-2xl font-bold text-slate-900">Xác nhận đặt vé</h1>
         <p className="mt-1 text-slate-600">{concertName}</p>
+
+        <div className="mt-4">
+          <PendingOrderBanner concertId={concertId} />
+        </div>
 
         <div className="mt-6 rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
           <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-500">

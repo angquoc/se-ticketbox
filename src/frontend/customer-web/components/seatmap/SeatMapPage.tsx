@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { ALL_TICKET_TYPES, useSeatMap } from '@/hooks/useSeatMap';
 import { requestPurchaseAccess } from '@/lib/waiting-room-access';
 import CustomerHeader from '@/components/layout/CustomerHeader';
+import PendingOrderBanner from '@/components/payment/PendingOrderBanner';
 import BackendNotice from '@/components/ui/BackendNotice';
 import SeatFilters from './SeatFilters';
 import InteractiveSeatMap from './InteractiveSeatMap';
@@ -172,6 +173,9 @@ export default function SeatMapPage({ concertId }: SeatMapPageProps) {
           )}
           <div className="mt-3">
             <BackendNotice backendError={backendError} warning={warning} source={source} />
+          </div>
+          <div className="mt-3">
+            <PendingOrderBanner concertId={concertId} />
           </div>
           <p className="mt-2 text-sm text-slate-500">
             Còn {availableTotal} vé trống
