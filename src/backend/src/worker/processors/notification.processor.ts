@@ -5,15 +5,9 @@ import { NOTIFICATION_QUEUE } from '../../modules/queue/queue.constants';
 import { PrismaService } from '../../database/prisma.service';
 import { EmailService } from '../../modules/notification/services/email.service';
 
-interface TicketToken {
-  ticketId: string;
-  rawToken: string;
-}
-
 interface OrderPaidJobData {
   orderId: string;
   userId: string;
-  ticketTokens?: TicketToken[];
 }
 
 @Processor(NOTIFICATION_QUEUE)
@@ -28,13 +22,17 @@ export class NotificationProcessor extends WorkerHost {
   }
 
   async process(job: Job<OrderPaidJobData>) {
-    const { orderId, ticketTokens = [] } = job.data;
+    const { orderId } = job.data;
 
     const order = await this.prisma.order.findUnique({
       where: { id: orderId },
       include: {
         user: true,
-        tickets: true,
+        tickets: {
+          include: {
+            ticketType: { select: { name: true } },
+          },
+        },
         concert: { select: { title: true } },
       },
     });
@@ -44,24 +42,12 @@ export class NotificationProcessor extends WorkerHost {
     }
 
     if (job.name === 'send-order-paid-email') {
-      // Build a map from ticketId → rawToken for QR payload construction
-      const tokenMap = new Map(
-        ticketTokens.map((t) => [t.ticketId, t.rawToken]),
-      );
-
-      const qrPayloads = order.tickets.map((ticket) => {
-        const rawToken = tokenMap.get(ticket.id) ?? '';
-        // QR payload format: {ticketId}:{qrTokenHash}:{timestamp}:{qrSignature}
-        // The signature was already computed when the ticket was created.
-        // For email purposes we include the rawToken so the user can reconstruct
-        // their QR code, and the qrSignature for offline verification.
-        return {
-          ticketId: ticket.id,
-          rawToken,
-          qrTokenHash: ticket.qrTokenHash,
-          qrSignature: ticket.qrSignature ?? '',
-        };
-      });
+      // Build ticket info for email — rawToken is NOT sent via email for security.
+      // Users view QR codes on the authenticated web app instead.
+      const ticketInfos = order.tickets.map((ticket) => ({
+        ticketId: ticket.id,
+        ticketTypeName: ticket.ticketType.name,
+      }));
 
       await this.emailService.sendOrderConfirmation({
         to: order.user.email,
@@ -69,7 +55,7 @@ export class NotificationProcessor extends WorkerHost {
         concertTitle: order.concert.title,
         ticketCount: order.tickets.length,
         totalAmount: order.totalAmountInVnd,
-        qrPayloads,
+        ticketInfos,
       });
     }
 

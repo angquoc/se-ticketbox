@@ -25,11 +25,17 @@ import { MockPaymentResult, MockWebhookDto } from './dto/mock-webhook.dto';
 
 /**
  * Generates a cryptographically secure QR token for a ticket.
- * - rawToken: a random UUID (sent to frontend for QR rendering, never stored in DB)
+ * - rawToken: a random UUID (sent to frontend for QR rendering, stored in DB)
  * - qrTokenHash: SHA-256 of rawToken (stored in DB, used for verification)
- * - qrSignature: HMAC-SHA256 of rawToken (stored in DB, used for tamper detection)
+ * - qrSignature: HMAC-SHA256 of {ticketId}:{qrTokenHash} (stored in DB, used for tamper detection)
  *
- * The QR payload format: {ticketId}:{qrTokenHash}:{timestamp}:{qrSignature}
+ * The QR payload format: {ticketId}:{rawToken}
+ *
+ * At check-in time, the backend:
+ *   1. Looks up the ticket by ticketId
+ *   2. Recomputes HMAC-SHA256(ticketId:qrTokenHash) with QR_SIGNATURE_SECRET
+ *   3. Compares against the stored qrSignature
+ *   4. Hashes the rawToken from QR and compares against qrTokenHash
  */
 function generateQrToken(
   ticketId: string,
@@ -41,8 +47,7 @@ function generateQrToken(
 } {
   const rawToken = crypto.randomUUID();
   const qrTokenHash = createHash('sha256').update(rawToken).digest('hex');
-  const timestamp = Math.floor(Date.now() / 1000);
-  const signaturePayload = `${ticketId}:${qrTokenHash}:${timestamp}`;
+  const signaturePayload = `${ticketId}:${qrTokenHash}`;
   const qrSignature = createHmac('sha256', secret)
     .update(signaturePayload)
     .digest('hex');
@@ -478,6 +483,7 @@ export class PaymentService {
               (item) => item.id === plan.orderItemId,
             )!.ticketTypeId,
             userId: order.userId,
+            qrRawToken: plan.rawToken,
             qrTokenHash: plan.qrTokenHash,
             qrSignature: plan.qrSignature,
             status: 'ISSUED',
@@ -531,14 +537,10 @@ export class PaymentService {
       ),
     );
 
-    // Queue notification email with raw tokens for QR payload construction
-    const ticketTokens = plans.map((p) => ({
-      ticketId: p.ticketId,
-      rawToken: p.rawToken,
-    }));
+    // Queue notification email — processor fetches ticket data directly from DB
     await this.notificationQueue.add(
       'send-order-paid-email',
-      { orderId: dto.orderId, userId: order.userId, ticketTokens },
+      { orderId: dto.orderId, userId: order.userId },
       {
         attempts: 3,
         backoff: { type: 'exponential', delay: 3000 },
