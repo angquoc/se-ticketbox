@@ -1,13 +1,34 @@
 import { Processor, WorkerHost } from '@nestjs/bullmq';
 import { Job } from 'bullmq';
+import { ConfigService } from '@nestjs/config';
 import { TICKET_ISSUE_QUEUE } from '../../modules/queue/queue.constants';
 import { PrismaService } from '../../database/prisma.service';
 import { OrderStatus, Ticket } from '@prisma/client';
-import { createHash, randomUUID } from 'crypto';
+import { createHash, createHmac, randomUUID } from 'crypto';
+
+/**
+ * Generates a secure QR token for a ticket — same logic as PaymentService.generateQrToken.
+ * Uses a local copy to avoid circular dependencies.
+ */
+function generateQrToken(
+  ticketId: string,
+  secret: string,
+): { rawToken: string; qrTokenHash: string; qrSignature: string } {
+  const rawToken = randomUUID();
+  const qrTokenHash = createHash('sha256').update(rawToken).digest('hex');
+  const signaturePayload = `${ticketId}:${qrTokenHash}`;
+  const qrSignature = createHmac('sha256', secret)
+    .update(signaturePayload)
+    .digest('hex');
+  return { rawToken, qrTokenHash, qrSignature };
+}
 
 @Processor(TICKET_ISSUE_QUEUE)
 export class TicketIssueProcessor extends WorkerHost {
-  constructor(private readonly prisma: PrismaService) {
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly configService: ConfigService,
+  ) {
     super();
   }
 
@@ -51,24 +72,22 @@ export class TicketIssueProcessor extends WorkerHost {
       };
     }
 
+    const qrSecret = this.configService.get<string>(
+      'QR_SIGNATURE_SECRET',
+      'dev_qr_secret',
+    );
     const createdTickets: Ticket[] = [];
 
     await this.prisma.$transaction(async (tx) => {
       for (const item of order.items) {
-        // Move tickets from "reserved" to "sold" in DB
         await tx.ticketType.update({
           where: { id: item.ticketTypeId },
           data: {
-            soldQty: {
-              increment: item.quantity,
-            },
-            reservedQty: {
-              decrement: item.quantity,
-            },
+            soldQty: { increment: item.quantity },
+            reservedQty: { decrement: item.quantity },
           },
         });
 
-        // Update per-user paid/reserved counters
         await tx.userTicketCounter.upsert({
           where: {
             userId_ticketTypeId: {
@@ -83,32 +102,29 @@ export class TicketIssueProcessor extends WorkerHost {
             reservedQty: 0,
           },
           update: {
-            paidQty: {
-              increment: item.quantity,
-            },
-            reservedQty: {
-              decrement: item.quantity,
-            },
+            paidQty: { increment: item.quantity },
+            reservedQty: { decrement: item.quantity },
           },
         });
 
-        // Create one Ticket record per purchased quantity
         for (let i = 0; i < item.quantity; i++) {
-          const rawQrToken = randomUUID();
-
-          const qrTokenHash = createHash('sha256')
-            .update(rawQrToken)
-            .digest('hex');
+          const ticketId = randomUUID();
+          const { rawToken, qrTokenHash, qrSignature } = generateQrToken(
+            ticketId,
+            qrSecret,
+          );
 
           const ticket = await tx.ticket.create({
             data: {
+              id: ticketId,
               orderId: order.id,
               orderItemId: item.id,
               concertId: order.concertId,
               ticketTypeId: item.ticketTypeId,
               userId: order.userId,
+              qrRawToken: rawToken,
               qrTokenHash,
-              qrSignature: `mock_signed_payload_${rawQrToken}`,
+              qrSignature,
             },
           });
 
@@ -116,11 +132,6 @@ export class TicketIssueProcessor extends WorkerHost {
         }
       }
     });
-
-    // NOTE: Redis stock sync and user_limit decrement are handled by the
-    // caller (PaymentService.markPaymentSuccessAndQueueTicketIssue or
-    // OrderService.finalizePayment) before/after queueing this job.
-    // This processor focuses solely on persisting tickets in PostgreSQL.
 
     return {
       issued: true,
