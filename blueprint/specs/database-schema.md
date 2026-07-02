@@ -118,8 +118,9 @@ Lưu vé đã phát hành cho khán giả. Mỗi vé tương ứng một QR code
 | Trường | Ý nghĩa |
 |---|---|
 | `orderId` / `orderItemId` | FK → để trace vé về order gốc |
-| `qrTokenHash` | Hash của QR payload, duy nhất. Dùng hash thay vì plaintext để tránh vé giả |
-| `qrSignature` | Chữ ký số HMAC của QR payload để xác minh offline |
+| `qrRawToken` | UUID ngẫu nhiên, lưu trong DB, trả về frontend để render QR. Không bao giờ gửi qua email |
+| `qrTokenHash` | SHA-256 hash của `qrRawToken`, duy nhất. Dùng để verify khi check-in |
+| `qrSignature` | HMAC-SHA256 của `{ticketId}:{qrTokenHash}`, dùng để phát hiện vé bị giả mạo tại thời điểm check-in |
 | `status` | `ISSUED` → `CHECKED_IN` / `CANCELLED` / `REFUNDED` |
 | `checkedInAt` | Thời điểm được soát vé thành công |
 

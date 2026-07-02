@@ -59,6 +59,13 @@ enum CheckinStatus {
 ```prisma
 model Ticket {
   id           String       @id @default(uuid())
+  // QR token storage strategy (security by design):
+  // - qrRawToken:   the raw UUID token — sent to frontend for QR rendering, stored in DB.
+  // - qrTokenHash:  SHA-256 of qrRawToken — stored in DB, used for verification.
+  // - qrSignature:  HMAC-SHA256 of {ticketId}:{qrTokenHash} — stored in DB,
+  //                 used for tamper detection at check-in time.
+  // The raw token is NEVER transmitted via email (only via authenticated HTTPS on the web app).
+  qrRawToken   String       @default("")
   qrTokenHash  String       @unique
   qrSignature  String?
   status       TicketStatus @default(ISSUED)
@@ -79,24 +86,28 @@ enum TicketStatus {
 
 ## QR Payload Format
 
-Mỗi e-ticket chứa QR payload theo định dạng:
+Mỗi e-ticket chứa QR payload theo định dạng phẳng, tối giản:
 
 ```
-{ticketId}:{qrTokenHash}:{timestamp}:{signature}
+{ticketId}:{rawToken}
 ```
 
 Trong đó:
 
 * `ticketId`: ID của vé trong hệ thống.
-* `qrTokenHash`: SHA-256 hash của một random token (không phải raw token).
-* `timestamp`: Unix timestamp khi ticket được tạo.
-* `signature`: HMAC-SHA256 của phần `{ticketId}:{qrTokenHash}:{timestamp}` bằng `QR_SECRET`.
+* `rawToken`: UUID ngẫu nhiên được sinh khi tạo vé (raw token — không phải hash).
 
 **Nguyên tắc bảo mật:**
 
-* Raw token không bao giờ được lưu trong DB hoặc truyền qua network.
-* Chỉ `qrTokenHash` được lưu trong DB với unique constraint.
-* Khi quét QR, backend so sánh hash của token nhận được với `qrTokenHash` đã lưu.
+* `rawToken` được lưu trong DB (`qrRawToken`) và trả về frontend qua HTTPS khi user đăng nhập.
+* `rawToken` **không bao giờ** được gửi qua email.
+* `qrTokenHash` = SHA-256(`rawToken`) — lưu trong DB, dùng để verify khi check-in.
+* `qrSignature` = HMAC-SHA256(`{ticketId}:{qrTokenHash}`, `QR_SIGNATURE_SECRET`) — lưu trong DB, dùng để phát hiện vé bị giả mạo.
+* QR payload không chứa timestamp (timestamp không đáng tin cậy vì có thể bị sửa trên client).
+* Khi quét QR, backend thực hiện 2 bước verify:
+  1. **Hash verify**: hash `rawToken` từ QR → so với `qrTokenHash` trong DB.
+  2. **HMAC verify**: recompute HMAC-SHA256(`{ticketId}:{qrTokenHash}`) → so với `qrSignature` trong DB.
+* Với ticket cũ (trước khi có `qrSignature`), bước HMAC verify được bỏ qua để đảm bảo backward compatibility.
 
 ---
 
@@ -117,19 +128,21 @@ Staff quét QR trên e-ticket của khán giả tại cổng soát vé khi có k
 
 ```
 1. Staff quét QR trên e-ticket.
-2. PWA parse payload: {ticketId}:{qrTokenHash}:{timestamp}:{signature}.
+2. PWA parse payload: {ticketId}:{rawToken}.
 3. PWA gửi POST /checkin/verify với JWT staff và body:
-   { ticketId, token, deviceId, gate? }
+   { ticketId, token (chứa rawToken), deviceId, gate? }
 4. Backend xác thực JWT của staff.
-5. Backend hash token bằng SHA-256.
-6. Backend tìm ticket theo ticketId.
-7. Backend so sánh hash với qrTokenHash trong DB.
-8. Backend thực hiện atomic update:
+5. Backend hash rawToken bằng SHA-256 → so với qrTokenHash trong DB.
+   Nếu qrSignature có giá trị:
+   a. Backend recompute HMAC-SHA256({ticketId}:{qrTokenHash}) với QR_SIGNATURE_SECRET.
+   b. So với qrSignature trong DB.
+   c. Nếu không khớp → reject với 'Mã QR không hợp lệ' (ticket có thể bị giả mạo).
+6. Backend thực hiện atomic update:
    UPDATE ticket SET status = 'CHECKED_IN', checkedInAt = NOW()
    WHERE id = :ticketId AND status = 'ISSUED'
    Nếu affected rows = 0 → ticket đã checked-in hoặc không tồn tại.
-9. Backend ghi CheckinLog trạng thái SUCCESS.
-10. PWA hiển thị kết quả cho staff.
+7. Backend ghi CheckinLog trạng thái SUCCESS.
+8. PWA hiển thị kết quả cho staff.
 ```
 
 ### 2. Check-in ngoại tuyến (Offline)
@@ -138,21 +151,19 @@ Khi mất kết nối mạng, PWA chuyển sang chế độ offline và tiếp t
 
 ```
 1. PWA phát hiện mất mạng (network probe thất bại).
-2. PWA parse QR payload.
-3. PWA verify chữ ký HMAC-SHA256 bằng khóa public/SECRET đã đồng bộ trước.
-4. Nếu QR hợp lệ, PWA ghi log vào IndexedDB:
-   {
-     ticketId, token, deviceId, gate,
-     scannedAt, offlineEventId: uuid(), isOffline: true
-   }
-5. PWA tiếp tục quét các vé khác.
-6. Khi có mạng trở lại, PWA gửi batch lên POST /checkin/sync.
-7. Backend xử lý từng record:
+2. PWA parse QR payload: {ticketId}:{rawToken}.
+3. PWA ghi log vào IndexedDB:
+   { ticketId, token (rawToken), deviceId, gate,
+     scannedAt, offlineEventId: uuid(), isOffline: true }
+   (PWA không verify HMAC offline vì signature không nằm trong payload mới)
+4. PWA tiếp tục quét các vé khác.
+5. Khi có mạng trở lại, PWA gửi batch lên POST /checkin/sync.
+6. Backend xử lý từng record:
    - Kiểm tra (deviceId, offlineEventId) đã tồn tại trong CheckinLog → skip (idempotent).
-   - Hash token, tìm ticket, verify hash.
+   - Hash rawToken, tìm ticket, verify HMAC + token hash.
    - Atomic update SET status = 'CHECKED_IN' WHERE status = 'ISSUED'.
    - Ghi CheckinLog: SUCCESS nếu chưa check-in; REJECTED_CONFLICT nếu đã check-in ở cổng khác.
-8. PWA nhận kết quả sync và cập nhật trạng thái local.
+7. PWA nhận kết quả sync và cập nhật trạng thái local.
 ```
 
 ---
@@ -302,9 +313,11 @@ Mọi lượt quét — dù thành công hay thất bại — đều được gh
 ## Chính sách TTL cho QR
 
 * QR payload không có expiry time vô hạn.
-* Staff scanner PWA có thể verify timestamp trong payload (khuyến nghị không quá 24 giờ sau khi concert bắt đầu).
-* Nếu timestamp quá cũ, PWA cảnh báo nhưng vẫn cho phép gửi lên backend để xử lý.
-* Backend không từ chối dựa trên timestamp — chỉ kiểm tra hash và trạng thái vé.
+* Timestamp không nằm trong QR payload (payload format mới: `{ticketId}:{rawToken}`).
+  Backend không từ chối check-in dựa trên timestamp — chỉ kiểm tra HMAC signature,
+  token hash và trạng thái vé.
+* Staff scanner PWA có thể enforce quy tắc business riêng (ví dụ: chỉ cho check-in sau giờ mở cổng)
+  bằng cách gọi API concert metadata trước khi quét.
 
 ---
 
@@ -325,13 +338,13 @@ Rate limit được áp dụng tại tầng middleware hoặc Redis.
 
 * PWA chuyển sang chế độ offline.
 * Không dừng quy trình soát vé.
-* QR được verify offline qua chữ ký HMAC.
+* QR được ghi trực tiếp vào IndexedDB (HMAC verify được thực hiện bởi backend khi sync).
 * Bản ghi được lưu vào IndexedDB.
 
 ### QR sai chữ ký hoặc payload hỏng
 
-* PWA từ chối check-in ngay cả khi offline.
-* Không lưu log hợp lệ.
+* Khi online: backend trả 'Mã QR không hợp lệ' sau khi verify thất bại.
+* Khi offline: PWA vẫn ghi log vào IndexedDB, backend sẽ reject khi sync.
 * Staff được thông báo vé không hợp lệ.
 
 ### Sync thất bại giữa chừng
