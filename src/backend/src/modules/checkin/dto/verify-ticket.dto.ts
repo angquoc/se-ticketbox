@@ -14,8 +14,8 @@ export class VerifyTicketDto {
   ticketId: string;
 
   /**
-   * The QR token hash (qrTokenHash) extracted from the QR payload.
-   * QR payload format: {ticketId}:{qrTokenHash}:{timestamp}:{signature}
+   * The raw token extracted from the QR payload.
+   * QR payload format: {ticketId}:{rawToken}
    */
   @IsString()
   @IsNotEmpty()

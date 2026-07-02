@@ -1,21 +1,22 @@
 export interface QrPayloadInput {
   id: string;
-  concertId: string;
-  qrSignature: string | null;
+  /** The raw token (crypto.randomUUID()). Must be included in the QR payload. */
+  rawToken: string;
 }
 
 /**
- * Builds the signed QR payload string for e-ticket display.
- * Aligns with ADR 8: signed payload for offline verify + online status check.
+ * Builds the QR payload string for e-ticket display.
+ *
+ * Format: {ticketId}:{rawToken}
+ *
+ * The QR contains ticketId and rawToken. Staff scanners extract ticketId,
+ * hash the token, and compare against qrTokenHash in DB.
+ * This approach is secure because:
+ *   - rawToken is never stored in the database (only its SHA-256 hash is)
+ *   - No sensitive data is encoded in the QR payload itself
+ *
+ * Aligns with ADR 8: minimal payload, server-side verification via token hash.
  */
 export function buildQrPayload(ticket: QrPayloadInput): string {
-  const signature =
-    ticket.qrSignature ?? `mock_signed_payload_${ticket.id}`;
-
-  return JSON.stringify({
-    v: 1,
-    ticketId: ticket.id,
-    concertId: ticket.concertId,
-    sig: signature,
-  });
+  return `${ticket.id}:${ticket.rawToken}`;
 }
