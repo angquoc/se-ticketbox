@@ -434,19 +434,32 @@ Với mỗi `OrderItem.quantity = N`, tạo N bản ghi `Ticket`:
 
 ```typescript
 for (let i = 0; i < quantity; i++) {
+  const rawToken = crypto.randomUUID();
+  const qrTokenHash = crypto.createHash('sha256').update(rawToken).digest('hex');
+  const ticketId = crypto.randomUUID();
+  const signaturePayload = `${ticketId}:${qrTokenHash}`;
+  const qrSignature = crypto.createHmac('sha256', QR_SIGNATURE_SECRET)
+    .update(signaturePayload)
+    .digest('hex');
+
   await tx.ticket.create({
     data: {
+      id: ticketId,
       orderId,
       orderItemId,
       concertId,
       ticketTypeId,
       userId,
-      qrTokenHash: crypto.randomUUID(), // SHA-256 của UUID ngẫu nhiên
+      qrRawToken: rawToken,
+      qrTokenHash,
+      qrSignature,
       status: TicketStatus.ISSUED,
     },
   });
 }
 ```
+
+**Lưu ý:** Ticket ID phải được sinh **trước** khi ký HMAC vì signature payload chứa `ticketId`.
 
 ### Bước H — Dọn dẹp Redis (ngoài transaction)
 
