@@ -258,11 +258,17 @@ model Ticket {
   user       User       @relation(fields: [userId], references: [id])
 
   /*
-    Do not store raw QR payload.
-    Backend hashes the token from QR and compares with qrTokenHash.
+    QR token storage strategy (security by design):
+    - qrRawToken:  the raw UUID token — sent to frontend for QR rendering, stored encrypted in DB.
+    - qrTokenHash: SHA-256 of qrRawToken — stored in DB, used for verification.
+    - qrSignature: HMAC-SHA256 of {ticketId}:{qrTokenHash}:{timestamp} — stored in DB,
+                   used for tamper detection. Signature is verified at check-in time.
+
+    The raw token is NEVER transmitted via email (only via authenticated HTTPS on the web app).
   */
-  qrTokenHash String @unique
-  qrSignature String?
+  qrRawToken   String   @default("")
+  qrTokenHash  String   @unique
+  qrSignature  String?
 
   status      TicketStatus @default(ISSUED)
   checkedInAt DateTime?
