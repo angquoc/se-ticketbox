@@ -4,9 +4,10 @@ import {
   BadRequestException,
   Logger,
 } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../../database/prisma.service';
 import { TicketStatus, CheckinStatus } from '@prisma/client';
-import { createHash } from 'crypto';
+import { createHash, createHmac } from 'crypto';
 import {
   VerifyTicketDto,
   VerifyTicketResponseDto,
@@ -15,11 +16,30 @@ import {
   SyncCheckinResultDto,
 } from './dto';
 
+/**
+ * Recomputes the HMAC-SHA256 signature for a ticket.
+ * Must stay in sync with generateQrToken() in payment.service.ts.
+ */
+function recomputeSignature(ticketId: string, qrTokenHash: string, secret: string): string {
+  return createHmac('sha256', secret)
+    .update(`${ticketId}:${qrTokenHash}`)
+    .digest('hex');
+}
+
 @Injectable()
 export class CheckinService {
   private readonly logger = new Logger(CheckinService.name);
+  private readonly qrSecret: string;
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly configService: ConfigService,
+  ) {
+    this.qrSecret = this.configService.get<string>(
+      'QR_SIGNATURE_SECRET',
+      'dev_qr_secret',
+    );
+  }
 
   private hashToken(token: string): string {
     return createHash('sha256').update(token).digest('hex');
@@ -66,7 +86,28 @@ export class CheckinService {
       throw new NotFoundException('Vé không tồn tại');
     }
 
-    // Step 4: Compare hash
+    // Step 4a: Verify HMAC signature (tamper detection)
+    // Only verify if qrSignature is present (tickets created with new flow)
+    if (ticket.qrSignature) {
+      const expectedSig = recomputeSignature(
+        ticket.id,
+        ticket.qrTokenHash,
+        this.qrSecret,
+      );
+      if (expectedSig !== ticket.qrSignature) {
+        await this.logCheckinAttempt({
+          ticketId: dto.ticketId,
+          staffId,
+          deviceId: dto.deviceId,
+          gate: dto.gate,
+          status: CheckinStatus.INVALID_TICKET,
+          reason: 'HMAC signature mismatch — ticket may have been tampered with',
+        });
+        throw new BadRequestException('Mã QR không hợp lệ');
+      }
+    }
+
+    // Step 4b: Compare token hash
     if (ticket.qrTokenHash !== tokenHash) {
       await this.logCheckinAttempt({
         ticketId: dto.ticketId,
@@ -210,6 +251,7 @@ export class CheckinService {
     const ticket = await this.prisma.ticket.findUnique({
       where: { id: record.ticketId },
       include: {
+        ticketType: { select: { name: true } },
         concert: { select: { id: true } },
       },
     });
@@ -233,6 +275,35 @@ export class CheckinService {
         conflict: false,
         message: 'Vé không tồn tại',
       };
+    }
+
+    // Verify HMAC signature (tamper detection) — only if ticket has signature
+    if (ticket.qrSignature) {
+      const expectedSig = recomputeSignature(
+        ticket.id,
+        ticket.qrTokenHash,
+        this.qrSecret,
+      );
+      if (expectedSig !== ticket.qrSignature) {
+        await this.logCheckinAttempt({
+          ticketId: record.ticketId,
+          staffId,
+          deviceId: record.deviceId,
+          gate: record.gate,
+          offlineEventId: record.offlineEventId,
+          status: CheckinStatus.INVALID_TICKET,
+          reason: 'HMAC signature mismatch — ticket may have been tampered with',
+          isOffline: true,
+        });
+        return {
+          ticketId: record.ticketId,
+          offlineEventId: record.offlineEventId,
+          success: false,
+          status: CheckinStatus.INVALID_TICKET,
+          conflict: false,
+          message: 'Mã QR không hợp lệ',
+        };
+      }
     }
 
     // Verify token hash
