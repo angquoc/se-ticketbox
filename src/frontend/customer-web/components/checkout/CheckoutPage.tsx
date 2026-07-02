@@ -1,11 +1,14 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import CustomerHeader from '@/components/layout/CustomerHeader';
+import PendingOrderBanner from '@/components/payment/PendingOrderBanner';
 import { useAuth } from '@/hooks/useAuth';
-import { concertApi, orderApi } from '@/lib/api-client';
+import { concertApi } from '@/lib/api-client';
+import { getCheckoutErrorMessage } from '@/lib/api-error';
+import { createOrderWithIdempotencyRetry } from '@/lib/create-order-retry';
 import {
   clearCheckoutIdempotencyKey,
   getCheckoutIdempotencyKey,
@@ -36,6 +39,7 @@ export default function CheckoutPage({ concertId }: CheckoutPageProps) {
   const [step, setStep] = useState<CheckoutStep>('review');
   const [error, setError] = useState<string | null>(null);
   const [order, setOrder] = useState<Order | null>(null);
+  const checkoutLockRef = useRef(false);
 
   const selection = useMemo(() => readZoneSelection(concertId), [concertId]);
   const concertName = getConcertName(concertId);
@@ -53,9 +57,17 @@ export default function CheckoutPage({ concertId }: CheckoutPageProps) {
     }
   }, [selection, concertId, router]);
 
-  async function handleCheckout() {
-    if (!selection) return;
+  useEffect(() => {
+    getCheckoutIdempotencyKey(concertId);
+  }, [concertId]);
 
+  async function handleCheckout(button?: HTMLButtonElement) {
+    if (!selection || checkoutLockRef.current) return;
+
+    checkoutLockRef.current = true;
+    if (button) button.disabled = true;
+
+    const idempotencyKey = getCheckoutIdempotencyKey(concertId);
     setStep('processing');
     setError(null);
 
@@ -64,9 +76,7 @@ export default function CheckoutPage({ concertId }: CheckoutPageProps) {
       const ticketTypesResponse = await concertApi.getTicketTypes(concertId);
       const items = mapZoneSelectionToOrderItems(selection, ticketTypesResponse.data);
 
-      const idempotencyKey = getCheckoutIdempotencyKey(concertId);
-
-      const orderResponse = await orderApi.create(
+      const orderResponse = await createOrderWithIdempotencyRetry(
         {
           concertId: backendConcertId,
           items,
@@ -89,10 +99,14 @@ export default function CheckoutPage({ concertId }: CheckoutPageProps) {
         `/orders/${orderResponse.order.id}/payment?concertId=${encodeURIComponent(concertId)}&paymentUrl=${encodeURIComponent(paymentUrl)}`,
       );
     } catch (err) {
+      checkoutLockRef.current = false;
+      if (button) button.disabled = false;
       setStep('error');
-      setError(err instanceof Error ? err.message : 'Không thể tạo đơn hàng');
+      setError(getCheckoutErrorMessage(err));
     }
   }
+
+  const isCheckoutLocked = step === 'processing';
 
   if (authLoading || !selection) {
     return (
@@ -112,6 +126,10 @@ export default function CheckoutPage({ concertId }: CheckoutPageProps) {
       <main className="mx-auto w-full max-w-2xl flex-1 px-4 py-8 sm:px-6">
         <h1 className="text-2xl font-bold text-slate-900">Xác nhận đặt vé</h1>
         <p className="mt-1 text-slate-600">{concertName}</p>
+
+        <div className="mt-4">
+          <PendingOrderBanner concertId={concertId} />
+        </div>
 
         <div className="mt-6 rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
           <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-500">
@@ -146,17 +164,22 @@ export default function CheckoutPage({ concertId }: CheckoutPageProps) {
         <div className="mt-6 flex flex-col gap-3 sm:flex-row">
           <Link
             href={`/concerts/${concertId}/seats`}
-            className="inline-flex items-center justify-center rounded-lg border border-slate-300 px-5 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50"
+            aria-disabled={isCheckoutLocked}
+            tabIndex={isCheckoutLocked ? -1 : undefined}
+            className={`inline-flex items-center justify-center rounded-lg border border-slate-300 px-5 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50 ${
+              isCheckoutLocked ? 'pointer-events-none opacity-50' : ''
+            }`}
           >
             Quay lại chọn khu vực
           </Link>
           <button
             type="button"
-            onClick={() => void handleCheckout()}
-            disabled={step === 'processing'}
-            className="inline-flex flex-1 items-center justify-center rounded-lg bg-indigo-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-indigo-700 disabled:bg-slate-300"
+            onClick={(event) => void handleCheckout(event.currentTarget)}
+            disabled={isCheckoutLocked}
+            aria-busy={isCheckoutLocked}
+            className="inline-flex flex-1 items-center justify-center rounded-lg bg-indigo-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-indigo-700 disabled:cursor-not-allowed disabled:bg-slate-300"
           >
-            {step === 'processing' ? 'Đang xử lý...' : 'Xác nhận và thanh toán'}
+            {isCheckoutLocked ? 'Đang xử lý...' : 'Xác nhận và thanh toán'}
           </button>
         </div>
 

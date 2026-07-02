@@ -1,3 +1,4 @@
+import { ClientApiError } from '@/lib/api-error';
 import { getAccessToken } from '@/lib/auth-storage';
 import type { AuthResponse, LoginPayload, RegisterPayload } from '@/types/auth';
 import type {
@@ -40,7 +41,7 @@ async function clientFetch<T>(
 
   const json = (await response.json()) as ApiEnvelope<T>;
   if (!response.ok || !json.success) {
-    throw new Error(json.message ?? 'Yêu cầu thất bại');
+    throw new ClientApiError(json.message ?? 'Yêu cầu thất bại', response.status);
   }
 
   return json.data as T;
@@ -61,6 +62,14 @@ export const authApi = {
   },
 };
 
+interface OrderListResponse {
+  data: Order[];
+  total: number;
+  page: number;
+  limit: number;
+  totalPages: number;
+}
+
 export const orderApi = {
   create(
     payload: { concertId: string; items: Array<{ ticketTypeId: string; quantity: number }> },
@@ -74,6 +83,14 @@ export const orderApi = {
   },
   getById(orderId: string) {
     return clientFetch<Order>(`/api/orders/${orderId}`);
+  },
+  listMine(params?: { page?: number; limit?: number; status?: Order['status'] }) {
+    const search = new URLSearchParams();
+    if (params?.page) search.set('page', String(params.page));
+    if (params?.limit) search.set('limit', String(params.limit));
+    if (params?.status) search.set('status', params.status);
+    const query = search.toString() ? `?${search}` : '';
+    return clientFetch<OrderListResponse>(`/api/orders/me${query}`);
   },
   cancel(orderId: string) {
     return clientFetch<Order>(`/api/orders/${orderId}/cancel`, {
