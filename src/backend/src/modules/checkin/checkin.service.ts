@@ -18,11 +18,17 @@ import {
 
 /**
  * Recomputes the HMAC-SHA256 signature for a ticket.
- * Must stay in sync with generateQrToken() in payment.service.ts.
+ * Must stay in sync with generateQrToken() in ticket-issue.processor.ts.
+ * QR payload format v2: {ticketId}:{qrTokenHash}:{gateId}
  */
-function recomputeSignature(ticketId: string, qrTokenHash: string, secret: string): string {
+function recomputeSignature(
+  ticketId: string,
+  qrTokenHash: string,
+  gateId: string,
+  secret: string,
+): string {
   return createHmac('sha256', secret)
-    .update(`${ticketId}:${qrTokenHash}`)
+    .update(`${ticketId}:${qrTokenHash}:${gateId}`)
     .digest('hex');
 }
 
@@ -70,6 +76,7 @@ export class CheckinService {
       include: {
         ticketType: { select: { name: true } },
         concert: { select: { id: true, title: true } },
+        gate: { select: { id: true, name: true } },
       },
     });
 
@@ -79,11 +86,26 @@ export class CheckinService {
         ticketId: dto.ticketId,
         staffId,
         deviceId: dto.deviceId,
-        gate: dto.gate,
+        gate: dto.gateId,
         status: CheckinStatus.INVALID_TICKET,
         reason: `Ticket ${dto.ticketId} not found`,
       });
       throw new NotFoundException('Vé không tồn tại');
+    }
+
+    // Gate mismatch check: verify the QR's assigned gate matches this device's gate
+    if (dto.gateId && ticket.gateId && dto.gateId !== ticket.gateId) {
+      await this.logCheckinAttempt({
+        ticketId: dto.ticketId,
+        staffId,
+        deviceId: dto.deviceId,
+        gate: dto.gateId,
+        status: CheckinStatus.GATE_MISMATCH,
+        reason: `Gate mismatch: ticket assigned to ${ticket.gate.name}, device at ${dto.gateId}`,
+      });
+      throw new BadRequestException(
+        `Vé này thuộc ${ticket.gate.name}, bạn đang ở cổng khác`,
+      );
     }
 
     // Step 4a: Verify HMAC signature (tamper detection)
@@ -92,6 +114,7 @@ export class CheckinService {
       const expectedSig = recomputeSignature(
         ticket.id,
         ticket.qrTokenHash,
+        ticket.gateId ?? '',
         this.qrSecret,
       );
       if (expectedSig !== ticket.qrSignature) {
@@ -99,7 +122,7 @@ export class CheckinService {
           ticketId: dto.ticketId,
           staffId,
           deviceId: dto.deviceId,
-          gate: dto.gate,
+          gate: dto.gateId,
           status: CheckinStatus.INVALID_TICKET,
           reason: 'HMAC signature mismatch — ticket may have been tampered with',
         });
@@ -113,7 +136,7 @@ export class CheckinService {
         ticketId: dto.ticketId,
         staffId,
         deviceId: dto.deviceId,
-        gate: dto.gate,
+        gate: dto.gateId,
         status: CheckinStatus.INVALID_TICKET,
         reason: 'Token hash mismatch',
       });
@@ -148,7 +171,7 @@ export class CheckinService {
         ticketId: dto.ticketId,
         staffId,
         deviceId: dto.deviceId,
-        gate: dto.gate,
+        gate: dto.gateId,
         status: CheckinStatus.ALREADY_CHECKED_IN,
         reason,
       });
@@ -161,12 +184,12 @@ export class CheckinService {
       staffId,
       concertId: ticket.concertId,
       deviceId: dto.deviceId,
-      gate: dto.gate,
+      gate: dto.gateId,
       status: CheckinStatus.SUCCESS,
     });
 
     this.logger.log(
-      `Check-in SUCCESS: ticket=${dto.ticketId} staff=${staffId} device=${dto.deviceId} gate=${dto.gate ?? 'N/A'}`,
+      `Check-in SUCCESS: ticket=${dto.ticketId} staff=${staffId} device=${dto.deviceId} gate=${dto.gateId ?? 'N/A'}`,
     );
 
     return {
@@ -253,6 +276,7 @@ export class CheckinService {
       include: {
         ticketType: { select: { name: true } },
         concert: { select: { id: true } },
+        gate: { select: { id: true, name: true } },
       },
     });
 
@@ -261,7 +285,7 @@ export class CheckinService {
         ticketId: record.ticketId,
         staffId,
         deviceId: record.deviceId,
-        gate: record.gate,
+        gate: record.gateId,
         offlineEventId: record.offlineEventId,
         status: CheckinStatus.INVALID_TICKET,
         reason: `Ticket ${record.ticketId} not found`,
@@ -277,11 +301,34 @@ export class CheckinService {
       };
     }
 
+    // Gate mismatch check for offline sync: verify the device's gate matches the ticket's gate
+    if (record.gateId && ticket.gateId && record.gateId !== ticket.gateId) {
+      await this.logCheckinAttempt({
+        ticketId: record.ticketId,
+        staffId,
+        deviceId: record.deviceId,
+        gate: record.gateId,
+        offlineEventId: record.offlineEventId,
+        status: CheckinStatus.GATE_MISMATCH,
+        reason: `Offline gate mismatch: ticket assigned to ${ticket.gate.name}, device at ${record.gateId}`,
+        isOffline: true,
+      });
+      return {
+        ticketId: record.ticketId,
+        offlineEventId: record.offlineEventId,
+        success: false,
+        status: CheckinStatus.GATE_MISMATCH,
+        conflict: false,
+        message: `Vé này thuộc ${ticket.gate.name}, bạn đang ở cổng khác`,
+      };
+    }
+
     // Verify HMAC signature (tamper detection) — only if ticket has signature
     if (ticket.qrSignature) {
       const expectedSig = recomputeSignature(
         ticket.id,
         ticket.qrTokenHash,
+        ticket.gateId ?? '',
         this.qrSecret,
       );
       if (expectedSig !== ticket.qrSignature) {
@@ -289,7 +336,7 @@ export class CheckinService {
           ticketId: record.ticketId,
           staffId,
           deviceId: record.deviceId,
-          gate: record.gate,
+          gate: record.gateId,
           offlineEventId: record.offlineEventId,
           status: CheckinStatus.INVALID_TICKET,
           reason: 'HMAC signature mismatch — ticket may have been tampered with',
@@ -312,7 +359,7 @@ export class CheckinService {
         ticketId: record.ticketId,
         staffId,
         deviceId: record.deviceId,
-        gate: record.gate,
+        gate: record.gateId,
         offlineEventId: record.offlineEventId,
         status: CheckinStatus.INVALID_TICKET,
         reason: 'Token hash mismatch',
@@ -346,7 +393,7 @@ export class CheckinService {
         ticketId: record.ticketId,
         staffId,
         deviceId: record.deviceId,
-        gate: record.gate,
+        gate: record.gateId,
         offlineEventId: record.offlineEventId,
         status: CheckinStatus.REJECTED_CONFLICT,
         reason: 'Ticket already checked in via another device or gate',
@@ -369,7 +416,7 @@ export class CheckinService {
       staffId,
       concertId: ticket.concertId,
       deviceId: record.deviceId,
-      gate: record.gate,
+      gate: record.gateId,
       offlineEventId: record.offlineEventId,
       status: CheckinStatus.SUCCESS,
       isOffline: true,
