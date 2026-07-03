@@ -46,6 +46,7 @@ type TicketWithQr = {
   checkedInAt: Date | null;
   createdAt: Date;
   qrRawToken: string;
+  gateId: string | null;
   ticketType: Pick<TicketType, 'name'>;
 };
 
@@ -91,8 +92,13 @@ export class OrderService {
   private buildQrPayload(ticket: {
     id: string;
     qrRawToken: string;
+    gateId: string | null;
   }): string {
-    return buildQrPayload({ id: ticket.id, rawToken: ticket.qrRawToken });
+    return buildQrPayload({
+      id: ticket.id,
+      rawToken: ticket.qrRawToken,
+      gateId: ticket.gateId ?? '',
+    });
   }
 
   private toOrderItemResponse(item: {

@@ -28,6 +28,7 @@ export class TicketService {
     createdAt: Date;
     ticketType: { name: string };
     qrRawToken: string;
+    gate?: { id: string } | null;
   }): TicketResponseDto {
     return {
       id: ticket.id,
@@ -38,7 +39,12 @@ export class TicketService {
       status: ticket.status,
       checkedInAt: ticket.checkedInAt,
       createdAt: ticket.createdAt,
-      qrPayload: buildQrPayload({ id: ticket.id, rawToken: ticket.qrRawToken }),
+      qrPayload: buildQrPayload({
+        id: ticket.id,
+        rawToken: ticket.qrRawToken,
+        gateId: ticket.gate?.id ?? '',
+      }),
+      gateId: ticket.gate?.id ?? '',
     };
   }
 
@@ -69,6 +75,7 @@ export class TicketService {
           createdAt: true,
           qrRawToken: true,
           ticketType: { select: { name: true } },
+          gate: { select: { id: true } },
         },
       }),
       this.prisma.ticket.count({ where: { userId } }),
@@ -104,6 +111,7 @@ export class TicketService {
         createdAt: true,
         ticketType: { select: { name: true } },
         qrRawToken: true,
+        gate: { select: { id: true } },
       },
     });
 
@@ -132,6 +140,7 @@ export class TicketService {
         qrRawToken: true,
         ticketType: { select: { name: true } },
         concert: { select: { title: true, venue: true, startsAt: true } },
+        gate: { select: { id: true } },
       },
     });
 
@@ -170,6 +179,7 @@ export class TicketService {
   ): Promise<{ qrToken: string }> {
     const ticket = await this.prisma.ticket.findUnique({
       where: { id: ticketId },
+      include: { gate: { select: { id: true } } },
       select: {
         id: true,
         userId: true,
@@ -195,7 +205,11 @@ export class TicketService {
     }
 
     // Return the full QR payload so the frontend can render the QR code directly
-    const qrPayload = buildQrPayload({ id: ticket.id, rawToken: ticket.qrRawToken });
+    const qrPayload = buildQrPayload({
+      id: ticket.id,
+      rawToken: ticket.qrRawToken,
+      gateId: (ticket as any).gate?.id ?? '',
+    });
     this.logger.debug(`QR data requested for ticket ${ticketId}`);
     return { qrToken: qrPayload };
   }

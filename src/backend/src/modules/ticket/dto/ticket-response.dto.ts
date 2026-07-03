@@ -9,8 +9,10 @@ export class TicketResponseDto {
   status!: TicketStatus;
   checkedInAt!: Date | null;
   createdAt!: Date;
-  /** QR payload: {ticketId}:{rawToken} — used for QR code rendering */
+  /** QR payload: {ticketId}:{rawToken}:{gateId} — used for QR code rendering */
   qrPayload?: string;
+  /** Gate ID assigned to this ticket */
+  gateId?: string;
 }
 
 export class TicketListResponseDto {
