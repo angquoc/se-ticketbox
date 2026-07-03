@@ -27,4 +27,4 @@ dist/
 .gitignore
 .cursor
 
-to-do-list.md
+.env.docker
