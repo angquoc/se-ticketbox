@@ -136,8 +136,6 @@ model Gate {
   concertId String
   concert   Concert @relation(fields: [concertId], references: [id], onDelete: Cascade)
 
-  tickets Ticket[]
-
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -266,6 +264,12 @@ model Ticket {
   concertId    String
   ticketTypeId String
   userId       String
+  /**
+   * Gate name assigned at ticket issuance (e.g. "GATE-A", not Gate.id/cuid).
+   * Stored as a plain string to enable human-readable QR payload gate comparison
+   * between the PWA device config and the ticket.
+   * NOT a foreign key — use Gate.findMany + name match for gate lookups.
+   */
   gateId       String?
 
   order      Order      @relation(fields: [orderId], references: [id])
@@ -273,7 +277,6 @@ model Ticket {
   concert    Concert    @relation(fields: [concertId], references: [id])
   ticketType TicketType @relation(fields: [ticketTypeId], references: [id])
   user       User       @relation(fields: [userId], references: [id])
-  gate       Gate?      @relation(fields: [gateId], references: [id])
 
   /*
     QR payload format (v2 with gate):
