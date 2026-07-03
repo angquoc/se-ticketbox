@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from 'next';
 import { Inter } from 'next/font/google';
 import '@/styles/globals.css';
 import Script from 'next/script';
+import { GateConfigProvider } from '@/contexts/GateConfigContext';
 
 const inter = Inter({ subsets: ['latin'] });
 
@@ -43,7 +44,9 @@ export default function RootLayout({
         <meta name="theme-color" content="#6366f1" />
       </head>
       <body className={inter.className}>
-        {children}
+        <GateConfigProvider>
+          {children}
+        </GateConfigProvider>
 
         {/* Service Worker registration */}
         <Script
