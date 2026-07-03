@@ -9,18 +9,61 @@ import { createHash, createHmac, randomUUID } from 'crypto';
 /**
  * Generates a secure QR token for a ticket — same logic as PaymentService.generateQrToken.
  * Uses a local copy to avoid circular dependencies.
+ * QR payload format v2: {ticketId}:{rawToken}:{gateId}
+ * Signature: HMAC-SHA256 of {ticketId}:{qrTokenHash}:{gateId}
  */
 function generateQrToken(
   ticketId: string,
+  gateId: string,
   secret: string,
 ): { rawToken: string; qrTokenHash: string; qrSignature: string } {
   const rawToken = randomUUID();
   const qrTokenHash = createHash('sha256').update(rawToken).digest('hex');
-  const signaturePayload = `${ticketId}:${qrTokenHash}`;
+  const signaturePayload = `${ticketId}:${qrTokenHash}:${gateId}`;
   const qrSignature = createHmac('sha256', secret)
     .update(signaturePayload)
     .digest('hex');
   return { rawToken, qrTokenHash, qrSignature };
+}
+
+/**
+ * Finds the gate with the fewest issued tickets for the given concert.
+ * Returns null if no gates are configured (concert predates gate feature).
+ */
+async function findLeastLoadedGate(
+  tx: any,
+  concertId: string,
+): Promise<{ id: string; name: string } | null> {
+  const gates = await tx.gate.findMany({
+    where: { concertId },
+    select: { id: true, name: true },
+  });
+
+  if (gates.length === 0) return null;
+
+  const ticketCounts = await tx.ticket.groupBy({
+    by: ['gateId'],
+    where: {
+      concertId,
+      status: { in: ['ISSUED', 'CHECKED_IN'] },
+      gateId: { not: null },
+    },
+    _count: { id: true },
+  });
+
+  const countMap = new Map(ticketCounts.map((c) => [c.gateId, c._count.id]));
+  let leastLoadedGate = gates[0];
+  let minCount = countMap.get(gates[0].id) ?? 0;
+
+  for (const gate of gates) {
+    const count = countMap.get(gate.id) ?? 0;
+    if (count < minCount) {
+      minCount = count;
+      leastLoadedGate = gate;
+    }
+  }
+
+  return leastLoadedGate;
 }
 
 @Processor(TICKET_ISSUE_QUEUE)
@@ -109,8 +152,14 @@ export class TicketIssueProcessor extends WorkerHost {
 
         for (let i = 0; i < item.quantity; i++) {
           const ticketId = randomUUID();
+
+          // Assign least-loaded gate for round-robin distribution
+          const gate = await findLeastLoadedGate(tx, order.concertId);
+          const gateId = gate?.id ?? '';
+
           const { rawToken, qrTokenHash, qrSignature } = generateQrToken(
             ticketId,
+            gateId,
             qrSecret,
           );
 
@@ -122,6 +171,7 @@ export class TicketIssueProcessor extends WorkerHost {
               concertId: order.concertId,
               ticketTypeId: item.ticketTypeId,
               userId: order.userId,
+              gateId: gateId || null,
               qrRawToken: rawToken,
               qrTokenHash,
               qrSignature,
