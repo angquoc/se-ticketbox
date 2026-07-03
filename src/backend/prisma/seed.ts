@@ -24,6 +24,16 @@ function generateQrToken(): string {
   return crypto.randomBytes(32).toString('hex');
 }
 
+async function createGatesForConcert(
+  prisma: any,
+  concertId: string,
+  gateNames: string[],
+) {
+  for (const name of gateNames) {
+    await prisma.gate.create({ data: { concertId, name } });
+  }
+}
+
 async function main() {
   console.log('Start seeding...');
 
@@ -36,6 +46,7 @@ async function main() {
   await prisma.idempotencyKey.deleteMany();
   await prisma.userTicketCounter.deleteMany();
   await prisma.guestListEntry.deleteMany();
+  await prisma.gate.deleteMany();
   await prisma.ticketType.deleteMany();
   await prisma.concert.deleteMany();
   await prisma.user.deleteMany();
@@ -219,6 +230,12 @@ async function main() {
 
   console.log('Created TGC Vietnam 2026 concert and ticket types');
 
+  await createGatesForConcert(prisma, tgcConcert.id, [
+    'GATE-A',
+    'GATE-B',
+    'GATE-C',
+  ]);
+
   // Concert 2: Kangin Fan Meeting
   const kanginConcert = await prisma.concert.create({
     data: {
@@ -284,6 +301,11 @@ async function main() {
   ]);
 
   console.log('Created Kangin Fan Meeting concert and ticket types');
+
+  await createGatesForConcert(prisma, kanginConcert.id, [
+    'GATE-A',
+    'GATE-B',
+  ]);
 
   // Concert 3: Jessica's Reflections Concert
   const jessicaConcert = await prisma.concert.create({
@@ -407,6 +429,13 @@ async function main() {
 
   console.log('Created Jessica Reflections concert and ticket types');
 
+  await createGatesForConcert(prisma, jessicaConcert.id, [
+    'GATE-A',
+    'GATE-B',
+    'GATE-C',
+    'GATE-D',
+  ]);
+
   // Concert 4: Summer Music Festival Vietnam 2026
   const summerConcert = await prisma.concert.create({
     data: {
@@ -486,6 +515,15 @@ async function main() {
   ]);
 
   console.log('Created Summer Music Festival concert and ticket types');
+
+  await createGatesForConcert(prisma, summerConcert.id, [
+    'GATE-A',
+    'GATE-B',
+    'GATE-C',
+    'GATE-D',
+    'GATE-E',
+  ]);
+  console.log('Created gates for all concerts');
 
   // Create sample orders with tickets
   // Order 1: Customer 1 bought TGC tickets

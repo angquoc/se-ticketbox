@@ -72,6 +72,7 @@ enum CheckinStatus {
   ALREADY_CHECKED_IN
   OFFLINE_PENDING
   REJECTED_CONFLICT
+  GATE_MISMATCH
 }
 
 // Models
@@ -120,12 +121,27 @@ model Concert {
   checkinLogs      CheckinLog[]
   guestListEntries GuestListEntry[]
   uploadedFiles    UploadedFile[]
+  gates            Gate[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   @@index([status, startsAt])
   @@index([saleStartsAt, saleEndsAt])
+}
+
+model Gate {
+  id        String  @id @default(cuid())
+  name      String  // e.g. "GATE-A", "Cổng 1", "Entrance Main"
+  concertId String
+  concert   Concert @relation(fields: [concertId], references: [id], onDelete: Cascade)
+
+  tickets Ticket[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([concertId, name])
 }
 
 model TicketType {
@@ -250,20 +266,27 @@ model Ticket {
   concertId    String
   ticketTypeId String
   userId       String
+  gateId       String?
 
   order      Order      @relation(fields: [orderId], references: [id])
   orderItem  OrderItem  @relation(fields: [orderItemId], references: [id])
   concert    Concert    @relation(fields: [concertId], references: [id])
   ticketType TicketType @relation(fields: [ticketTypeId], references: [id])
   user       User       @relation(fields: [userId], references: [id])
+  gate       Gate?      @relation(fields: [gateId], references: [id])
 
   /*
+    QR payload format (v2 with gate):
+      {ticketId}:{rawToken}:{gateId}
+    Example:  abc123:xxxx-xxxx:gate-a
+
     QR token storage strategy (security by design):
     - qrRawToken:  the raw UUID token — sent to frontend for QR rendering, stored encrypted in DB.
     - qrTokenHash: SHA-256 of qrRawToken — stored in DB, used for verification.
-    - qrSignature: HMAC-SHA256 of {ticketId}:{qrTokenHash}:{timestamp} — stored in DB,
+    - qrSignature: HMAC-SHA256 of {ticketId}:{qrTokenHash}:{gateId} — stored in DB,
                    used for tamper detection. Signature is verified at check-in time.
 
+    Note: When gateId changes, qrSignature becomes invalid and a new QR must be reissued.
     The raw token is NEVER transmitted via email (only via authenticated HTTPS on the web app).
   */
   qrRawToken   String   @default("")
