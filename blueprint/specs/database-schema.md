@@ -118,9 +118,10 @@ Lưu vé đã phát hành cho khán giả. Mỗi vé tương ứng một QR code
 | Trường | Ý nghĩa |
 |---|---|
 | `orderId` / `orderItemId` | FK → để trace vé về order gốc |
+| `gateId` | FK → `Gate.id` (nullable). Cổng được gán cho vé này. Ticket cũ không có gateId vẫn quét được ở bất kỳ cổng nào |
 | `qrRawToken` | UUID ngẫu nhiên, lưu trong DB, trả về frontend để render QR. Không bao giờ gửi qua email |
 | `qrTokenHash` | SHA-256 hash của `qrRawToken`, duy nhất. Dùng để verify khi check-in |
-| `qrSignature` | HMAC-SHA256 của `{ticketId}:{qrTokenHash}`, dùng để phát hiện vé bị giả mạo tại thời điểm check-in |
+| `qrSignature` | HMAC-SHA256 của `{ticketId}:{qrTokenHash}:{gateId}`, dùng để phát hiện vé bị giả mạo hoặc bị sửa gate. **Khi gateId thay đổi, qrSignature cũ không còn valid → vé cần được re-issue** |
 | `status` | `ISSUED` → `CHECKED_IN` / `CANCELLED` / `REFUNDED` |
 | `checkedInAt` | Thời điểm được soát vé thành công |
 
@@ -158,6 +159,21 @@ Lưu số lượng vé đã mua / đang giữ của từng user cho từng loạ
 
 ---
 
+### `Gate` (new)
+
+Lưu thông tin cổng soát vé của một concert. Mỗi concert có thể có nhiều cổng (GATE-A, GATE-B, Cổng Chính...).
+
+| Trường | Ý nghĩa |
+|---|---|
+| `concertId` | FK → `Concert.id`. Cascade delete khi xóa concert |
+| `name` | Tên cổng, duy nhất trong mỗi concert (e.g. `GATE-A`, `Cổng 1`, `Entrance Main`) |
+
+`@@unique([concertId, name])` đảm bảo không có hai cổng trùng tên trong cùng một concert.
+
+`Gate` có quan hệ 1:N với `Ticket`.
+
+---
+
 ### `CheckinLog`
 
 Lưu log mỗi lần quét QR, bao gồm cả online và offline.
@@ -168,7 +184,7 @@ Lưu log mỗi lần quét QR, bao gồm cả online và offline.
 | `staffId` | FK → `User.id` (nhân sự soát vé) |
 | `deviceId` | ID thiết bị của staff PWA |
 | `offlineEventId` | ID sự kiện tạo offline trên PWA |
-| `status` | `SUCCESS`, `INVALID_TICKET`, `ALREADY_CHECKED_IN`, `OFFLINE_PENDING`, `REJECTED_CONFLICT` |
+| `status` | `SUCCESS`, `INVALID_TICKET`, `ALREADY_CHECKED_IN`, `OFFLINE_PENDING`, `REJECTED_CONFLICT`, `GATE_MISMATCH` |
 | `isOffline` | True nếu log được tạo khi mất mạng |
 | `conflict` | True nếu cùng một vé được quét offline ở hai thiết bị khác nhau |
 | `scannedAt` | Thời điểm quét (thời gian thiết bị) |

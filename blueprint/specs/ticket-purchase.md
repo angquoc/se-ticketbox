@@ -372,7 +372,9 @@ Thực hiện trong một PostgreSQL `$transaction`:
 4. **Create Ticket records** — mỗi `OrderItem.quantity = N` sinh N bản ghi:
    - `qrRawToken = randomUUID()` (lưu trong DB, gửi về frontend để render QR)
    - `qrTokenHash = SHA-256(qrRawToken)`
-   - `qrSignature = HMAC-SHA256({ticketId}:{qrTokenHash}, QR_SIGNATURE_SECRET)`
+   - `gateId = findLeastLoadedGate(concertId)` (cổng có ít vé nhất; null nếu chưa có gate nào)
+   - `qrSignature = HMAC-SHA256({ticketId}:{qrTokenHash}:{gateId}, QR_SIGNATURE_SECRET)`
+     *(NOTE: Nếu `gateId = null`, signature format là HMAC({ticketId}:{qrTokenHash}:, secret))*
 5. **Update TicketType**: `soldQty += quantity`, `reservedQty -= quantity`.
 6. **Update UserTicketCounter**: `paidQty += quantity`, `reservedQty -= quantity`.
 
@@ -557,7 +559,8 @@ Tại các thời điểm giao dịch:
       "status": "ISSUED",
       "checkedInAt": null,
       "createdAt": "2026-06-08T12:05:00Z",
-      "qrPayload": "tkt_001:<uuid-raw-token>"
+      "qrPayload": "tkt_001:<uuid-raw-token>:gate-id-abc123",
+      "gateId": "gate-id-abc123"
     }
   ]
 }
@@ -853,7 +856,7 @@ Tại các thời điểm giao dịch:
 
 - [ ] Webhook SUCCESS → order chuyển `PAID`, `paidAt` được set.
 - [ ] Đúng số lượng ticket được tạo (mỗi `OrderItem.quantity = N` → N ticket).
-- [ ] `qrTokenHash` là SHA-256 hash, `qrSignature` là HMAC-SHA256.
+- [ ] `qrTokenHash` là SHA-256 hash, `qrSignature` là HMAC-SHA256 (với gateId).
 - [ ] `qrRawToken` được lưu trong DB, **không bao giờ** được gửi qua email.
 - [ ] Email xác nhận không chứa QR token — chỉ chứa link đến `/my-tickets`.
 - [ ] `soldQty` tăng, `reservedQty` giảm trong PostgreSQL.
@@ -861,6 +864,9 @@ Tại các thời điểm giao dịch:
 - [ ] Redis `reservation:{orderId}` bị xóa.
 - [ ] Redis `user-limit` được giảm.
 - [ ] BullMQ job `send-order-paid-email` được queue.
+- [ ] Mỗi ticket được gán vào cổng có ít vé nhất (round-robin).
+- [ ] QR payload format v2: `{ticketId}:{rawToken}:{gateId}`.
+- [ ] Ticket response có field `gateId` và `qrPayload` đầy đủ.
 
 ### Thanh toán thất bại
 
