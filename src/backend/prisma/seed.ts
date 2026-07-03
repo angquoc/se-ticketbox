@@ -16,12 +16,33 @@ const pool = new Pool({ connectionString });
 const adapter = new PrismaPg(pool);
 const prisma = new PrismaClient({ adapter });
 
+const QR_SECRET = process.env.QR_SIGNATURE_SECRET ?? 'dev_qr_secret';
+
 function hashPassword(password: string): string {
   return bcrypt.hashSync(password, 10);
 }
 
-function generateQrToken(): string {
-  return crypto.randomBytes(32).toString('hex');
+/**
+ * Generates QR token data for a ticket — identical to TicketIssueProcessor.generateQrToken.
+ * - rawToken: a random UUID (never stored in DB)
+ * - qrTokenHash: SHA-256 of rawToken
+ * - qrSignature: HMAC-SHA256 of {ticketId}:{qrTokenHash}:{gateName}
+ *
+ * @param ticketId  UUID of the ticket
+ * @param gateName  Gate name (e.g. "GATE-A"), matches Ticket.gateId
+ */
+function generateQrToken(
+  ticketId: string,
+  gateName: string,
+): { rawToken: string; qrTokenHash: string; qrSignature: string } {
+  const rawToken = crypto.randomUUID();
+  const qrTokenHash = crypto.createHash('sha256').update(rawToken).digest('hex');
+  const signaturePayload = `${ticketId}:${qrTokenHash}:${gateName}`;
+  const qrSignature = crypto
+    .createHmac('sha256', QR_SECRET)
+    .update(signaturePayload)
+    .digest('hex');
+  return { rawToken, qrTokenHash, qrSignature };
 }
 
 async function createGatesForConcert(
@@ -569,8 +590,15 @@ async function main() {
     },
   });
 
-  // Tickets for order 1
+  // Tickets for order 1 (TGC Concert — 3 tickets round-robin across gates)
+  const tgcGates = await prisma.gate.findMany({
+    where: { concertId: tgcConcert.id },
+    orderBy: { name: 'asc' },
+  });
   for (let i = 0; i < 3; i++) {
+    const gateName = tgcGates[i % tgcGates.length].name;
+    const ticketId = crypto.randomUUID();
+    const { rawToken, qrTokenHash, qrSignature } = generateQrToken(ticketId, gateName);
     await prisma.ticket.create({
       data: {
         orderId: order1.id,
@@ -578,7 +606,10 @@ async function main() {
         concertId: tgcConcert.id,
         ticketTypeId: i === 0 ? tgcTicketTypes[1].id : tgcTicketTypes[4].id,
         userId: customer1.id,
-        qrTokenHash: hashPassword(generateQrToken()),
+        gateId: gateName,
+        qrRawToken: rawToken,
+        qrTokenHash,
+        qrSignature,
         status: TicketStatus.ISSUED,
       },
     });
@@ -627,8 +658,15 @@ async function main() {
     },
   });
 
-  // Tickets for order 2
+  // Tickets for order 2 (Jessica Concert — 3 tickets, last one pre-checked-in)
+  const jessicaGates = await prisma.gate.findMany({
+    where: { concertId: jessicaConcert.id },
+    orderBy: { name: 'asc' },
+  });
   for (let i = 0; i < 3; i++) {
+    const gateName = jessicaGates[i % jessicaGates.length].name;
+    const ticketId = crypto.randomUUID();
+    const { rawToken, qrTokenHash, qrSignature } = generateQrToken(ticketId, gateName);
     await prisma.ticket.create({
       data: {
         orderId: order2.id,
@@ -636,7 +674,10 @@ async function main() {
         concertId: jessicaConcert.id,
         ticketTypeId: i === 0 ? jessicaTicketTypes[2].id : jessicaTicketTypes[4].id,
         userId: customer2.id,
-        qrTokenHash: hashPassword(generateQrToken()),
+        gateId: gateName,
+        qrRawToken: rawToken,
+        qrTokenHash,
+        qrSignature,
         status: i === 2 ? TicketStatus.CHECKED_IN : TicketStatus.ISSUED,
         checkedInAt: i === 2 ? new Date('2026-04-18T18:45:00') : null,
       },
@@ -676,7 +717,14 @@ async function main() {
     },
   });
 
-  // Ticket for order 3
+  // Ticket for order 3 (Kangin Concert)
+  const kanginGates = await prisma.gate.findMany({
+    where: { concertId: kanginConcert.id },
+    orderBy: { name: 'asc' },
+  });
+  const kanginGateName = kanginGates[0].name;
+  const ticket3Id = crypto.randomUUID();
+  const ticket3Token = generateQrToken(ticket3Id, kanginGateName);
   const ticket3 = await prisma.ticket.create({
     data: {
       orderId: order3.id,
@@ -684,7 +732,10 @@ async function main() {
       concertId: kanginConcert.id,
       ticketTypeId: kanginTicketTypes[0].id,
       userId: customer3.id,
-      qrTokenHash: hashPassword(generateQrToken()),
+      gateId: kanginGateName,
+      qrRawToken: ticket3Token.rawToken,
+      qrTokenHash: ticket3Token.qrTokenHash,
+      qrSignature: ticket3Token.qrSignature,
       status: TicketStatus.CHECKED_IN,
       checkedInAt: new Date('2026-01-24T19:15:00'),
     },
@@ -697,7 +748,7 @@ async function main() {
       staffId: staff.id,
       concertId: kanginConcert.id,
       deviceId: 'CHECKIN-Device-001',
-      gate: 'Gate A',
+      gate: kanginGateName,
       status: 'SUCCESS' as any,
       scannedAt: new Date('2026-01-24T19:15:00'),
     },
