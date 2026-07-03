@@ -1,5 +1,6 @@
 'use client';
 import { useEffect, useRef, useState, useCallback } from 'react';
+import jsQR from 'jsqr';
 
 type ScannerState = 'idle' | 'requesting' | 'active' | 'error';
 
@@ -7,14 +8,25 @@ interface CameraScannerProps {
   onScan?: (data: string) => void;
 }
 
-export default function CameraScanner({ onScan: _onScan }: CameraScannerProps) {
+export default function CameraScanner({ onScan }: CameraScannerProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
+  const animFrameRef = useRef<number>(0);
+  const lastScanRef = useRef<number>(0);
+  const onScanRef = useRef(onScan);
   const [state, setState] = useState<ScannerState>('idle');
   const [errorMsg, setErrorMsg] = useState('');
   const [debugInfo, setDebugInfo] = useState('');
 
+  // Keep onScan ref up-to-date without changing the callback reference
+  useEffect(() => {
+    onScanRef.current = onScan;
+  }, [onScan]);
+
   const stopCamera = useCallback(() => {
+    cancelAnimationFrame(animFrameRef.current);
+    animFrameRef.current = 0;
     streamRef.current?.getTracks().forEach((t) => t.stop());
     streamRef.current = null;
     if (videoRef.current) videoRef.current.srcObject = null;
@@ -22,10 +34,45 @@ export default function CameraScanner({ onScan: _onScan }: CameraScannerProps) {
     setDebugInfo('');
   }, []);
 
+  const scanFrame = useCallback(() => {
+    const video = videoRef.current;
+    const canvas = canvasRef.current;
+    if (!video || !canvas || video.readyState < 2) {
+      animFrameRef.current = requestAnimationFrame(scanFrame);
+      return;
+    }
+
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+
+    const ctx = canvas.getContext('2d');
+    if (!ctx) {
+      animFrameRef.current = requestAnimationFrame(scanFrame);
+      return;
+    }
+
+    ctx.drawImage(video, 0, 0);
+    const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+
+    const code = jsQR(imageData.data, imageData.width, imageData.height, {
+      inversionAttempts: 'dontInvert',
+    });
+
+    if (code) {
+      const now = Date.now();
+      if (now - lastScanRef.current > 2000) {
+        lastScanRef.current = now;
+        if (navigator.vibrate) navigator.vibrate(100);
+        onScanRef.current?.(code.data);
+      }
+    }
+
+    animFrameRef.current = requestAnimationFrame(scanFrame);
+  }, []); // intentionally empty — uses refs
+
   const startCamera = useCallback(async () => {
     try {
       console.log('[CameraScanner] Hàm startCamera được gọi.');
-      // Thay alert bằng setDebugInfo để in thẳng ra màn hình, tránh việc iOS chặn alert
       setDebugInfo('[Click] Đã nhận sự kiện bấm nút startCamera!\n');
 
       if (typeof window === 'undefined') {
@@ -103,6 +150,9 @@ export default function CameraScanner({ onScan: _onScan }: CameraScannerProps) {
         await video.play();
         console.log('[CameraScanner] Camera đang hoạt động.');
         setState('active');
+
+        // Start QR scanning loop
+        scanFrame();
       } catch (err: unknown) {
         console.error('[CameraScanner] Lỗi khi getUserMedia hoặc play:', err);
         streamRef.current?.getTracks().forEach((t) => t.stop());
@@ -144,7 +194,7 @@ export default function CameraScanner({ onScan: _onScan }: CameraScannerProps) {
       setErrorMsg('Đã xảy ra lỗi nghiêm trọng.');
       setDebugInfo(fatalErr.message || String(fatalErr));
     }
-  }, []);
+  }, [scanFrame]);
 
   useEffect(() => {
     // Bắt toàn bộ lỗi ngầm của React/JS trên trình duyệt và in thẳng ra màn hình
@@ -191,6 +241,9 @@ export default function CameraScanner({ onScan: _onScan }: CameraScannerProps) {
           muted
           autoPlay
         />
+
+        {/* Hidden canvas for QR detection */}
+        <canvas ref={canvasRef} className="hidden" />
 
         {/* Idle / Error state */}
         {state !== 'active' && (
