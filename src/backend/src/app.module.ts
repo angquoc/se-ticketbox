@@ -24,6 +24,7 @@ import { OrderModule } from './modules/order/order.module';
 import { TicketModule } from './modules/ticket/ticket.module';
 import { NotificationModule } from './modules/notification/notification.module';
 import { CheckinModule } from './modules/checkin/checkin.module';
+import { GateModule } from './modules/gate/gate.module';
 import { WorkerModule } from './worker/worker.module';
 import { RateLimitModule } from './modules/rate-limit/rate-limit.module';
 import { UploadsModule } from './modules/uploads/uploads.module';
@@ -48,6 +49,7 @@ import { UploadsModule } from './modules/uploads/uploads.module';
     TicketModule,
     NotificationModule,
     CheckinModule,
+    GateModule,
     WorkerModule,
     RateLimitModule,
     BullModule.forRootAsync({
