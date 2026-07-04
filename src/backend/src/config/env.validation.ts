@@ -13,6 +13,7 @@ export const envValidationSchema = Joi.object({
     .default('redis://localhost:6379'),
   JWT_SECRET: Joi.string().min(8).default('ticketbox-super-secret'),
   JWT_EXPIRES_IN: Joi.string().default('1d'),
+  QR_SIGNATURE_SECRET: Joi.string().min(8).default('dev_qr_secret'),
   EMAIL_HOST: Joi.string().default('smtp.ethereal.email'),
   EMAIL_PORT: Joi.number().port().default(587),
   EMAIL_SECURE: Joi.boolean().default(false),

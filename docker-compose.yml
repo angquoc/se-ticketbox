@@ -75,6 +75,7 @@ services:
       MINIO_ACCESS_KEY: ticketbox_admin
       MINIO_SECRET_KEY: ticketbox_password123
       MINIO_BUCKET: ticketbox
+      QR_SIGNATURE_SECRET: ticketbox_qr_signature_secret_dev
       EMAIL_HOST: smtp.ethereal.email
       EMAIL_PORT: "587"
       EMAIL_SECURE: "false"
@@ -116,6 +117,7 @@ services:
       MINIO_ACCESS_KEY: ticketbox_admin
       MINIO_SECRET_KEY: ticketbox_password123
       MINIO_BUCKET: ticketbox
+      QR_SIGNATURE_SECRET: ticketbox_qr_signature_secret_dev
       EMAIL_HOST: smtp.ethereal.email
       EMAIL_PORT: "587"
       EMAIL_SECURE: "false"
