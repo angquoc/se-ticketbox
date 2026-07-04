@@ -3,7 +3,7 @@ import { Job } from 'bullmq';
 import { ConfigService } from '@nestjs/config';
 import { TICKET_ISSUE_QUEUE } from '../../modules/queue/queue.constants';
 import { PrismaService } from '../../database/prisma.service';
-import { OrderStatus, Ticket } from '@prisma/client';
+import { Ticket, OrderStatus } from '@prisma/client';
 import { createHash, createHmac, randomUUID } from 'crypto';
 
 /**
@@ -26,50 +26,6 @@ function generateQrToken(
     .update(signaturePayload)
     .digest('hex');
   return { rawToken, qrTokenHash, qrSignature };
-}
-
-/**
- * Finds the gate with the fewest issued tickets for the given concert.
- * Returns null if no gates are configured (concert predates gate feature).
- *
- * NOTE: Ticket.gateId stores Gate.name (not Gate.id/cuid), so the count map
- * is keyed by gate name for correct round-robin distribution.
- */
-async function findLeastLoadedGate(
-  tx: any,
-  concertId: string,
-): Promise<{ id: string; name: string } | null> {
-  const gates = await tx.gate.findMany({
-    where: { concertId },
-    select: { id: true, name: true },
-  });
-
-  if (gates.length === 0) return null;
-
-  // Ticket.gateId stores gate name, so groupBy uses name as key
-  const ticketCounts = await tx.ticket.groupBy({
-    by: ['gateId'],
-    where: {
-      concertId,
-      status: { in: ['ISSUED', 'CHECKED_IN'] },
-      gateId: { not: null },
-    },
-    _count: { id: true },
-  });
-
-  const countMap = new Map(ticketCounts.map((c) => [c.gateId, c._count.id]));
-  let leastLoadedGate = gates[0];
-  let minCount = countMap.get(gates[0].name) ?? 0;
-
-  for (const gate of gates) {
-    const count = countMap.get(gate.name) ?? 0;
-    if (count < minCount) {
-      minCount = count;
-      leastLoadedGate = gate;
-    }
-  }
-
-  return leastLoadedGate;
 }
 
 @Processor(TICKET_ISSUE_QUEUE)
@@ -163,13 +119,42 @@ export class TicketIssueProcessor extends WorkerHost {
         for (let i = 0; i < item.quantity; i++) {
           const ticketId = randomUUID();
 
-          // Resolve least-loaded gate within the transaction for correct round-robin
-          const gate = await findLeastLoadedGate(tx, order.concertId);
+          // Resolve least-loaded gate within the transaction for correct round-robin.
+          // NOTE: Ticket.gateId stores Gate.name (not Gate.id/cuid), so the count map
+          // is keyed by gate name for correct round-robin distribution.
+          let gateName = '';
+          const gates = await tx.gate.findMany({
+            where: { concertId: order.concertId },
+            select: { id: true, name: true },
+          });
+          if (gates.length > 0) {
+            const ticketCounts = await tx.ticket.groupBy({
+              by: ['gateId'],
+              where: {
+                concertId: order.concertId,
+                status: { in: ['ISSUED', 'CHECKED_IN'] },
+                gateId: { not: null },
+              },
+              _count: { id: true },
+            });
+            const countMap = new Map(
+              ticketCounts.map((c) => [c.gateId, c._count.id]),
+            );
+            let leastLoadedGate = gates[0];
+            let minCount = countMap.get(gates[0].name) ?? 0;
+            for (const gate of gates) {
+              const count = countMap.get(gate.name) ?? 0;
+              if (count < minCount) {
+                minCount = count;
+                leastLoadedGate = gate;
+              }
+            }
+            gateName = leastLoadedGate.name;
+          }
 
           // Use gate name (not gate id/cuid) for QR payload and Ticket.gateId.
           // This ensures the QR payload gate field matches what the PWA stores as
           // device gateId, enabling gate mismatch detection to work correctly.
-          const gateName = gate?.name ?? '';
           const { rawToken, qrTokenHash, qrSignature } = generateQrToken(
             ticketId,
             gateName,
