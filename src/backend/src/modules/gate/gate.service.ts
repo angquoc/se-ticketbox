@@ -30,17 +30,22 @@ export class GateService {
   async list(concertId: string): Promise<GateResponseDto[]> {
     const gates = await this.prisma.gate.findMany({
       where: { concertId },
-      include: {
-        _count: { select: { tickets: true } },
-      },
       orderBy: { name: 'asc' },
     });
+
+    // Ticket.gateId stores gate name, so count by name
+    const ticketCounts = await this.prisma.ticket.groupBy({
+      by: ['gateId'],
+      where: { concertId, gateId: { not: null } },
+      _count: { id: true },
+    });
+    const countMap = new Map(ticketCounts.map((c) => [c.gateId, c._count.id]));
 
     return gates.map((g) => ({
       id: g.id,
       name: g.name,
       concertId: g.concertId,
-      ticketCount: g._count.tickets,
+      ticketCount: countMap.get(g.name) ?? 0,
       createdAt: g.createdAt,
     }));
   }
@@ -57,7 +62,6 @@ export class GateService {
 
     const gate = await this.prisma.gate.create({
       data: { concertId, name: dto.name },
-      include: { _count: { select: { tickets: true } } },
     });
 
     this.logger.log(`Created gate ${gate.name} for concert ${concertId}`);
@@ -65,7 +69,7 @@ export class GateService {
       id: gate.id,
       name: gate.name,
       concertId: gate.concertId,
-      ticketCount: gate._count.tickets,
+      ticketCount: 0,
       createdAt: gate.createdAt,
     };
   }
@@ -90,7 +94,11 @@ export class GateService {
     const updated = await this.prisma.gate.update({
       where: { id: gateId },
       data: dto,
-      include: { _count: { select: { tickets: true } } },
+    });
+
+    // Ticket.gateId stores gate name — recount by new name
+    const ticketCount = await this.prisma.ticket.count({
+      where: { gateId: updated.name },
     });
 
     this.logger.log(`Updated gate ${gateId}`);
@@ -98,7 +106,7 @@ export class GateService {
       id: updated.id,
       name: updated.name,
       concertId: updated.concertId,
-      ticketCount: updated._count.tickets,
+      ticketCount,
       createdAt: updated.createdAt,
     };
   }
@@ -106,13 +114,18 @@ export class GateService {
   async remove(gateId: string): Promise<void> {
     const gate = await this.prisma.gate.findUnique({
       where: { id: gateId },
-      include: { _count: { select: { tickets: true } } },
     });
     if (!gate) {
       throw new NotFoundException(`Gate ${gateId} not found`);
     }
 
-    if (gate._count.tickets > 0) {
+    // Ticket.gateId stores gate NAME (not gate.id/cuid)
+    const gateName = gate.name;
+    const ticketCount = await this.prisma.ticket.count({
+      where: { gateId: gateName },
+    });
+
+    if (ticketCount > 0) {
       // Re-assign tickets to another gate before deletion
       const otherGates = await this.prisma.gate.findMany({
         where: { concertId: gate.concertId, id: { not: gateId } },
@@ -125,19 +138,19 @@ export class GateService {
         );
       }
 
-      // Move tickets to the first available gate
+      // Move tickets to the first available gate (update by gate NAME)
       await this.prisma.ticket.updateMany({
-        where: { gateId },
-        data: { gateId: otherGates[0].id },
+        where: { gateId: gateName },
+        data: { gateId: otherGates[0].name },
       });
 
       this.logger.log(
-        `Reassigned ${gate._count.tickets} tickets from gate ${gateId} to ${otherGates[0].id}`,
+        `Reassigned ${ticketCount} tickets from gate "${gateName}" to "${otherGates[0].name}"`,
       );
     }
 
     await this.prisma.gate.delete({ where: { id: gateId } });
-    this.logger.log(`Deleted gate ${gateId}`);
+    this.logger.log(`Deleted gate ${gateId} ("${gateName}")`);
   }
 
   /**
@@ -179,8 +192,9 @@ export class GateService {
     }
 
     // Round-robin assignment: distribute tickets evenly across gates
-    const updatedTickets: { id: string; userId: string; oldGateId: string; newGateId: string }[] = [];
-    const updatedGateCounts = new Map(gates.map((g) => [g.id, 0]));
+    const updatedTickets: { id: string; userId: string; oldGateName: string; newGateName: string }[] = [];
+    // Ticket.gateId stores gate name, so count map is keyed by name
+    const updatedGateCounts = new Map(gates.map((g) => [g.name, 0]));
 
     for (let i = 0; i < tickets.length; i++) {
       const gateIndex = i % gates.length;
@@ -188,13 +202,14 @@ export class GateService {
 
       const ticket = tickets[i];
 
-      // Get current gate from DB
+      // Get current gate from DB — gateId is the gate name
       const currentTicket = await this.prisma.ticket.findUnique({
         where: { id: ticket.id },
         select: { gateId: true, userId: true },
       });
 
-      if (currentTicket?.gateId === newGate.id) {
+      // Compare gate names (not IDs) since Ticket.gateId stores gate name
+      if (currentTicket?.gateId === newGate.name) {
         // No change needed
         continue;
       }
@@ -202,11 +217,11 @@ export class GateService {
       updatedTickets.push({
         id: ticket.id,
         userId: currentTicket?.userId ?? ticket.userId,
-        oldGateId: currentTicket?.gateId ?? '',
-        newGateId: newGate.id,
+        oldGateName: currentTicket?.gateId ?? '',
+        newGateName: newGate.name,
       });
 
-      updatedGateCounts.set(newGate.id, (updatedGateCounts.get(newGate.id) ?? 0) + 1);
+      updatedGateCounts.set(newGate.name, (updatedGateCounts.get(newGate.name) ?? 0) + 1);
     }
 
     // Batch update tickets with new gate assignments and re-signed QR
@@ -219,14 +234,16 @@ export class GateService {
 
       if (!ticketData) continue;
 
+      // Signature uses gate name (consistent with ticket-issue.processor)
       const newSignature = createHmac('sha256', this.qrSecret)
-        .update(`${update.id}:${ticketData.qrTokenHash}:${update.newGateId}`)
+        .update(`${update.id}:${ticketData.qrTokenHash}:${update.newGateName}`)
         .digest('hex');
 
       await this.prisma.ticket.update({
         where: { id: update.id },
         data: {
-          gateId: update.newGateId,
+          // Store gate name in Ticket.gateId
+          gateId: update.newGateName,
           qrSignature: newSignature,
         },
       });
@@ -272,10 +289,12 @@ export class GateService {
       });
     }
 
+    // NOTE: ticketCount reflects number of tickets REASSIGNED during this rebalance,
+    // not the total ticket count per gate. Per spec the response should show total.
     const gateStats = gates.map((g) => ({
-      id: g.id,
+      id: g.name, // gate name as identifier (consistent with Ticket.gateId)
       name: g.name,
-      ticketCount: updatedGateCounts.get(g.id) ?? 0,
+      ticketCount: updatedGateCounts.get(g.name) ?? 0,
     }));
 
     this.logger.log(

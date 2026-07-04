@@ -20,6 +20,8 @@ import {
  * Recomputes the HMAC-SHA256 signature for a ticket.
  * Must stay in sync with generateQrToken() in ticket-issue.processor.ts.
  * QR payload format v2: {ticketId}:{qrTokenHash}:{gateId}
+ * NOTE: gateId used in signature = Gate.name (not Gate.id/cuid).
+ *       This is consistent with Ticket.gateId which stores gate name.
  */
 function recomputeSignature(
   ticketId: string,
@@ -73,10 +75,13 @@ export class CheckinService {
     // Step 1-3: Find ticket by ticketId
     const ticket = await this.prisma.ticket.findUnique({
       where: { id: dto.ticketId },
-      include: {
+      select: {
+        id: true,
+        concertId: true,
         ticketType: { select: { name: true } },
-        concert: { select: { id: true, title: true } },
-        gate: { select: { id: true, name: true } },
+        gateId: true,
+        qrTokenHash: true,
+        qrSignature: true,
       },
     });
 
@@ -94,6 +99,7 @@ export class CheckinService {
     }
 
     // Gate mismatch check: verify the QR's assigned gate matches this device's gate
+    // NOTE: ticket.gateId stores gate name (e.g. "GATE-A"), matching the PWA device config
     if (dto.gateId && ticket.gateId && dto.gateId !== ticket.gateId) {
       await this.logCheckinAttempt({
         ticketId: dto.ticketId,
@@ -101,10 +107,10 @@ export class CheckinService {
         deviceId: dto.deviceId,
         gate: dto.gateId,
         status: CheckinStatus.GATE_MISMATCH,
-        reason: `Gate mismatch: ticket assigned to ${ticket.gate.name}, device at ${dto.gateId}`,
+        reason: `Gate mismatch: ticket assigned to ${ticket.gateId}, device at ${dto.gateId}`,
       });
       throw new BadRequestException(
-        `Vé này thuộc ${ticket.gate.name}, bạn đang ở cổng khác`,
+        `Vé này thuộc cổng ${ticket.gateId}, bạn đang ở cổng khác`,
       );
     }
 
@@ -273,10 +279,13 @@ export class CheckinService {
     // Find ticket
     const ticket = await this.prisma.ticket.findUnique({
       where: { id: record.ticketId },
-      include: {
+      select: {
+        id: true,
+        concertId: true,
         ticketType: { select: { name: true } },
-        concert: { select: { id: true } },
-        gate: { select: { id: true, name: true } },
+        gateId: true,
+        qrTokenHash: true,
+        qrSignature: true,
       },
     });
 
@@ -302,6 +311,7 @@ export class CheckinService {
     }
 
     // Gate mismatch check for offline sync: verify the device's gate matches the ticket's gate
+    // NOTE: ticket.gateId stores gate name (e.g. "GATE-A"), matching the PWA device config
     if (record.gateId && ticket.gateId && record.gateId !== ticket.gateId) {
       await this.logCheckinAttempt({
         ticketId: record.ticketId,
@@ -310,7 +320,7 @@ export class CheckinService {
         gate: record.gateId,
         offlineEventId: record.offlineEventId,
         status: CheckinStatus.GATE_MISMATCH,
-        reason: `Offline gate mismatch: ticket assigned to ${ticket.gate.name}, device at ${record.gateId}`,
+        reason: `Offline gate mismatch: ticket assigned to ${ticket.gateId}, device at ${record.gateId}`,
         isOffline: true,
       });
       return {
@@ -319,7 +329,7 @@ export class CheckinService {
         success: false,
         status: CheckinStatus.GATE_MISMATCH,
         conflict: false,
-        message: `Vé này thuộc ${ticket.gate.name}, bạn đang ở cổng khác`,
+        message: `Vé này thuộc cổng ${ticket.gateId}, bạn đang ở cổng khác`,
       };
     }
 

@@ -9,9 +9,9 @@ export class TicketResponseDto {
   status!: TicketStatus;
   checkedInAt!: Date | null;
   createdAt!: Date;
-  /** QR payload: {ticketId}:{rawToken}:{gateId} — used for QR code rendering */
+  /** QR payload: {ticketId}:{rawToken}:{gateName} — used for QR code rendering */
   qrPayload?: string;
-  /** Gate ID assigned to this ticket */
+  /** Gate name assigned to this ticket (e.g. "GATE-A", not Gate.id/cuid) */
   gateId?: string;
 }
 

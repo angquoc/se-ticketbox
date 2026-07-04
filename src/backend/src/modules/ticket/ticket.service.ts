@@ -28,8 +28,10 @@ export class TicketService {
     createdAt: Date;
     ticketType: { name: string };
     qrRawToken: string;
-    gate?: { id: string } | null;
+    /** Ticket.gateId stores gate name (e.g. "GATE-A") */
+    gateId: string | null;
   }): TicketResponseDto {
+    const gateName = ticket.gateId ?? '';
     return {
       id: ticket.id,
       concertId: ticket.concertId,
@@ -42,9 +44,9 @@ export class TicketService {
       qrPayload: buildQrPayload({
         id: ticket.id,
         rawToken: ticket.qrRawToken,
-        gateId: ticket.gate?.id ?? '',
+        gateId: gateName,
       }),
-      gateId: ticket.gate?.id ?? '',
+      gateId: gateName,
     };
   }
 
@@ -74,8 +76,8 @@ export class TicketService {
           checkedInAt: true,
           createdAt: true,
           qrRawToken: true,
+          gateId: true,
           ticketType: { select: { name: true } },
-          gate: { select: { id: true } },
         },
       }),
       this.prisma.ticket.count({ where: { userId } }),
@@ -109,9 +111,9 @@ export class TicketService {
         status: true,
         checkedInAt: true,
         createdAt: true,
-        ticketType: { select: { name: true } },
         qrRawToken: true,
-        gate: { select: { id: true } },
+        gateId: true,
+        ticketType: { select: { name: true } },
       },
     });
 
@@ -138,9 +140,8 @@ export class TicketService {
         createdAt: true,
         userId: true,
         qrRawToken: true,
+        gateId: true,
         ticketType: { select: { name: true } },
-        concert: { select: { title: true, venue: true, startsAt: true } },
-        gate: { select: { id: true } },
       },
     });
 
@@ -154,17 +155,7 @@ export class TicketService {
       );
     }
 
-    return {
-      id: ticket.id,
-      concertId: ticket.concertId,
-      ticketTypeId: ticket.ticketTypeId,
-      ticketTypeName: ticket.ticketType.name,
-      orderId: ticket.orderId,
-      status: ticket.status,
-      checkedInAt: ticket.checkedInAt,
-      createdAt: ticket.createdAt,
-      qrPayload: buildQrPayload({ id: ticket.id, rawToken: ticket.qrRawToken }),
-    };
+    return this.toTicketResponse(ticket);
   }
 
   /**
@@ -179,12 +170,12 @@ export class TicketService {
   ): Promise<{ qrToken: string }> {
     const ticket = await this.prisma.ticket.findUnique({
       where: { id: ticketId },
-      include: { gate: { select: { id: true } } },
       select: {
         id: true,
         userId: true,
         qrRawToken: true,
         status: true,
+        gateId: true,
       },
     });
 
@@ -204,11 +195,10 @@ export class TicketService {
       );
     }
 
-    // Return the full QR payload so the frontend can render the QR code directly
     const qrPayload = buildQrPayload({
       id: ticket.id,
       rawToken: ticket.qrRawToken,
-      gateId: (ticket as any).gate?.id ?? '',
+      gateId: ticket.gateId ?? '',
     });
     this.logger.debug(`QR data requested for ticket ${ticketId}`);
     return { qrToken: qrPayload };

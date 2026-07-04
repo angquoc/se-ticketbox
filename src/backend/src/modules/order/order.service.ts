@@ -550,6 +550,7 @@ export class OrderService {
                 checkedInAt: true,
                 createdAt: true,
                 qrRawToken: true,
+                gateId: true,
                 ticketType: { select: { name: true } },
               },
             },

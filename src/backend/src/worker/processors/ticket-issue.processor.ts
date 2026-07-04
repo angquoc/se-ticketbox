@@ -9,8 +9,10 @@ import { createHash, createHmac, randomUUID } from 'crypto';
 /**
  * Generates a secure QR token for a ticket — same logic as PaymentService.generateQrToken.
  * Uses a local copy to avoid circular dependencies.
- * QR payload format v2: {ticketId}:{rawToken}:{gateId}
- * Signature: HMAC-SHA256 of {ticketId}:{qrTokenHash}:{gateId}
+ * QR payload format v2: {ticketId}:{rawToken}:{gateName}
+ * Signature: HMAC-SHA256 of {ticketId}:{qrTokenHash}:{gateName}
+ * NOTE: gateName (Gate.name, e.g. "GATE-A") is used for both payload and signature,
+ *       consistent with Ticket.gateId which stores the gate name.
  */
 function generateQrToken(
   ticketId: string,
@@ -29,6 +31,9 @@ function generateQrToken(
 /**
  * Finds the gate with the fewest issued tickets for the given concert.
  * Returns null if no gates are configured (concert predates gate feature).
+ *
+ * NOTE: Ticket.gateId stores Gate.name (not Gate.id/cuid), so the count map
+ * is keyed by gate name for correct round-robin distribution.
  */
 async function findLeastLoadedGate(
   tx: any,
@@ -41,6 +46,7 @@ async function findLeastLoadedGate(
 
   if (gates.length === 0) return null;
 
+  // Ticket.gateId stores gate name, so groupBy uses name as key
   const ticketCounts = await tx.ticket.groupBy({
     by: ['gateId'],
     where: {
@@ -53,10 +59,10 @@ async function findLeastLoadedGate(
 
   const countMap = new Map(ticketCounts.map((c) => [c.gateId, c._count.id]));
   let leastLoadedGate = gates[0];
-  let minCount = countMap.get(gates[0].id) ?? 0;
+  let minCount = countMap.get(gates[0].name) ?? 0;
 
   for (const gate of gates) {
-    const count = countMap.get(gate.id) ?? 0;
+    const count = countMap.get(gate.name) ?? 0;
     if (count < minCount) {
       minCount = count;
       leastLoadedGate = gate;
@@ -82,7 +88,6 @@ export class TicketIssueProcessor extends WorkerHost {
       where: { id: orderId },
       include: {
         items: true,
-        tickets: true,
       },
     });
 
@@ -107,11 +112,16 @@ export class TicketIssueProcessor extends WorkerHost {
       throw new Error(`Order ${order.id} has no order items`);
     }
 
-    if (order.tickets.length > 0) {
+    // Check if tickets already issued for this order
+    const existingTicketCount = await this.prisma.ticket.count({
+      where: { orderId },
+    });
+
+    if (existingTicketCount > 0) {
       return {
         skipped: true,
         reason: 'Tickets already issued',
-        ticketCount: order.tickets.length,
+        ticketCount: existingTicketCount,
       };
     }
 
@@ -153,13 +163,16 @@ export class TicketIssueProcessor extends WorkerHost {
         for (let i = 0; i < item.quantity; i++) {
           const ticketId = randomUUID();
 
-          // Assign least-loaded gate for round-robin distribution
+          // Resolve least-loaded gate within the transaction for correct round-robin
           const gate = await findLeastLoadedGate(tx, order.concertId);
-          const gateId = gate?.id ?? '';
 
+          // Use gate name (not gate id/cuid) for QR payload and Ticket.gateId.
+          // This ensures the QR payload gate field matches what the PWA stores as
+          // device gateId, enabling gate mismatch detection to work correctly.
+          const gateName = gate?.name ?? '';
           const { rawToken, qrTokenHash, qrSignature } = generateQrToken(
             ticketId,
-            gateId,
+            gateName,
             qrSecret,
           );
 
@@ -171,7 +184,8 @@ export class TicketIssueProcessor extends WorkerHost {
               concertId: order.concertId,
               ticketTypeId: item.ticketTypeId,
               userId: order.userId,
-              gateId: gateId || null,
+              // gateId stores Gate.name for human-readable QR payload comparison
+              gateId: gateName || null,
               qrRawToken: rawToken,
               qrTokenHash,
               qrSignature,
