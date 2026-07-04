@@ -1,0 +1,48 @@
+# Dependencies — copied fresh via COPY in Dockerfile
+node_modules/
+
+# Build outputs
+dist/
+coverage/
+
+# Git
+.git/
+.gitignore
+
+# IDE
+.cursor/
+.idea/
+.vscode/
+*.swp
+
+# Environment files — never bake secrets into the image
+.env
+.env.*
+!.env.example
+
+# Logs & caches
+*.log
+npm-debug.log*
+.eslintcache
+.prettiercache
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Docs (not needed in runtime image)
+blueprint/
+*.md
+
+# Test files & CI
+test/
+*.spec.ts
+jest.config.*
+.eslintrc*
+tsconfig.build.json
+
+# Scripts (mounted at runtime via docker-compose volumes)
+data/scripts/
+
+# Docs
+data/README.md
