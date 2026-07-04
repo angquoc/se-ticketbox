@@ -113,6 +113,7 @@ model Concert {
   status        ConcertStatus @default(DRAFT)
   seatMapUrl    String?
   coverImageUrl String?
+  reminderJobId String?
 
   organizer        User @relation("OrganizerConcerts", fields: [organizerId], references: [id])
   ticketTypes      TicketType[]
@@ -266,9 +267,8 @@ model Ticket {
   userId       String
   /**
    * Gate name assigned at ticket issuance (e.g. "GATE-A", not Gate.id/cuid).
-   * Stored as a plain string to enable human-readable QR payload gate comparison
-   * between the PWA device config and the ticket.
-   * NOT a foreign key — use Gate.findMany + name match for gate lookups.
+   * Stored as Ticket.gateId = Gate.name (e.g. "GATE-A") for human-readable QR payload
+   * and device gate comparison. NOT a foreign key — use Gate.findMany + name match.
    */
   gateId       String?
 

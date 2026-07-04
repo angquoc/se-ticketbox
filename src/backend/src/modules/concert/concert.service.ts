@@ -3,6 +3,7 @@ import {
   NotFoundException,
   ConflictException,
   BadRequestException,
+  Inject,
 } from '@nestjs/common';
 import { PrismaService } from '../../database/prisma.service';
 import { ConcertStatus, Concert, TicketType, Prisma } from '@prisma/client';
@@ -11,6 +12,7 @@ import {
   ConcertResponseDto,
   ConcertListResponseDto,
 } from './dto/concert-response.dto';
+import { ReminderService } from '../notification/reminder.service';
 
 // Định nghĩa payload
 type ConcertPayload = Concert & {
@@ -20,7 +22,10 @@ type ConcertPayload = Concert & {
 
 @Injectable()
 export class ConcertService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    @Inject(ReminderService) private reminderService: ReminderService,
+  ) {}
 
   /**
    * Transform raw concert data from Prisma into a structured response DTO.
@@ -200,6 +205,15 @@ export class ConcertService {
       },
     });
 
+    // Schedule 24h reminder if concert is published immediately
+    const initialStatus = dto.status || ConcertStatus.DRAFT;
+    if (
+      initialStatus === ConcertStatus.PUBLISHED ||
+      initialStatus === ConcertStatus.SALE_OPEN
+    ) {
+      void this.reminderService.scheduleReminder(concert.id);
+    }
+
     return this.toResponse(concert);
   }
 
@@ -259,6 +273,18 @@ export class ConcertService {
         },
       },
     });
+
+    // Reschedule reminder if startsAt or status changed (triggers/removes delayed job)
+    const startsAtChanged =
+      dto.startsAt !== undefined &&
+      existing.startsAt.getTime() !== new Date(dto.startsAt).getTime();
+    const statusChanged =
+      dto.status !== undefined && dto.status !== existing.status;
+
+    if (startsAtChanged || statusChanged) {
+      // Non-blocking: don't delay the API response
+      void this.reminderService.scheduleReminder(id);
+    }
 
     return this.toResponse(concert);
   }

@@ -197,4 +197,98 @@ export class EmailService {
       throw err;
     }
   }
+
+  async sendConcertReminder(params: {
+    to: string;
+    concertTitle: string;
+    concertVenue: string;
+    concertStartsAt: Date;
+    ticketCount: number;
+  }): Promise<void> {
+    const formattedDate = params.concertStartsAt.toLocaleString('vi-VN', {
+      weekday: 'long',
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+
+    const html = `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <style>
+    body { font-family: Arial, sans-serif; background: #f5f5f5; margin: 0; padding: 20px; }
+    .container { background: white; border-radius: 8px; padding: 32px; max-width: 600px; margin: auto; }
+    h1 { color: #1a1a1a; font-size: 24px; }
+    .highlight { color: #2563eb; font-weight: bold; }
+    .info-card { background: #f0f7ff; border-radius: 6px; padding: 16px; margin: 16px 0; }
+    .footer { margin-top: 24px; font-size: 12px; color: #999; text-align: center; }
+    .cta-button { display: inline-block; background: #2563eb; color: white !important; text-decoration: none; padding: 12px 24px; border-radius: 6px; font-weight: bold; font-size: 14px; margin: 16px 0; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Your event is tomorrow!</h1>
+    <p>We're excited to see you at <strong>${params.concertTitle}</strong>! Here are your event details:</p>
+
+    <div class="info-card">
+      <div style="color:#666;font-size:12px;text-transform:uppercase;">Event</div>
+      <div style="font-size:16px;font-weight:bold;color:#1a1a1a;">${params.concertTitle}</div>
+    </div>
+
+    <div class="info-card">
+      <div style="color:#666;font-size:12px;text-transform:uppercase;">Venue</div>
+      <div style="font-size:16px;font-weight:bold;color:#1a1a1a;">${params.concertVenue}</div>
+    </div>
+
+    <div class="info-card">
+      <div style="color:#666;font-size:12px;text-transform:uppercase;">Date & Time</div>
+      <div style="font-size:16px;font-weight:bold;color:#1a1a1a;">${formattedDate}</div>
+    </div>
+
+    <div class="info-card">
+      <div style="color:#666;font-size:12px;text-transform:uppercase;">Your Tickets</div>
+      <div style="font-size:16px;font-weight:bold;color:#1a1a1a;">${params.ticketCount} ticket${params.ticketCount > 1 ? 's' : ''}</div>
+    </div>
+
+    <p>
+      <a class="cta-button" href="${this.baseUrl}/my-tickets">View My E-Tickets</a>
+    </p>
+
+    <p style="color:#555;font-size:13px;line-height:1.6;">
+      Please arrive at least <span class="highlight">30 minutes early</span> with your QR code ready for check-in.
+      Don't forget to bring a valid ID.
+    </p>
+
+    <div class="footer">
+      <p>TicketBox — Your event ticketing platform</p>
+      <p style="font-size:11px;color:#bbb;">Do not share your QR codes. Each QR code is tied to your account and can only be used once.</p>
+    </div>
+  </div>
+</body>
+</html>`;
+
+    try {
+      await this.transporter.sendMail({
+        from: this.configService.get<string>('email.from'),
+        to: params.to,
+        subject: `Reminder: ${params.concertTitle} is tomorrow!`,
+        html,
+      });
+
+      this.logger.log(
+        `Concert reminder sent to ${params.to} for "${params.concertTitle}"`,
+      );
+    } catch (err) {
+      this.logger.error(
+        `Failed to send concert reminder to ${params.to}: ${
+          err instanceof Error ? err.message : String(err)
+        }`,
+      );
+      throw err;
+    }
+  }
 }
