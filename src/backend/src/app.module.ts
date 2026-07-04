@@ -28,6 +28,8 @@ import { GateModule } from './modules/gate/gate.module';
 import { WorkerModule } from './worker/worker.module';
 import { RateLimitModule } from './modules/rate-limit/rate-limit.module';
 import { UploadsModule } from './modules/uploads/uploads.module';
+import { AdminModule } from './modules/admin/admin.module';
+import { SeatmapModule } from './modules/seatmap/seatmap.module';
 
 @Module({
   imports: [
@@ -62,6 +64,8 @@ import { UploadsModule } from './modules/uploads/uploads.module';
       }),
     }),
     UploadsModule,
+    AdminModule,
+    SeatmapModule,
   ],
   controllers: [AppController],
   providers: [AppService],
