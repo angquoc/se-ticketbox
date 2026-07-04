@@ -50,7 +50,10 @@ export class GateService {
     }));
   }
 
-  async create(concertId: string, dto: CreateGateDto): Promise<GateResponseDto> {
+  async create(
+    concertId: string,
+    dto: CreateGateDto,
+  ): Promise<GateResponseDto> {
     const existing = await this.prisma.gate.findUnique({
       where: { concertId_name: { concertId, name: dto.name } },
     });
@@ -82,7 +85,9 @@ export class GateService {
 
     if (dto.name && dto.name !== gate.name) {
       const existing = await this.prisma.gate.findUnique({
-        where: { concertId_name: { concertId: gate.concertId, name: dto.name } },
+        where: {
+          concertId_name: { concertId: gate.concertId, name: dto.name },
+        },
       });
       if (existing) {
         throw new ConflictException(
@@ -187,12 +192,21 @@ export class GateService {
     });
 
     if (tickets.length === 0) {
-      const gateStats = gates.map((g) => ({ id: g.id, name: g.name, ticketCount: 0 }));
+      const gateStats = gates.map((g) => ({
+        id: g.id,
+        name: g.name,
+        ticketCount: 0,
+      }));
       return { totalTicketsUpdated: 0, gates: gateStats };
     }
 
     // Round-robin assignment: distribute tickets evenly across gates
-    const updatedTickets: { id: string; userId: string; oldGateName: string; newGateName: string }[] = [];
+    const updatedTickets: {
+      id: string;
+      userId: string;
+      oldGateName: string;
+      newGateName: string;
+    }[] = [];
     // Ticket.gateId stores gate name, so count map is keyed by name
     const updatedGateCounts = new Map(gates.map((g) => [g.name, 0]));
 
@@ -221,7 +235,10 @@ export class GateService {
         newGateName: newGate.name,
       });
 
-      updatedGateCounts.set(newGate.name, (updatedGateCounts.get(newGate.name) ?? 0) + 1);
+      updatedGateCounts.set(
+        newGate.name,
+        (updatedGateCounts.get(newGate.name) ?? 0) + 1,
+      );
     }
 
     // Batch update tickets with new gate assignments and re-signed QR
@@ -312,66 +329,6 @@ export class GateService {
     concertTitle: string;
     ticketQrData: { id: string; rawToken: string; gateId: string }[];
   }): Promise<void> {
-    const ticketListHtml = params.ticketQrData
-      .map((t, i) => {
-        const gateName = t.gateId;
-        return `
-      <div class="ticket-item">
-        <div class="ticket-number">Ticket ${i + 1}</div>
-        <div class="ticket-id">ID: ${t.id.slice(0, 8).toUpperCase()}</div>
-        <div class="ticket-gate">Cổng: <strong>${gateName}</strong></div>
-      </div>
-    `;
-      })
-      .join(
-        '<hr style="border:none;border-top:1px solid #e0e0e0;margin:10px 0;"/>',
-      );
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const _html = `
-<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="utf-8" />
-  <style>
-    body { font-family: Arial, sans-serif; background: #f5f5f5; margin: 0; padding: 20px; }
-    .container { background: white; border-radius: 8px; padding: 32px; max-width: 600px; margin: auto; }
-    h1 { color: #1a1a1a; font-size: 24px; }
-    .highlight { color: #2563eb; font-weight: bold; }
-    .ticket-card { background: #f0f7ff; border-radius: 6px; padding: 16px; margin: 16px 0; }
-    .ticket-item { margin-bottom: 8px; }
-    .ticket-number { color: #1a1a1a; font-size: 14px; font-weight: bold; }
-    .ticket-gate { color: #444; font-size: 13px; }
-    .ticket-id { color: #888; font-size: 12px; font-family: monospace; }
-    .cta-button { display: inline-block; background: #2563eb; color: white !important; text-decoration: none; padding: 12px 24px; border-radius: 6px; font-weight: bold; font-size: 14px; margin: 16px 0; }
-    .footer { margin-top: 24px; font-size: 12px; color: #999; text-align: center; }
-  </style>
-</head>
-<body>
-  <div class="container">
-    <h1>Thông Tin Cổng Check-in Đã Được Cập Nhật</h1>
-    <p>Xin chào!</p>
-    <p>Thông tin cổng check-in cho các vé của bạn tại <strong>${params.concertTitle}</strong> đã được cập nhật. Vui lòng kiểm tra thông tin bên dưới.</p>
-
-    <div class="ticket-card">
-      <div style="color:#666;font-size:12px;text-transform:uppercase;margin-bottom:8px;">Vé Của Bạn</div>
-      ${ticketListHtml}
-    </div>
-
-    <p>
-      <a class="cta-button" href="${'http://localhost:3000/my-tickets'}">Xem Vé Của Tôi</a>
-    </p>
-
-    <p style="color:#555;font-size:13px;line-height:1.6;">
-      Nếu bạn cần hỗ trợ, vui lòng liên hệ với chúng tôi qua email hoặc hotline hỗ trợ.
-    </p>
-
-    <div class="footer">
-      <p>TicketBox — Your event ticketing platform</p>
-    </div>
-  </div>
-</body>
-</html>`;
-
     try {
       await this.emailService.sendOrderConfirmation({
         to: params.to,
