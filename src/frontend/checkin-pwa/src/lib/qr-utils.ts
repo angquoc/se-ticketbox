@@ -1,6 +1,9 @@
 /**
  * Parses a QR payload string into its components.
- * Format v2: {ticketId}:{rawToken}:{gateId}
+ * Format v2: {ticketId}:{rawToken}:{gateName}
+ *
+ * NOTE: gateName is the human-readable gate name (e.g. "GATE-A"), which matches
+ * both Ticket.gateId (stores gate name) and the PWA device gate config.
  *
  * Returns null if the format is invalid.
  */
