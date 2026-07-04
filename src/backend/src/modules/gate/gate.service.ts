@@ -314,7 +314,7 @@ export class GateService {
   }): Promise<void> {
     const ticketListHtml = params.ticketQrData
       .map((t, i) => {
-        const gateName = t.gateId; // gate name from the ticket
+        const gateName = t.gateId;
         return `
       <div class="ticket-item">
         <div class="ticket-number">Ticket ${i + 1}</div>
@@ -326,8 +326,8 @@ export class GateService {
       .join(
         '<hr style="border:none;border-top:1px solid #e0e0e0;margin:10px 0;"/>',
       );
-
-    const html = `
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const _html = `
 <!DOCTYPE html>
 <html>
 <head>
