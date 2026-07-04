@@ -3,10 +3,15 @@ FROM node:22-alpine AS builder
 
 WORKDIR /app
 
+# python3 is required by Prisma CLI to generate the client
+RUN apk add --no-cache python3 make g++ git
+
 # Copy package files only (enables Docker layer caching)
 COPY package.json package-lock.json* ./
 
 # Install all dependencies (including dev, because Prisma generate needs it)
+# NOTE: we intentionally run install scripts here — bcrypt uses node-gyp-build
+# in its install hook to download prebuilt native binaries.
 RUN npm ci
 
 # Copy source
@@ -33,10 +38,13 @@ COPY --from=builder --chown=nestjs:nodejs /app/node_modules          ./node_modu
 COPY --from=builder --chown=nestjs:nodejs /app/dist                    ./dist
 COPY --from=builder --chown=nestjs:nodejs /app/prisma                  ./prisma
 COPY --from=builder --chown=nestjs:nodejs /app/package.json            ./
+COPY --from=builder --chown=nestjs:nodejs /app/data                    ./data
 
-# Prune dev dependencies in the final image
-RUN npm ci --omit=dev --ignore-scripts && \
-    npx prisma generate --no-engine
+# Prune dev dependencies in the final image.
+# NOTE: we omit --ignore-scripts so bcrypt's install script (node-gyp-build)
+# can run to download/extract the prebuilt .node binary for this platform.
+# bcrypt is a regular (not dev) dependency, so it is always installed.
+RUN npm ci --omit=dev
 
 USER nestjs
 
