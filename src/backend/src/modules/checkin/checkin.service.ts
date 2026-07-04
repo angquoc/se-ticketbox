@@ -130,7 +130,8 @@ export class CheckinService {
           deviceId: dto.deviceId,
           gate: dto.gateId,
           status: CheckinStatus.INVALID_TICKET,
-          reason: 'HMAC signature mismatch — ticket may have been tampered with',
+          reason:
+            'HMAC signature mismatch — ticket may have been tampered with',
         });
         throw new BadRequestException('Mã QR không hợp lệ');
       }
@@ -349,7 +350,8 @@ export class CheckinService {
           gate: record.gateId,
           offlineEventId: record.offlineEventId,
           status: CheckinStatus.INVALID_TICKET,
-          reason: 'HMAC signature mismatch — ticket may have been tampered with',
+          reason:
+            'HMAC signature mismatch — ticket may have been tampered with',
           isOffline: true,
         });
         return {

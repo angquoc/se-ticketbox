@@ -50,10 +50,7 @@ export class GateController {
    * Update a gate (e.g. rename).
    */
   @Patch('gates/:gateId')
-  async update(
-    @Param('gateId') gateId: string,
-    @Body() dto: UpdateGateDto,
-  ) {
+  async update(@Param('gateId') gateId: string, @Body() dto: UpdateGateDto) {
     return this.gateService.update(gateId, dto);
   }
 

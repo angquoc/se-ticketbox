@@ -35,7 +35,8 @@ export class CsvImportProcessor extends WorkerHost {
       });
 
       const fileBuffer = await this.storage.downloadFile(objectKey);
-      const { total, validRecords, errors } = this.csvParse.parseBuffer(fileBuffer);
+      const { total, validRecords, errors } =
+        this.csvParse.parseBuffer(fileBuffer);
 
       if (total === 0) {
         throw new Error('File CSV rỗng hoặc không đúng định dạng cột.');
@@ -48,7 +49,7 @@ export class CsvImportProcessor extends WorkerHost {
         // Lấy danh sách email hợp lệ trong mảng (loại bỏ null)
         const emailsToCheck = validRecords
           .map((r) => r.email)
-          .filter((e) => e !== null) as string[];
+          .filter((e) => e !== null);
 
         // Truy vấn CSDL xem email nào đã tồn tại trong Concert này
         const existingEntries = await this.prisma.guestListEntry.findMany({
@@ -68,7 +69,9 @@ export class CsvImportProcessor extends WorkerHost {
         const recordsToInsert = validRecords.filter((row) => {
           if (row.email && existingEmailsSet.has(row.email)) {
             duplicateCount++;
-            errors.push(`Bỏ qua: Email ${row.email} đã tồn tại trong danh sách.`);
+            errors.push(
+              `Bỏ qua: Email ${row.email} đã tồn tại trong danh sách.`,
+            );
             return false;
           }
           return true;
@@ -92,9 +95,11 @@ export class CsvImportProcessor extends WorkerHost {
         }
       }
 
-      const finalStatus = errors.length > 0 ? 'COMPLETED_WITH_ERRORS' : 'COMPLETED';
+      const finalStatus =
+        errors.length > 0 ? 'COMPLETED_WITH_ERRORS' : 'COMPLETED';
       // Lưu log lỗi tối đa 50 dòng để không làm phình cột DB
-      const errorMsg = errors.length > 0 ? JSON.stringify(errors.slice(0, 50)) : null;
+      const errorMsg =
+        errors.length > 0 ? JSON.stringify(errors.slice(0, 50)) : null;
 
       await this.prisma.uploadedFile.update({
         where: { id: uploadedFileId },
@@ -109,7 +114,6 @@ export class CsvImportProcessor extends WorkerHost {
       );
 
       return { status: finalStatus, insertedCount, duplicateCount };
-
     } catch (error) {
       const maxAttempts = job.opts.attempts || 1;
       const isFinalAttempt = job.attemptsMade + 1 >= maxAttempts;
@@ -119,7 +123,8 @@ export class CsvImportProcessor extends WorkerHost {
           where: { id: uploadedFileId },
           data: {
             status: 'FAILED',
-            errorMessage: error instanceof Error ? error.message : 'UNKNOWN_CSV_ERROR',
+            errorMessage:
+              error instanceof Error ? error.message : 'UNKNOWN_CSV_ERROR',
           },
         });
       }

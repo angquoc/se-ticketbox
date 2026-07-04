@@ -99,12 +99,16 @@ export class EmailService {
       </div>
     </div>
 
-    ${ticketListHtml ? `
+    ${
+      ticketListHtml
+        ? `
     <div class="ticket-card">
       <div style="color:#666;font-size:12px;text-transform:uppercase;margin-bottom:8px;">Your E-Tickets</div>
       ${ticketListHtml}
     </div>
-    ` : ''}
+    `
+        : ''
+    }
 
     <p>
       <a class="cta-button" href="${this.baseUrl}/my-tickets">View My E-Tickets</a>
