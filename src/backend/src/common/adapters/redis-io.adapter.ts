@@ -18,7 +18,10 @@ export class RedisIoAdapter extends IoAdapter {
   }
 
   createIOServer(port: number, options?: ServerOptions) {
-    const server = super.createIOServer(port, options);
+    const server = super.createIOServer(
+      port,
+      options,
+    ) as import('socket.io').Server;
     if (this.adapterConstructor) {
       server.adapter(this.adapterConstructor);
     }

@@ -90,7 +90,7 @@ export class AdminService {
     ]);
 
     return {
-      users: users as UserListItem[],
+      users: users,
       meta: {
         page,
         limit,
@@ -105,27 +105,48 @@ export class AdminService {
    * ADMIN only. Aggregated health status of all subsystems.
    */
   async getSystemHealth(): Promise<SystemHealthStatus> {
-    const [postgresResult, redisResult, bullmqResult] = await Promise.allSettled([
-      this.checkPostgresHealth(),
-      this.checkRedisHealth(),
-      this.checkBullmqHealth(),
-    ]);
+    const [postgresResult, redisResult, bullmqResult] =
+      await Promise.allSettled([
+        this.checkPostgresHealth(),
+        this.checkRedisHealth(),
+        this.checkBullmqHealth(),
+      ]);
 
-    const postgres = postgresResult.status === 'fulfilled' ? postgresResult.value : postgresResult.reason;
-    const redis = redisResult.status === 'fulfilled' ? redisResult.value : redisResult.reason;
-    const bullmq = bullmqResult.status === 'fulfilled' ? bullmqResult.value : bullmqResult.reason;
+    const toResult = <T extends { status: 'up' | 'down' }>(
+      r: PromiseSettledResult<T>,
+      fallback: T,
+    ) => (r.status === 'fulfilled' ? r.value : fallback);
 
-    const allUp = postgres.status === 'up' && redis.status === 'up' && bullmq.status === 'up';
-    const allDown = postgres.status === 'down' && redis.status === 'down' && bullmq.status === 'down';
+    const postgres = toResult(postgresResult, {
+      status: 'down',
+      error: 'Health check failed',
+    });
+    const redis = toResult(redisResult, {
+      status: 'down',
+      error: 'Health check failed',
+    });
+    const bullmq = toResult(bullmqResult, {
+      status: 'down',
+      error: 'Health check failed',
+    });
+
+    const allUp =
+      postgres.status === 'up' &&
+      redis.status === 'up' &&
+      bullmq.status === 'up';
+    const allDown =
+      postgres.status === 'down' &&
+      redis.status === 'down' &&
+      bullmq.status === 'down';
 
     return {
       status: allUp ? 'healthy' : allDown ? 'down' : 'degraded',
       timestamp: new Date().toISOString(),
       services: {
         api: { status: 'up' },
-        postgres: postgres as SystemHealthStatus['services']['postgres'],
-        redis: redis as SystemHealthStatus['services']['redis'],
-        bullmq: bullmq as SystemHealthStatus['services']['bullmq'],
+        postgres,
+        redis,
+        bullmq,
       },
       uptime: {
         apiSeconds: Math.floor(process.uptime()),
@@ -134,36 +155,58 @@ export class AdminService {
     };
   }
 
-  private async checkPostgresHealth(): Promise<{ status: 'up' | 'down'; latencyMs?: number; error?: string }> {
+  private async checkPostgresHealth(): Promise<{
+    status: 'up' | 'down';
+    latencyMs?: number;
+    error?: string;
+  }> {
     const start = Date.now();
     try {
       await this.prisma.checkHealth();
       return { status: 'up', latencyMs: Date.now() - start };
     } catch (err) {
-      return { status: 'down', error: err instanceof Error ? err.message : 'Unknown error' };
+      return {
+        status: 'down',
+        error: err instanceof Error ? err.message : 'Unknown error',
+      };
     }
   }
 
-  private async checkRedisHealth(): Promise<{ status: 'up' | 'down'; latencyMs?: number; error?: string }> {
+  private async checkRedisHealth(): Promise<{
+    status: 'up' | 'down';
+    latencyMs?: number;
+    error?: string;
+  }> {
     const start = Date.now();
     try {
       const response = await this.redisService.ping();
       if (response !== 'PONG') throw new Error('Unexpected response');
       return { status: 'up', latencyMs: Date.now() - start };
     } catch (err) {
-      return { status: 'down', error: err instanceof Error ? err.message : 'Unknown error' };
+      return {
+        status: 'down',
+        error: err instanceof Error ? err.message : 'Unknown error',
+      };
     }
   }
 
-  private async checkBullmqHealth(): Promise<{ status: 'up' | 'down'; latencyMs?: number; error?: string }> {
+  private async checkBullmqHealth(): Promise<{
+    status: 'up' | 'down';
+    latencyMs?: number;
+    error?: string;
+  }> {
     const start = Date.now();
     try {
       // Check Redis connection for BullMQ health (BullMQ uses Redis as its backend)
       const response = await this.redisService.ping();
-      if (response !== 'PONG') throw new Error('BullMQ Redis backend unreachable');
+      if (response !== 'PONG')
+        throw new Error('BullMQ Redis backend unreachable');
       return { status: 'up', latencyMs: Date.now() - start };
     } catch (err) {
-      return { status: 'down', error: err instanceof Error ? err.message : 'Unknown error' };
+      return {
+        status: 'down',
+        error: err instanceof Error ? err.message : 'Unknown error',
+      };
     }
   }
 }

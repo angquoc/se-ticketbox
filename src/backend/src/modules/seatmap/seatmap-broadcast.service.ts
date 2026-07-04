@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { SeatmapGateway } from './seatmap.gateway';
-import { SeatmapService, ZoneUpdatePayload } from './seatmap.service';
+import { SeatmapService } from './seatmap.service';
 
 /**
  * Wrapper that other services use to trigger seatmap WebSocket broadcasts

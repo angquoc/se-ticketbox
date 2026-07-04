@@ -8,10 +8,6 @@ import { ConcertStatus } from '@prisma/client';
 const REMINDER_JOB_NAME = 'concert-reminder-24h';
 const REMINDER_DELAY_MS = 24 * 60 * 60 * 1000; // 24 hours
 
-interface ReminderJobData {
-  concertId: string;
-}
-
 @Injectable()
 export class ReminderService {
   private readonly logger = new Logger(ReminderService.name);
@@ -67,7 +63,7 @@ export class ReminderService {
     const delay = reminderTime.getTime() - Date.now();
     const job = await this.notificationQueue.add(
       REMINDER_JOB_NAME,
-      { concertId } as ReminderJobData,
+      { concertId },
       {
         delay,
         jobId: `reminder:${concertId}`,
@@ -119,11 +115,13 @@ export class ReminderService {
     }
 
     // Clear the stored job ID
-    await this.prisma.concert.update({
-      where: { id: concertId },
-      data: { reminderJobId: null },
-    }).catch(() => {
-      // Concert may have been deleted; ignore
-    });
+    await this.prisma.concert
+      .update({
+        where: { id: concertId },
+        data: { reminderJobId: null },
+      })
+      .catch(() => {
+        // Concert may have been deleted; ignore
+      });
   }
 }

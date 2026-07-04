@@ -48,7 +48,7 @@ export class SeatmapGateway
     @ConnectedSocket() client: Socket,
   ) {
     const room = `concert:${data.concertId}:seatmap`;
-    client.join(room);
+    void client.join(room);
     this.logger.debug(
       `Client ${client.id} joined room ${room} (total in room: ${this.server.sockets.adapter.rooms.get(room)?.size ?? 0})`,
     );
@@ -64,7 +64,7 @@ export class SeatmapGateway
     @ConnectedSocket() client: Socket,
   ) {
     const room = `concert:${data.concertId}:seatmap`;
-    client.leave(room);
+    void client.leave(room);
     return { event: 'unsubscribed', data: { concertId: data.concertId } };
   }
 
