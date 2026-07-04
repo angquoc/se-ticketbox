@@ -14,8 +14,8 @@ export class VerifyTicketDto {
   ticketId: string;
 
   /**
-   * The QR token hash (qrTokenHash) extracted from the QR payload.
-   * QR payload format: {ticketId}:{qrTokenHash}:{timestamp}:{signature}
+   * The raw token extracted from the QR payload.
+   * QR payload format v2: {ticketId}:{rawToken}:{gateId}
    */
   @IsString()
   @IsNotEmpty()
@@ -25,9 +25,13 @@ export class VerifyTicketDto {
   @IsNotEmpty()
   deviceId: string;
 
+  /**
+   * Gate ID assigned to this device (from PWA config).
+   * Used to verify the QR belongs to this gate.
+   */
   @IsString()
   @IsOptional()
-  gate?: string;
+  gateId?: string;
 }
 
 export class SyncCheckinRecordDto {
@@ -43,9 +47,12 @@ export class SyncCheckinRecordDto {
   @IsNotEmpty()
   deviceId: string;
 
+  /**
+   * Gate ID from the QR payload (parsed from QR code).
+   */
   @IsString()
   @IsOptional()
-  gate?: string;
+  gateId?: string;
 
   @IsDateString()
   scannedAt: string;

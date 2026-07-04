@@ -12,7 +12,7 @@ export class OrderTicketResponseDto {
   status!: TicketStatus;
   checkedInAt!: Date | null;
   createdAt!: Date;
-  /** QR payload: {ticketId}:{qrTokenHash}:{timestamp}:{qrSignature} */
+  /** QR payload: {ticketId}:{rawToken} */
   qrPayload!: string;
 }
 

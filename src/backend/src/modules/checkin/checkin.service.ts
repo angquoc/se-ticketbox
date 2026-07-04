@@ -4,9 +4,10 @@ import {
   BadRequestException,
   Logger,
 } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../../database/prisma.service';
 import { TicketStatus, CheckinStatus } from '@prisma/client';
-import { createHash } from 'crypto';
+import { createHash, createHmac } from 'crypto';
 import {
   VerifyTicketDto,
   VerifyTicketResponseDto,
@@ -15,11 +16,38 @@ import {
   SyncCheckinResultDto,
 } from './dto';
 
+/**
+ * Recomputes the HMAC-SHA256 signature for a ticket.
+ * Must stay in sync with generateQrToken() in ticket-issue.processor.ts.
+ * QR payload format v2: {ticketId}:{qrTokenHash}:{gateId}
+ * NOTE: gateId used in signature = Gate.name (not Gate.id/cuid).
+ *       This is consistent with Ticket.gateId which stores gate name.
+ */
+function recomputeSignature(
+  ticketId: string,
+  qrTokenHash: string,
+  gateId: string,
+  secret: string,
+): string {
+  return createHmac('sha256', secret)
+    .update(`${ticketId}:${qrTokenHash}:${gateId}`)
+    .digest('hex');
+}
+
 @Injectable()
 export class CheckinService {
   private readonly logger = new Logger(CheckinService.name);
+  private readonly qrSecret: string;
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly configService: ConfigService,
+  ) {
+    this.qrSecret = this.configService.get<string>(
+      'QR_SIGNATURE_SECRET',
+      'dev_qr_secret',
+    );
+  }
 
   private hashToken(token: string): string {
     return createHash('sha256').update(token).digest('hex');
@@ -47,9 +75,13 @@ export class CheckinService {
     // Step 1-3: Find ticket by ticketId
     const ticket = await this.prisma.ticket.findUnique({
       where: { id: dto.ticketId },
-      include: {
+      select: {
+        id: true,
+        concertId: true,
         ticketType: { select: { name: true } },
-        concert: { select: { id: true, title: true } },
+        gateId: true,
+        qrTokenHash: true,
+        qrSignature: true,
       },
     });
 
@@ -59,20 +91,59 @@ export class CheckinService {
         ticketId: dto.ticketId,
         staffId,
         deviceId: dto.deviceId,
-        gate: dto.gate,
+        gate: dto.gateId,
         status: CheckinStatus.INVALID_TICKET,
         reason: `Ticket ${dto.ticketId} not found`,
       });
       throw new NotFoundException('Vé không tồn tại');
     }
 
-    // Step 4: Compare hash
+    // Gate mismatch check: verify the QR's assigned gate matches this device's gate
+    // NOTE: ticket.gateId stores gate name (e.g. "GATE-A"), matching the PWA device config
+    if (dto.gateId && ticket.gateId && dto.gateId !== ticket.gateId) {
+      await this.logCheckinAttempt({
+        ticketId: dto.ticketId,
+        staffId,
+        deviceId: dto.deviceId,
+        gate: dto.gateId,
+        status: CheckinStatus.GATE_MISMATCH,
+        reason: `Gate mismatch: ticket assigned to ${ticket.gateId}, device at ${dto.gateId}`,
+      });
+      throw new BadRequestException(
+        `Vé này thuộc cổng ${ticket.gateId}, bạn đang ở cổng khác`,
+      );
+    }
+
+    // Step 4a: Verify HMAC signature (tamper detection)
+    // Only verify if qrSignature is present (tickets created with new flow)
+    if (ticket.qrSignature) {
+      const expectedSig = recomputeSignature(
+        ticket.id,
+        ticket.qrTokenHash,
+        ticket.gateId ?? '',
+        this.qrSecret,
+      );
+      if (expectedSig !== ticket.qrSignature) {
+        await this.logCheckinAttempt({
+          ticketId: dto.ticketId,
+          staffId,
+          deviceId: dto.deviceId,
+          gate: dto.gateId,
+          status: CheckinStatus.INVALID_TICKET,
+          reason:
+            'HMAC signature mismatch — ticket may have been tampered with',
+        });
+        throw new BadRequestException('Mã QR không hợp lệ');
+      }
+    }
+
+    // Step 4b: Compare token hash
     if (ticket.qrTokenHash !== tokenHash) {
       await this.logCheckinAttempt({
         ticketId: dto.ticketId,
         staffId,
         deviceId: dto.deviceId,
-        gate: dto.gate,
+        gate: dto.gateId,
         status: CheckinStatus.INVALID_TICKET,
         reason: 'Token hash mismatch',
       });
@@ -107,7 +178,7 @@ export class CheckinService {
         ticketId: dto.ticketId,
         staffId,
         deviceId: dto.deviceId,
-        gate: dto.gate,
+        gate: dto.gateId,
         status: CheckinStatus.ALREADY_CHECKED_IN,
         reason,
       });
@@ -120,12 +191,12 @@ export class CheckinService {
       staffId,
       concertId: ticket.concertId,
       deviceId: dto.deviceId,
-      gate: dto.gate,
+      gate: dto.gateId,
       status: CheckinStatus.SUCCESS,
     });
 
     this.logger.log(
-      `Check-in SUCCESS: ticket=${dto.ticketId} staff=${staffId} device=${dto.deviceId} gate=${dto.gate ?? 'N/A'}`,
+      `Check-in SUCCESS: ticket=${dto.ticketId} staff=${staffId} device=${dto.deviceId} gate=${dto.gateId ?? 'N/A'}`,
     );
 
     return {
@@ -209,8 +280,13 @@ export class CheckinService {
     // Find ticket
     const ticket = await this.prisma.ticket.findUnique({
       where: { id: record.ticketId },
-      include: {
-        concert: { select: { id: true } },
+      select: {
+        id: true,
+        concertId: true,
+        ticketType: { select: { name: true } },
+        gateId: true,
+        qrTokenHash: true,
+        qrSignature: true,
       },
     });
 
@@ -219,7 +295,7 @@ export class CheckinService {
         ticketId: record.ticketId,
         staffId,
         deviceId: record.deviceId,
-        gate: record.gate,
+        gate: record.gateId,
         offlineEventId: record.offlineEventId,
         status: CheckinStatus.INVALID_TICKET,
         reason: `Ticket ${record.ticketId} not found`,
@@ -235,13 +311,67 @@ export class CheckinService {
       };
     }
 
+    // Gate mismatch check for offline sync: verify the device's gate matches the ticket's gate
+    // NOTE: ticket.gateId stores gate name (e.g. "GATE-A"), matching the PWA device config
+    if (record.gateId && ticket.gateId && record.gateId !== ticket.gateId) {
+      await this.logCheckinAttempt({
+        ticketId: record.ticketId,
+        staffId,
+        deviceId: record.deviceId,
+        gate: record.gateId,
+        offlineEventId: record.offlineEventId,
+        status: CheckinStatus.GATE_MISMATCH,
+        reason: `Offline gate mismatch: ticket assigned to ${ticket.gateId}, device at ${record.gateId}`,
+        isOffline: true,
+      });
+      return {
+        ticketId: record.ticketId,
+        offlineEventId: record.offlineEventId,
+        success: false,
+        status: CheckinStatus.GATE_MISMATCH,
+        conflict: false,
+        message: `Vé này thuộc cổng ${ticket.gateId}, bạn đang ở cổng khác`,
+      };
+    }
+
+    // Verify HMAC signature (tamper detection) — only if ticket has signature
+    if (ticket.qrSignature) {
+      const expectedSig = recomputeSignature(
+        ticket.id,
+        ticket.qrTokenHash,
+        ticket.gateId ?? '',
+        this.qrSecret,
+      );
+      if (expectedSig !== ticket.qrSignature) {
+        await this.logCheckinAttempt({
+          ticketId: record.ticketId,
+          staffId,
+          deviceId: record.deviceId,
+          gate: record.gateId,
+          offlineEventId: record.offlineEventId,
+          status: CheckinStatus.INVALID_TICKET,
+          reason:
+            'HMAC signature mismatch — ticket may have been tampered with',
+          isOffline: true,
+        });
+        return {
+          ticketId: record.ticketId,
+          offlineEventId: record.offlineEventId,
+          success: false,
+          status: CheckinStatus.INVALID_TICKET,
+          conflict: false,
+          message: 'Mã QR không hợp lệ',
+        };
+      }
+    }
+
     // Verify token hash
     if (ticket.qrTokenHash !== tokenHash) {
       await this.logCheckinAttempt({
         ticketId: record.ticketId,
         staffId,
         deviceId: record.deviceId,
-        gate: record.gate,
+        gate: record.gateId,
         offlineEventId: record.offlineEventId,
         status: CheckinStatus.INVALID_TICKET,
         reason: 'Token hash mismatch',
@@ -275,7 +405,7 @@ export class CheckinService {
         ticketId: record.ticketId,
         staffId,
         deviceId: record.deviceId,
-        gate: record.gate,
+        gate: record.gateId,
         offlineEventId: record.offlineEventId,
         status: CheckinStatus.REJECTED_CONFLICT,
         reason: 'Ticket already checked in via another device or gate',
@@ -298,7 +428,7 @@ export class CheckinService {
       staffId,
       concertId: ticket.concertId,
       deviceId: record.deviceId,
-      gate: record.gate,
+      gate: record.gateId,
       offlineEventId: record.offlineEventId,
       status: CheckinStatus.SUCCESS,
       isOffline: true,

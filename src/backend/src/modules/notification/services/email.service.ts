@@ -2,19 +2,23 @@ import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import * as nodemailer from 'nodemailer';
 
-interface QrPayload {
+interface TicketInfo {
   ticketId: string;
-  rawToken: string;
-  qrTokenHash: string;
-  qrSignature: string;
+  ticketTypeName: string;
 }
 
 @Injectable()
 export class EmailService {
   private readonly logger = new Logger(EmailService.name);
+  private readonly baseUrl: string;
   private readonly transporter: nodemailer.Transporter;
 
   constructor(private readonly configService: ConfigService) {
+    this.baseUrl = this.configService.get<string>(
+      'APP_BASE_URL',
+      'http://localhost:3000',
+    );
+
     this.transporter = nodemailer.createTransport({
       host: this.configService.get<string>('email.host'),
       port: this.configService.get<number>('email.port'),
@@ -32,21 +36,20 @@ export class EmailService {
     concertTitle: string;
     ticketCount: number;
     totalAmount: number;
-    qrPayloads?: QrPayload[];
+    ticketInfos?: TicketInfo[];
   }): Promise<void> {
-    const ticketsHtml = (params.qrPayloads ?? [])
+    const ticketListHtml = (params.ticketInfos ?? [])
       .map(
-        (qr, index) => `
+        (t, index) => `
       <div class="ticket-item">
-        <div class="label">Ticket #${index + 1} ID</div>
-        <div class="value" style="font-size:12px; word-break:break-all;">${qr.ticketId}</div>
-        <div class="label" style="margin-top:8px;">QR Token</div>
-        <div class="value" style="font-size:12px; word-break:break-all; font-family:monospace;">${qr.rawToken}</div>
+        <div class="ticket-number">Ticket ${index + 1}</div>
+        <div class="ticket-type">${t.ticketTypeName}</div>
+        <div class="ticket-id">ID: ${t.ticketId.slice(0, 8).toUpperCase()}</div>
       </div>
     `,
       )
       .join(
-        '<hr style="border:none;border-top:1px solid #e0e0e0;margin:12px 0;"/>',
+        '<hr style="border:none;border-top:1px solid #e0e0e0;margin:10px 0;"/>',
       );
 
     const html = `
@@ -58,53 +61,67 @@ export class EmailService {
     body { font-family: Arial, sans-serif; background: #f5f5f5; margin: 0; padding: 20px; }
     .container { background: white; border-radius: 8px; padding: 32px; max-width: 600px; margin: auto; }
     h1 { color: #1a1a1a; font-size: 24px; }
+    .highlight { color: #2563eb; font-weight: bold; }
     .ticket-card { background: #f0f7ff; border-radius: 6px; padding: 16px; margin: 16px 0; }
     .ticket-item { margin-bottom: 8px; }
-    .label { color: #666; font-size: 12px; text-transform: uppercase; }
-    .value { font-size: 16px; font-weight: bold; color: #1a1a1a; }
+    .ticket-number { color: #1a1a1a; font-size: 14px; font-weight: bold; }
+    .ticket-type { color: #444; font-size: 13px; }
+    .ticket-id { color: #888; font-size: 12px; font-family: monospace; }
+    .cta-button { display: inline-block; background: #2563eb; color: white !important; text-decoration: none; padding: 12px 24px; border-radius: 6px; font-weight: bold; font-size: 14px; margin: 16px 0; }
     .footer { margin-top: 24px; font-size: 12px; color: #999; text-align: center; }
   </style>
 </head>
 <body>
   <div class="container">
     <h1>Your Tickets Are Confirmed!</h1>
-    <p>Thank you for your purchase. Here are your order details:</p>
+    <p>Thank you for your purchase! Here are your order details:</p>
 
     <div class="ticket-card">
-      <div class="label">Order ID</div>
-      <div class="value">${params.orderId}</div>
+      <div style="color:#666;font-size:12px;text-transform:uppercase;">Order ID</div>
+      <div style="font-size:16px;font-weight:bold;color:#1a1a1a;">${params.orderId}</div>
     </div>
 
     <div class="ticket-card">
-      <div class="label">Event</div>
-      <div class="value">${params.concertTitle}</div>
+      <div style="color:#666;font-size:12px;text-transform:uppercase;">Event</div>
+      <div style="font-size:16px;font-weight:bold;color:#1a1a1a;">${params.concertTitle}</div>
     </div>
 
     <div class="ticket-card">
-      <div class="label">Number of Tickets</div>
-      <div class="value">${params.ticketCount}</div>
-    </div>
-
-    <div class="ticket-card">
-      <div class="label">Total Paid</div>
-      <div class="value">${params.totalAmount.toLocaleString('vi-VN')} VND</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+        <div>
+          <div style="color:#666;font-size:12px;text-transform:uppercase;">Tickets</div>
+          <div style="font-size:16px;font-weight:bold;color:#1a1a1a;">${params.ticketCount}</div>
+        </div>
+        <div>
+          <div style="color:#666;font-size:12px;text-transform:uppercase;">Total Paid</div>
+          <div style="font-size:16px;font-weight:bold;color:#1a1a1a;">${params.totalAmount.toLocaleString('vi-VN')} VND</div>
+        </div>
+      </div>
     </div>
 
     ${
-      ticketsHtml
+      ticketListHtml
         ? `
     <div class="ticket-card">
-      <div class="label" style="margin-bottom:8px;">Your E-Tickets</div>
-      ${ticketsHtml}
+      <div style="color:#666;font-size:12px;text-transform:uppercase;margin-bottom:8px;">Your E-Tickets</div>
+      ${ticketListHtml}
     </div>
     `
         : ''
     }
 
-    <p>Present the QR code on your mobile device at the venue entrance.</p>
+    <p>
+      <a class="cta-button" href="${this.baseUrl}/my-tickets">View My E-Tickets</a>
+    </p>
+
+    <p style="color:#555;font-size:13px;line-height:1.6;">
+      Your QR codes are available on the <span class="highlight">My Tickets</span> page.
+      Sign in to your account and present the QR code on your mobile device at the venue entrance.
+    </p>
 
     <div class="footer">
       <p>TicketBox — Your event ticketing platform</p>
+      <p style="font-size:11px;color:#bbb;">Do not share this email. Your QR codes are personal and tied to your account.</p>
     </div>
   </div>
 </body>
@@ -174,6 +191,100 @@ export class EmailService {
     } catch (err) {
       this.logger.error(
         `Failed to send expired notice to ${params.to}: ${
+          err instanceof Error ? err.message : String(err)
+        }`,
+      );
+      throw err;
+    }
+  }
+
+  async sendConcertReminder(params: {
+    to: string;
+    concertTitle: string;
+    concertVenue: string;
+    concertStartsAt: Date;
+    ticketCount: number;
+  }): Promise<void> {
+    const formattedDate = params.concertStartsAt.toLocaleString('vi-VN', {
+      weekday: 'long',
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+
+    const html = `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <style>
+    body { font-family: Arial, sans-serif; background: #f5f5f5; margin: 0; padding: 20px; }
+    .container { background: white; border-radius: 8px; padding: 32px; max-width: 600px; margin: auto; }
+    h1 { color: #1a1a1a; font-size: 24px; }
+    .highlight { color: #2563eb; font-weight: bold; }
+    .info-card { background: #f0f7ff; border-radius: 6px; padding: 16px; margin: 16px 0; }
+    .footer { margin-top: 24px; font-size: 12px; color: #999; text-align: center; }
+    .cta-button { display: inline-block; background: #2563eb; color: white !important; text-decoration: none; padding: 12px 24px; border-radius: 6px; font-weight: bold; font-size: 14px; margin: 16px 0; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Your event is tomorrow!</h1>
+    <p>We're excited to see you at <strong>${params.concertTitle}</strong>! Here are your event details:</p>
+
+    <div class="info-card">
+      <div style="color:#666;font-size:12px;text-transform:uppercase;">Event</div>
+      <div style="font-size:16px;font-weight:bold;color:#1a1a1a;">${params.concertTitle}</div>
+    </div>
+
+    <div class="info-card">
+      <div style="color:#666;font-size:12px;text-transform:uppercase;">Venue</div>
+      <div style="font-size:16px;font-weight:bold;color:#1a1a1a;">${params.concertVenue}</div>
+    </div>
+
+    <div class="info-card">
+      <div style="color:#666;font-size:12px;text-transform:uppercase;">Date & Time</div>
+      <div style="font-size:16px;font-weight:bold;color:#1a1a1a;">${formattedDate}</div>
+    </div>
+
+    <div class="info-card">
+      <div style="color:#666;font-size:12px;text-transform:uppercase;">Your Tickets</div>
+      <div style="font-size:16px;font-weight:bold;color:#1a1a1a;">${params.ticketCount} ticket${params.ticketCount > 1 ? 's' : ''}</div>
+    </div>
+
+    <p>
+      <a class="cta-button" href="${this.baseUrl}/my-tickets">View My E-Tickets</a>
+    </p>
+
+    <p style="color:#555;font-size:13px;line-height:1.6;">
+      Please arrive at least <span class="highlight">30 minutes early</span> with your QR code ready for check-in.
+      Don't forget to bring a valid ID.
+    </p>
+
+    <div class="footer">
+      <p>TicketBox — Your event ticketing platform</p>
+      <p style="font-size:11px;color:#bbb;">Do not share your QR codes. Each QR code is tied to your account and can only be used once.</p>
+    </div>
+  </div>
+</body>
+</html>`;
+
+    try {
+      await this.transporter.sendMail({
+        from: this.configService.get<string>('email.from'),
+        to: params.to,
+        subject: `Reminder: ${params.concertTitle} is tomorrow!`,
+        html,
+      });
+
+      this.logger.log(
+        `Concert reminder sent to ${params.to} for "${params.concertTitle}"`,
+      );
+    } catch (err) {
+      this.logger.error(
+        `Failed to send concert reminder to ${params.to}: ${
           err instanceof Error ? err.message : String(err)
         }`,
       );

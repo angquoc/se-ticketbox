@@ -51,6 +51,91 @@ export default function CheckinPage() {
     router.replace('/login');
   };
 
+    showResult({
+      id: ticketId,
+      ticketType: '',
+      ticketId,
+      time: now(),
+      success: true,
+      message: 'Đã lưu offline — sẽ đồng bộ khi có mạng',
+    });
+  }
+
+  function showResult(result: CheckinResult) {
+    setLastResult(result);
+    setLogs((prev) => [result, ...prev].slice(0, 20));
+    setTimeout(() => setLastResult(null), 5000);
+  }
+
+  function now() {
+    return new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+  }
+
+  // ─── Gate Setup Screen ───────────────────────────────────────────────────────
+  if (!isConfigured) {
+    return (
+      <div className="min-h-screen flex flex-col" style={{ background: '#0b1120' }}>
+        <header className="flex-shrink-0 px-5 pt-12 pb-5 text-center"
+          style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+          <h1 className="text-xl font-bold text-white tracking-wide">Cài đặt Cổng</h1>
+          <p className="text-xs text-slate-400 mt-1">Chọn cổng check-in cho thiết bị này</p>
+        </header>
+
+        <main className="flex-1 flex flex-col px-5 py-6 gap-6">
+          <div className="rounded-2xl p-5" style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)' }}>
+            <h2 className="text-white font-semibold text-sm mb-4">Cổng Check-in</h2>
+            <div className="flex flex-col gap-3">
+              {['GATE-A', 'GATE-B', 'GATE-C', 'GATE-D', 'GATE-E'].map((gate) => (
+                <button
+                  key={gate}
+                  onClick={() => setGateConfig({ gateId: gate })}
+                  className="w-full py-3 px-4 rounded-xl text-left text-sm font-medium transition-all active:scale-95"
+                  style={{
+                    background: 'rgba(99,102,241,0.15)',
+                    border: '1px solid rgba(99,102,241,0.3)',
+                    color: '#a5b4fc',
+                  }}
+                >
+                  {gate}
+                </button>
+              ))}
+            </div>
+            <div className="mt-4">
+              <input
+                type="text"
+                placeholder="Hoặc nhập tên cổng khác..."
+                value={setupGateInput}
+                onChange={(e) => setSetupGateInput(e.target.value)}
+                className="w-full py-3 px-4 rounded-xl text-sm text-white placeholder-slate-500 outline-none"
+                style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)' }}
+              />
+              {setupGateInput.trim() && (
+                <button
+                  onClick={() => {
+                    if (setupGateInput.trim()) {
+                      setGateConfig({ gateId: setupGateInput.trim().toUpperCase() });
+                    }
+                  }}
+                  className="w-full mt-2 py-3 rounded-xl text-sm font-semibold text-white active:scale-95 transition-all"
+                  style={{ background: '#4f46e5' }}
+                >
+                  Xác nhận: {setupGateInput.trim().toUpperCase()}
+                </button>
+              )}
+            </div>
+          </div>
+
+          <div className="rounded-2xl p-4" style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)' }}>
+            <p className="text-slate-500 text-xs leading-relaxed">
+              Thiết bị check-in cần được gán vào một cổng. Mỗi cổng chỉ chấp nhận vé có mã QR chứa đúng tên cổng đó.
+            </p>
+          </div>
+        </main>
+      </div>
+    );
+  }
+
+  // ─── Main Check-in Screen ───────────────────────────────────────────────────
   return (
     <div className="min-h-screen flex flex-col items-center font-sans text-white">
       <div className={`w-full max-w-[390px] flex flex-col min-h-[100dvh] relative pb-24 box-border overflow-hidden transition-all duration-300 ${

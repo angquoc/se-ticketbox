@@ -1,4 +1,6 @@
 services:
+  # ── Infrastructure ────────────────────────────────────────────────────────────
+
   postgres:
     image: postgres:15-alpine
     container_name: ticketbox-postgres
@@ -7,10 +9,15 @@ services:
       POSTGRES_PASSWORD: ticketbox_password
       POSTGRES_DB: ticketbox_db
     ports:
-      - "5434:5432"
+      - "5434:5432"                      # 5434 for host access (matches existing .env)
     volumes:
       - postgres_data:/var/lib/postgresql/data
-    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ticketbox_user -d ticketbox_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
 
   redis:
     image: redis:7-alpine
@@ -20,7 +27,11 @@ services:
       - "6379:6379"
     volumes:
       - redis_data:/data
-    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
 
   minio:
     image: minio/minio
@@ -29,11 +40,138 @@ services:
       MINIO_ROOT_USER: ticketbox_admin
       MINIO_ROOT_PASSWORD: ticketbox_password123
     ports:
-      - "9000:9000"
-      - "9001:9001"
+      - "9000:9000"                      # API
+      - "9001:9001"                      # Console
     command: server /data --console-address ":9001"
     volumes:
       - minio_data:/data
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ── Applications ─────────────────────────────────────────────────────────────
+
+  backend:
+    build:
+      context: ./src/backend
+      dockerfile: Dockerfile
+    container_name: ticketbox-backend
+    environment:
+      DATABASE_URL: postgresql://ticketbox_user:ticketbox_password@postgres:5432/ticketbox_db?schema=public
+      REDIS_URL: redis://redis:6379
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_PASSWORD: ""
+      JWT_SECRET: ticketbox_jwt_secret_dev
+      JWT_EXPIRES_IN: "1d"
+      PORT: "3001"
+      APP_BASE_URL: http://localhost:3000
+      BACKEND_BASE_URL: http://localhost:3001
+      PAYMENT_WEBHOOK_SECRET: ticketbox_mock_payment_secret
+      MINIO_ENDPOINT: http://minio:9000
+      MINIO_REGION: us-east-1
+      MINIO_ACCESS_KEY: ticketbox_admin
+      MINIO_SECRET_KEY: ticketbox_password123
+      MINIO_BUCKET: ticketbox
+      QR_SIGNATURE_SECRET: ticketbox_qr_signature_secret_dev
+      EMAIL_HOST: smtp.ethereal.email
+      EMAIL_PORT: "587"
+      EMAIL_SECURE: "false"
+      EMAIL_USER: ""
+      EMAIL_PASS: ""
+      EMAIL_FROM: TicketBox <noreply@ticketbox.com>
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    ports:
+      - "3001:3001"
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:3001/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+
+  worker:
+    build:
+      context: ./src/backend
+      dockerfile: Dockerfile.worker
+    container_name: ticketbox-worker
+    environment:
+      DATABASE_URL: postgresql://ticketbox_user:ticketbox_password@postgres:5432/ticketbox_db?schema=public
+      REDIS_URL: redis://redis:6379
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_PASSWORD: ""
+      JWT_SECRET: ticketbox_jwt_secret_dev
+      JWT_EXPIRES_IN: "1d"
+      PORT: "3001"
+      APP_BASE_URL: http://localhost:3000
+      BACKEND_BASE_URL: http://localhost:3001
+      MINIO_ENDPOINT: http://minio:9000
+      MINIO_REGION: us-east-1
+      MINIO_ACCESS_KEY: ticketbox_admin
+      MINIO_SECRET_KEY: ticketbox_password123
+      MINIO_BUCKET: ticketbox
+      QR_SIGNATURE_SECRET: ticketbox_qr_signature_secret_dev
+      EMAIL_HOST: smtp.ethereal.email
+      EMAIL_PORT: "587"
+      EMAIL_SECURE: "false"
+      EMAIL_USER: ""
+      EMAIL_PASS: ""
+      EMAIL_FROM: TicketBox <noreply@ticketbox.com>
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      backend:
+        condition: service_healthy
+
+  customer-web:
+    build:
+      context: ./src/frontend/customer-web
+      dockerfile: Dockerfile
+    container_name: ticketbox-customer-web
+    environment:
+      BACKEND_API_URL: http://backend:3001
+    depends_on:
+      backend:
+        condition: service_healthy
+    ports:
+      - "3000:3000"
+    restart: unless-stopped
+
+  admin-web:
+    build:
+      context: ./src/frontend/admin-web
+      dockerfile: Dockerfile
+    container_name: ticketbox-admin-web
+    environment:
+      BACKEND_API_URL: http://backend:3001
+    depends_on:
+      backend:
+        condition: service_healthy
+    ports:
+      - "3002:3002"
+    restart: unless-stopped
+
+  checkin-pwa:
+    build:
+      context: ./src/frontend/checkin-pwa
+      dockerfile: Dockerfile
+    container_name: ticketbox-checkin-pwa
+    environment:
+      BACKEND_API_URL: http://backend:3001
+    depends_on:
+      backend:
+        condition: service_healthy
+    ports:
+      - "3003:3003"
     restart: unless-stopped
 
 volumes:

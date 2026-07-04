@@ -57,13 +57,14 @@ PaymentService.handleMockWebhook()
                 ├─ update UserTicketCounter
                 ├─ delete Redis reservation
                 ├─ decrement Redis user-limit
-                └─ queue send-order-paid-email
+                └─ queue send-order-paid-email (chỉ orderId, không chứa rawToken)
         │
         ▼
-Worker gửi email + e-ticket
+Worker gửi email xác nhận đã thanh toán
+(không chứa QR token — user xem QR trên web app)
         │
         ▼
-Customer nhận e-ticket trong email
+Customer đăng nhập web app → xem QR tại trang /my-tickets
 ```
 
 ---
@@ -369,15 +370,18 @@ Thực hiện trong một PostgreSQL `$transaction`:
 2. **Update Order** → `PAID`, `paidAt = now()`.
 3. **Pre-generate ticket IDs và QR tokens** (trước transaction, vì cần biết `ticketId` trước khi ký HMAC).
 4. **Create Ticket records** — mỗi `OrderItem.quantity = N` sinh N bản ghi:
-   - `qrTokenHash = SHA-256(randomUUID)`
-   - `qrSignature = HMAC-SHA256(ticketId:qrTokenHash:timestamp, QR_SIGNATURE_SECRET)`
+   - `qrRawToken = randomUUID()` (lưu trong DB, gửi về frontend để render QR)
+   - `qrTokenHash = SHA-256(qrRawToken)`
+   - `gateId = findLeastLoadedGate(concertId)` (cổng có ít vé nhất; null nếu chưa có gate nào)
+   - `qrSignature = HMAC-SHA256({ticketId}:{qrTokenHash}:{gateId}, QR_SIGNATURE_SECRET)`
+     *(NOTE: Nếu `gateId = null`, signature format là HMAC({ticketId}:{qrTokenHash}:, secret))*
 5. **Update TicketType**: `soldQty += quantity`, `reservedQty -= quantity`.
 6. **Update UserTicketCounter**: `paidQty += quantity`, `reservedQty -= quantity`.
 
 Sau transaction thành công:
 7. **Clean up Redis**: `DEL reservation:{orderId}`.
 8. **Decrement user-limit**: `decrementUserLimit()` cho từng ticket type.
-9. **Queue notification**: BullMQ job `send-order-paid-email` với `ticketTokens` (chứa `ticketId` + `rawToken`).
+9. **Queue notification**: BullMQ job `send-order-paid-email` với `{ orderId, userId }` (không chứa token — processor tự query DB để lấy ticket info). Email gửi cho user link đến trang web `/my-tickets` thay vì chứa QR token.
 
 ---
 
@@ -555,7 +559,8 @@ Tại các thời điểm giao dịch:
       "status": "ISSUED",
       "checkedInAt": null,
       "createdAt": "2026-06-08T12:05:00Z",
-      "qrPayload": "tkt_001:<hash>:<timestamp>:<signature>"
+      "qrPayload": "tkt_001:<uuid-raw-token>:gate-id-abc123",
+      "gateId": "gate-id-abc123"
     }
   ]
 }
@@ -851,12 +856,17 @@ Tại các thời điểm giao dịch:
 
 - [ ] Webhook SUCCESS → order chuyển `PAID`, `paidAt` được set.
 - [ ] Đúng số lượng ticket được tạo (mỗi `OrderItem.quantity = N` → N ticket).
-- [ ] `qrTokenHash` là SHA-256 hash, `qrSignature` là HMAC-SHA256.
+- [ ] `qrTokenHash` là SHA-256 hash, `qrSignature` là HMAC-SHA256 (với gateId).
+- [ ] `qrRawToken` được lưu trong DB, **không bao giờ** được gửi qua email.
+- [ ] Email xác nhận không chứa QR token — chỉ chứa link đến `/my-tickets`.
 - [ ] `soldQty` tăng, `reservedQty` giảm trong PostgreSQL.
 - [ ] `paidQty` tăng, `reservedQty` giảm trong `UserTicketCounter`.
 - [ ] Redis `reservation:{orderId}` bị xóa.
 - [ ] Redis `user-limit` được giảm.
 - [ ] BullMQ job `send-order-paid-email` được queue.
+- [ ] Mỗi ticket được gán vào cổng có ít vé nhất (round-robin).
+- [ ] QR payload format v2: `{ticketId}:{rawToken}:{gateId}`.
+- [ ] Ticket response có field `gateId` và `qrPayload` đầy đủ.
 
 ### Thanh toán thất bại
 

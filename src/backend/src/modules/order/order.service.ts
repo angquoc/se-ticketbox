@@ -11,6 +11,7 @@ import { InjectQueue } from '@nestjs/bullmq';
 import { Queue } from 'bullmq';
 import { PrismaService } from '../../database/prisma.service';
 import { RedisService } from '../redis/redis.service';
+import { buildQrPayload } from '../ticket/utils/qr-payload.util';
 import {
   ConcertStatus,
   TicketTypeStatus,
@@ -44,8 +45,8 @@ type TicketWithQr = {
   status: TicketStatus;
   checkedInAt: Date | null;
   createdAt: Date;
-  qrTokenHash: string;
-  qrSignature: string | null;
+  qrRawToken: string;
+  gateId: string | null;
   ticketType: Pick<TicketType, 'name'>;
 };
 
@@ -90,12 +91,14 @@ export class OrderService {
 
   private buildQrPayload(ticket: {
     id: string;
-    qrTokenHash: string;
-    qrSignature: string | null;
-    createdAt: Date;
+    qrRawToken: string;
+    gateId: string | null;
   }): string {
-    const timestamp = Math.floor(ticket.createdAt.getTime() / 1000);
-    return `${ticket.id}:${ticket.qrTokenHash}:${timestamp}:${ticket.qrSignature ?? ''}`;
+    return buildQrPayload({
+      id: ticket.id,
+      rawToken: ticket.qrRawToken,
+      gateId: ticket.gateId ?? '',
+    });
   }
 
   private toOrderItemResponse(item: {
@@ -558,8 +561,8 @@ export class OrderService {
                 status: true,
                 checkedInAt: true,
                 createdAt: true,
-                qrTokenHash: true,
-                qrSignature: true,
+                qrRawToken: true,
+                gateId: true,
                 ticketType: { select: { name: true } },
               },
             },

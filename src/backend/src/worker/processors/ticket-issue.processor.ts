@@ -1,13 +1,39 @@
 import { Processor, WorkerHost } from '@nestjs/bullmq';
 import { Job } from 'bullmq';
+import { ConfigService } from '@nestjs/config';
 import { TICKET_ISSUE_QUEUE } from '../../modules/queue/queue.constants';
 import { PrismaService } from '../../database/prisma.service';
-import { OrderStatus, Ticket } from '@prisma/client';
-import { createHash, randomUUID } from 'crypto';
+import { Ticket, OrderStatus } from '@prisma/client';
+import { createHash, createHmac, randomUUID } from 'crypto';
+
+/**
+ * Generates a secure QR token for a ticket — same logic as PaymentService.generateQrToken.
+ * Uses a local copy to avoid circular dependencies.
+ * QR payload format v2: {ticketId}:{rawToken}:{gateName}
+ * Signature: HMAC-SHA256 of {ticketId}:{qrTokenHash}:{gateName}
+ * NOTE: gateName (Gate.name, e.g. "GATE-A") is used for both payload and signature,
+ *       consistent with Ticket.gateId which stores the gate name.
+ */
+function generateQrToken(
+  ticketId: string,
+  gateId: string,
+  secret: string,
+): { rawToken: string; qrTokenHash: string; qrSignature: string } {
+  const rawToken = randomUUID();
+  const qrTokenHash = createHash('sha256').update(rawToken).digest('hex');
+  const signaturePayload = `${ticketId}:${qrTokenHash}:${gateId}`;
+  const qrSignature = createHmac('sha256', secret)
+    .update(signaturePayload)
+    .digest('hex');
+  return { rawToken, qrTokenHash, qrSignature };
+}
 
 @Processor(TICKET_ISSUE_QUEUE)
 export class TicketIssueProcessor extends WorkerHost {
-  constructor(private readonly prisma: PrismaService) {
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly configService: ConfigService,
+  ) {
     super();
   }
 
@@ -18,7 +44,6 @@ export class TicketIssueProcessor extends WorkerHost {
       where: { id: orderId },
       include: {
         items: true,
-        tickets: true,
       },
     });
 
@@ -43,32 +68,35 @@ export class TicketIssueProcessor extends WorkerHost {
       throw new Error(`Order ${order.id} has no order items`);
     }
 
-    if (order.tickets.length > 0) {
+    // Check if tickets already issued for this order
+    const existingTicketCount = await this.prisma.ticket.count({
+      where: { orderId },
+    });
+
+    if (existingTicketCount > 0) {
       return {
         skipped: true,
         reason: 'Tickets already issued',
-        ticketCount: order.tickets.length,
+        ticketCount: existingTicketCount,
       };
     }
 
+    const qrSecret = this.configService.get<string>(
+      'QR_SIGNATURE_SECRET',
+      'dev_qr_secret',
+    );
     const createdTickets: Ticket[] = [];
 
     await this.prisma.$transaction(async (tx) => {
       for (const item of order.items) {
-        // Move tickets from "reserved" to "sold" in DB
         await tx.ticketType.update({
           where: { id: item.ticketTypeId },
           data: {
-            soldQty: {
-              increment: item.quantity,
-            },
-            reservedQty: {
-              decrement: item.quantity,
-            },
+            soldQty: { increment: item.quantity },
+            reservedQty: { decrement: item.quantity },
           },
         });
 
-        // Update per-user paid/reserved counters
         await tx.userTicketCounter.upsert({
           where: {
             userId_ticketTypeId: {
@@ -83,32 +111,69 @@ export class TicketIssueProcessor extends WorkerHost {
             reservedQty: 0,
           },
           update: {
-            paidQty: {
-              increment: item.quantity,
-            },
-            reservedQty: {
-              decrement: item.quantity,
-            },
+            paidQty: { increment: item.quantity },
+            reservedQty: { decrement: item.quantity },
           },
         });
 
-        // Create one Ticket record per purchased quantity
         for (let i = 0; i < item.quantity; i++) {
-          const rawQrToken = randomUUID();
+          const ticketId = randomUUID();
 
-          const qrTokenHash = createHash('sha256')
-            .update(rawQrToken)
-            .digest('hex');
+          // Resolve least-loaded gate within the transaction for correct round-robin.
+          // NOTE: Ticket.gateId stores Gate.name (not Gate.id/cuid), so the count map
+          // is keyed by gate name for correct round-robin distribution.
+          let gateName = '';
+          const gates = await tx.gate.findMany({
+            where: { concertId: order.concertId },
+            select: { id: true, name: true },
+          });
+          if (gates.length > 0) {
+            const ticketCounts = await tx.ticket.groupBy({
+              by: ['gateId'],
+              where: {
+                concertId: order.concertId,
+                status: { in: ['ISSUED', 'CHECKED_IN'] },
+                gateId: { not: null },
+              },
+              _count: { id: true },
+            });
+            const countMap = new Map(
+              ticketCounts.map((c) => [c.gateId, c._count.id]),
+            );
+            let leastLoadedGate = gates[0];
+            let minCount = countMap.get(gates[0].name) ?? 0;
+            for (const gate of gates) {
+              const count = countMap.get(gate.name) ?? 0;
+              if (count < minCount) {
+                minCount = count;
+                leastLoadedGate = gate;
+              }
+            }
+            gateName = leastLoadedGate.name;
+          }
+
+          // Use gate name (not gate id/cuid) for QR payload and Ticket.gateId.
+          // This ensures the QR payload gate field matches what the PWA stores as
+          // device gateId, enabling gate mismatch detection to work correctly.
+          const { rawToken, qrTokenHash, qrSignature } = generateQrToken(
+            ticketId,
+            gateName,
+            qrSecret,
+          );
 
           const ticket = await tx.ticket.create({
             data: {
+              id: ticketId,
               orderId: order.id,
               orderItemId: item.id,
               concertId: order.concertId,
               ticketTypeId: item.ticketTypeId,
               userId: order.userId,
+              // gateId stores Gate.name for human-readable QR payload comparison
+              gateId: gateName || null,
+              qrRawToken: rawToken,
               qrTokenHash,
-              qrSignature: `mock_signed_payload_${rawQrToken}`,
+              qrSignature,
             },
           });
 
@@ -116,11 +181,6 @@ export class TicketIssueProcessor extends WorkerHost {
         }
       }
     });
-
-    // NOTE: Redis stock sync and user_limit decrement are handled by the
-    // caller (PaymentService.markPaymentSuccessAndQueueTicketIssue or
-    // OrderService.finalizePayment) before/after queueing this job.
-    // This processor focuses solely on persisting tickets in PostgreSQL.
 
     return {
       issued: true,
