@@ -7,34 +7,17 @@ import CustomerHeader from '@/components/layout/CustomerHeader';
 import { orderApi } from '@/lib/api-client';
 import { getConcertName } from '@/lib/concert-names';
 import { formatVnd } from '@/lib/format';
+import { orderStatusLabel } from '@/lib/order-status';
 import type { Order } from '@/types/order';
 
 interface OrderDetailPageProps {
   orderId: string;
 }
 
-function statusLabel(status: Order['status']): string {
-  switch (status) {
-    case 'PAID':
-      return 'Đã thanh toán';
-    case 'PENDING_PAYMENT':
-      return 'Chờ thanh toán';
-    case 'EXPIRED':
-      return 'Hết hạn';
-    case 'PAYMENT_FAILED':
-      return 'Thanh toán thất bại';
-    case 'CANCELLED':
-      return 'Đã hủy';
-    case 'REFUNDED':
-      return 'Đã hoàn tiền';
-    default:
-      return status;
-  }
-}
-
 export default function OrderDetailPage({ orderId }: OrderDetailPageProps) {
   const searchParams = useSearchParams();
   const concertId = searchParams.get('concertId') ?? '';
+  const justPaid = searchParams.get('paid') === '1';
   const concertName = concertId ? getConcertName(concertId) : undefined;
 
   const [order, setOrder] = useState<Order | null>(null);
@@ -92,11 +75,13 @@ export default function OrderDetailPage({ orderId }: OrderDetailPageProps) {
             {isPaid ? 'Thanh toán thành công!' : 'Chi tiết đơn hàng'}
           </h1>
           <p className="mt-2 text-sm text-slate-600">
-            {order.concertTitle} · {statusLabel(order.status)}
+            {order.concertTitle} · {orderStatusLabel(order.status)}
           </p>
           {isPaid && (
             <p className="mt-3 text-sm text-emerald-800">
-              Vé điện tử đã sẵn sàng. Xem mã QR bên dưới hoặc kiểm tra email xác nhận.
+              {justPaid
+                ? 'Thanh toán đã được xác nhận. Vé điện tử đã sẵn sàng — xem mã QR bên dưới hoặc kiểm tra email xác nhận.'
+                : 'Vé điện tử đã sẵn sàng. Xem mã QR bên dưới hoặc kiểm tra email xác nhận.'}
             </p>
           )}
         </div>

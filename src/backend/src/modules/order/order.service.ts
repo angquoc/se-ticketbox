@@ -451,9 +451,15 @@ export class OrderService {
       );
     }
 
-    // Update UserTicketCounter in PostgreSQL (source of truth for per-user limits)
-    await Promise.all(
-      ticketMeta.map((m) =>
+    // Sync PostgreSQL inventory counters (source of truth for seatmap display)
+    await Promise.all([
+      ...ticketMeta.map((m) =>
+        this.prisma.ticketType.update({
+          where: { id: m.ticketTypeId },
+          data: { reservedQty: { increment: m.quantity } },
+        }),
+      ),
+      ...ticketMeta.map((m) =>
         this.prisma.userTicketCounter.upsert({
           where: {
             userId_ticketTypeId: { userId, ticketTypeId: m.ticketTypeId },
@@ -466,7 +472,7 @@ export class OrderService {
           update: { reservedQty: { increment: m.quantity } },
         }),
       ),
-    );
+    ]);
 
     // Create PaymentTransaction and get payment URL from gateway
     let paymentUrl: string;
@@ -494,9 +500,15 @@ export class OrderService {
         ),
       );
 
-      // Rollback UserTicketCounter
-      await Promise.all(
-        ticketMeta.map((m) =>
+      // Rollback PostgreSQL inventory counters
+      await Promise.all([
+        ...ticketMeta.map((m) =>
+          this.prisma.ticketType.update({
+            where: { id: m.ticketTypeId },
+            data: { reservedQty: { decrement: m.quantity } },
+          }),
+        ),
+        ...ticketMeta.map((m) =>
           this.prisma.userTicketCounter.update({
             where: {
               userId_ticketTypeId: { userId, ticketTypeId: m.ticketTypeId },
@@ -504,7 +516,7 @@ export class OrderService {
             data: { reservedQty: { decrement: m.quantity } },
           }),
         ),
-      );
+      ]);
 
       // Delete the order record (it only exists because payment failed)
       await this.prisma.order.delete({ where: { id: orderId } });
@@ -666,9 +678,15 @@ export class OrderService {
       ),
     );
 
-    // Release per-user reservedQty in PostgreSQL
-    await Promise.all(
-      order.items.map((item) =>
+    // Release PostgreSQL inventory counters
+    await Promise.all([
+      ...order.items.map((item) =>
+        this.prisma.ticketType.update({
+          where: { id: item.ticketTypeId },
+          data: { reservedQty: { decrement: item.quantity } },
+        }),
+      ),
+      ...order.items.map((item) =>
         this.prisma.userTicketCounter.update({
           where: {
             userId_ticketTypeId: { userId, ticketTypeId: item.ticketTypeId },
@@ -676,7 +694,7 @@ export class OrderService {
           data: { reservedQty: { decrement: item.quantity } },
         }),
       ),
-    );
+    ]);
 
     const updated = await this.prisma.order.update({
       where: { id: orderId },

@@ -8,6 +8,8 @@ import { PrismaService } from '../../database/prisma.service';
 import * as bcrypt from 'bcrypt';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
+import { ChangePasswordDto } from './dto/change-password.dto';
+import { UpdateProfileDto } from './dto/update-profile.dto';
 
 @Injectable()
 export class AuthService {
@@ -76,6 +78,115 @@ export class AuthService {
         fullName: user.fullName,
         role: user.role,
       },
+    };
+  }
+
+  async getMe(userId: string) {
+    const user = await this.prisma.user.findUnique({
+      where: {
+        id: userId,
+      },
+      select: {
+        id: true,
+        email: true,
+        fullName: true,
+        role: true,
+      },
+    });
+
+    if (!user) {
+      throw new UnauthorizedException('Người dùng không tồn tại');
+    }
+
+    return {
+      id: user.id,
+      email: user.email,
+      fullName: user.fullName,
+      role: user.role,
+    };
+  }
+
+  async updateProfile(
+    userId: string,
+    data: UpdateProfileDto,
+  ) {
+    const user = await this.prisma.user.update({
+      where: {
+        id: userId,
+      },
+      data: {
+        fullName: data.fullName,
+      },
+      select: {
+        id: true,
+        email: true,
+        fullName: true,
+        role: true,
+      },
+    });
+
+    return {
+      id: user.id,
+      email: user.email,
+      fullName: user.fullName,
+      role: user.role,
+    };
+  }
+
+  async changePassword(
+    userId: string,
+    data: ChangePasswordDto,
+  ) {
+    const user = await this.prisma.user.findUnique({
+      where: {
+        id: userId,
+      },
+    });
+
+    if (!user) {
+      throw new UnauthorizedException(
+        'Người dùng không tồn tại',
+      );
+    }
+
+    const isMatch = await bcrypt.compare(
+      data.currentPassword,
+      user.passwordHash,
+    );
+
+    if (!isMatch) {
+      throw new UnauthorizedException(
+        'Mật khẩu hiện tại không đúng',
+      );
+    }
+
+    if (
+      data.currentPassword ===
+      data.newPassword
+    ) {
+      throw new ConflictException(
+        'Mật khẩu mới phải khác mật khẩu hiện tại',
+      );
+    }
+
+    const salt = await bcrypt.genSalt(10);
+
+    const passwordHash = await bcrypt.hash(
+      data.newPassword,
+      salt,
+    );
+
+    await this.prisma.user.update({
+      where: {
+        id: userId,
+      },
+      data: {
+        passwordHash,
+      },
+    });
+
+    return {
+      message: 'Mật khẩu đã được thay đổi thành công',
     };
   }
 }

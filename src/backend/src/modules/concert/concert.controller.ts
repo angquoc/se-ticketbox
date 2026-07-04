@@ -17,6 +17,8 @@ import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { Role } from '@prisma/client';
 import { AuthGuard } from '../auth/guards/auth.guard';
+import { CurrentUser } from '../auth/decorators/current-user.decorator';
+import type { AuthUser } from '../auth/decorators/current-user.decorator';
 
 @Controller()
 export class ConcertController {
@@ -53,7 +55,42 @@ export class ConcertController {
   }
 
   /**
+   * GET /admin/concerts
+   * Admin only - returns all concerts including drafts.
+   * Supports optional status filter and pagination.
+   */
+  @Get('admin/concerts')
+  @UseGuards(AuthGuard, RolesGuard)
+  @Roles(Role.ADMIN, Role.ORGANIZER)
+  async findAdminAll(@Query() query: ConcertQueryDto) {
+    return this.concertService.findAdminAll(query);
+  }
+
+  /**
+   * GET /admin/concerts/:id
+   * Admin only - returns concert details including drafts, ticket types, and uploaded files.
+   */
+  @Get('admin/concerts/:id')
+  @UseGuards(AuthGuard, RolesGuard)
+  @Roles(Role.ADMIN, Role.ORGANIZER)
+  async findAdminOne(@Param('id') id: string) {
+    return this.concertService.findAdminOne(id);
+  }
+
+  /**
+   * GET /admin/concerts/:id/guests
+   * Admin/Organizer only - returns the list of guests imported for this concert.
+   */
+  @Get('admin/concerts/:id/guests')
+  @UseGuards(AuthGuard, RolesGuard)
+  @Roles(Role.ADMIN, Role.ORGANIZER)
+  async findAdminGuests(@Param('id') id: string) {
+    return this.concertService.findAdminGuests(id);
+  }
+
+  /**
    * POST /admin/concerts
+
    * Admin only - creates a new concert.
    * Requires ADMIN or ORGANIZER role.
    */
@@ -61,8 +98,8 @@ export class ConcertController {
   @UseGuards(AuthGuard, RolesGuard)
   @Roles(Role.ADMIN, Role.ORGANIZER)
   @HttpCode(HttpStatus.CREATED)
-  async create(@Body() dto: CreateConcertDto) {
-    return this.concertService.create(dto);
+  async create(@Body() dto: CreateConcertDto, @CurrentUser() user: AuthUser) {
+    return this.concertService.create(dto, user.sub);
   }
 
   /**

@@ -6,7 +6,13 @@ import {
   Inject,
 } from '@nestjs/common';
 import { PrismaService } from '../../database/prisma.service';
-import { ConcertStatus, Concert, TicketType, Prisma } from '@prisma/client';
+import {
+  ConcertStatus,
+  Concert,
+  TicketType,
+  Prisma,
+  UploadedFile,
+} from '@prisma/client';
 import { CreateConcertDto, UpdateConcertDto, ConcertQueryDto } from './dto';
 import {
   ConcertResponseDto,
@@ -16,8 +22,9 @@ import { ReminderService } from '../notification/reminder.service';
 
 // Định nghĩa payload
 type ConcertPayload = Concert & {
-  organizer?: { fullName: string | null } | null;
+  organizer?: { id?: string; email?: string; fullName: string | null } | null;
   ticketTypes?: TicketType[];
+  uploadedFiles?: UploadedFile[];
 };
 
 @Injectable()
@@ -57,9 +64,31 @@ export class ConcertService {
             totalQty: tt.totalQty,
             soldQty: tt.soldQty,
             reservedQty: tt.reservedQty,
+            maxPerUser: tt.maxPerUser,
             status: tt.status,
             saleStartsAt: tt.saleStartsAt,
             saleEndsAt: tt.saleEndsAt,
+          }))
+        : undefined,
+      organizer: concert.organizer
+        ? {
+            id: concert.organizer.id || '',
+            fullName: concert.organizer.fullName,
+            email: concert.organizer.email || '',
+          }
+        : undefined,
+      uploadedFiles: concert.uploadedFiles
+        ? concert.uploadedFiles.map((uf) => ({
+            id: uf.id,
+            concertId: uf.concertId,
+            originalName: uf.fileName,
+            objectKey: uf.objectKey,
+            mimeType: uf.mimeType,
+            sizeBytes: 0,
+            purpose: uf.purpose,
+            status: uf.status,
+            errorMessage: uf.errorMessage,
+            createdAt: uf.createdAt,
           }))
         : undefined,
     };
@@ -171,7 +200,10 @@ export class ConcertService {
   /**
    * Create a new concert. Admin only.
    */
-  async create(dto: CreateConcertDto): Promise<ConcertResponseDto> {
+  async create(
+    dto: CreateConcertDto,
+    fallbackOrganizerId: string,
+  ): Promise<ConcertResponseDto> {
     // Check for duplicate slug
     const existing = await this.prisma.concert.findUnique({
       where: { slug: dto.slug },
@@ -196,12 +228,10 @@ export class ConcertService {
         status: dto.status || ConcertStatus.DRAFT,
         seatMapUrl: dto.seatMapUrl,
         coverImageUrl: dto.coverImageUrl,
-        organizerId: dto.organizerId || '',
+        organizerId: dto.organizerId || fallbackOrganizerId,
       },
       include: {
-        organizer: {
-          select: { fullName: true },
-        },
+        organizer: true,
       },
     });
 
@@ -353,5 +383,80 @@ export class ConcertService {
     ]);
 
     return { message: `Concert "${concert.title}" deleted successfully` };
+  }
+
+  /**
+   * List all concerts for admins/organizers with optional status filter and pagination.
+   */
+  async findAdminAll(query: ConcertQueryDto): Promise<ConcertListResponseDto> {
+    const { status, page = 1, limit = 20 } = query;
+    const skip = (page - 1) * limit;
+
+    const where: Prisma.ConcertWhereInput = status ? { status } : {};
+
+    const [concerts, total] = await Promise.all([
+      this.prisma.concert.findMany({
+        where,
+        skip,
+        take: limit,
+        orderBy: { startsAt: 'asc' },
+        include: {
+          organizer: true,
+          ticketTypes: {
+            orderBy: { price: 'desc' },
+          },
+        },
+      }),
+      this.prisma.concert.count({ where }),
+    ]);
+
+    return {
+      data: concerts.map((c) => this.toResponse(c)),
+      total,
+      page,
+      limit,
+      totalPages: Math.ceil(total / limit),
+    };
+  }
+
+  /**
+   * Get a single concert details by ID for admin (including drafts, files, ticket types, and organizer).
+   */
+  async findAdminOne(id: string): Promise<ConcertResponseDto> {
+    const concert = await this.prisma.concert.findUnique({
+      where: { id },
+      include: {
+        organizer: true,
+        ticketTypes: {
+          orderBy: { price: 'desc' },
+        },
+        uploadedFiles: {
+          orderBy: { createdAt: 'desc' },
+        },
+      },
+    });
+
+    if (!concert) {
+      throw new NotFoundException(`Concert with ID "${id}" not found`);
+    }
+
+    return this.toResponse(concert);
+  }
+
+  /**
+   * Get all guest list entries for a single concert.
+   */
+  async findAdminGuests(id: string) {
+    const concert = await this.prisma.concert.findUnique({
+      where: { id },
+    });
+    if (!concert) {
+      throw new NotFoundException(`Concert with ID "${id}" not found`);
+    }
+
+    return this.prisma.guestListEntry.findMany({
+      where: { concertId: id },
+      orderBy: { createdAt: 'asc' },
+    });
   }
 }

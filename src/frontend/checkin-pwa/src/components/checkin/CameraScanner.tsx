@@ -5,10 +5,11 @@ import jsQR from 'jsqr';
 type ScannerState = 'idle' | 'requesting' | 'active' | 'error';
 
 interface CameraScannerProps {
-  onScan?: (data: string) => void;
+  onScan?: (rawQr: string) => void;
+  onViewHistory?: () => void;
 }
 
-export default function CameraScanner({ onScan }: CameraScannerProps) {
+export default function CameraScanner({ onScan, onViewHistory }: CameraScannerProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
@@ -81,7 +82,7 @@ export default function CameraScanner({ onScan }: CameraScannerProps) {
       }
 
       console.log('[CameraScanner] Kiểm tra isSecureContext:', window.isSecureContext);
-      if (window.isSecureContext === false) { // Có thể undefined trên một số trình duyệt siêu cũ, nên check === false
+      if (window.isSecureContext === false) {
         console.warn('[CameraScanner] Không phải context bảo mật (HTTPS/localhost).');
         setState('error');
         setErrorMsg('Cần HTTPS để dùng camera.');
@@ -139,7 +140,6 @@ export default function CameraScanner({ onScan }: CameraScannerProps) {
           };
           video.addEventListener('loadedmetadata', onReady, { once: true });
           video.addEventListener('loadeddata', onReady, { once: true });
-          // Fallback: sau 2s nếu event không fire thì vẫn tiếp tục
           setTimeout(() => {
             console.log('[CameraScanner] Timeout chờ metadata, vẫn tiếp tục...');
             resolve();
@@ -188,16 +188,68 @@ export default function CameraScanner({ onScan }: CameraScannerProps) {
           setErrorMsg('Lỗi không xác định.');
         }
       }
-    } catch (fatalErr: any) {
-      console.error('[CameraScanner] Lỗi nghiêm trọng chưa xử lý:', fatalErr);
+    } catch (fatalErr: unknown) {
+      const errorInstance = fatalErr instanceof Error ? fatalErr : new Error(String(fatalErr));
+      console.error('[CameraScanner] Lỗi nghiêm trọng chưa xử lý:', errorInstance);
       setState('error');
       setErrorMsg('Đã xảy ra lỗi nghiêm trọng.');
-      setDebugInfo(fatalErr.message || String(fatalErr));
+      setDebugInfo(errorInstance.message);
     }
   }, [scanFrame]);
 
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
+
   useEffect(() => {
-    // Bắt toàn bộ lỗi ngầm của React/JS trên trình duyệt và in thẳng ra màn hình
+    let animId: number;
+    let hasScanned = false;
+
+    const scanFrame = () => {
+      if (hasScanned) return;
+      const video = videoRef.current;
+      if (video && video.readyState === video.HAVE_ENOUGH_DATA && state === 'active') {
+        let canvas = canvasRef.current;
+        if (!canvas) {
+          canvas = document.createElement('canvas');
+          canvasRef.current = canvas;
+        }
+        const ctx = canvas.getContext('2d');
+        if (ctx) {
+          canvas.width = video.videoWidth;
+          canvas.height = video.videoHeight;
+          ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+          const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+          const code = jsQR(imageData.data, imageData.width, imageData.height, {
+            inversionAttempts: 'dontInvert',
+          });
+
+          if (code && code.data) {
+            console.log('[CameraScanner] QR Code detected:', code.data);
+            hasScanned = true;
+            if (onScan) {
+              onScan(code.data);
+            }
+            return;
+          }
+        }
+      }
+      animId = requestAnimationFrame(scanFrame);
+    };
+
+    if (state === 'active') {
+      animId = requestAnimationFrame(scanFrame);
+    }
+
+    return () => {
+      hasScanned = true;
+      cancelAnimationFrame(animId);
+    };
+  }, [state, onScan]);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      startCamera();
+    }, 0);
+
     const handleError = (event: ErrorEvent) => {
       setDebugInfo((prev) => prev + `\n[Lỗi ngầm JS]: ${event.message}`);
     };
@@ -208,7 +260,6 @@ export default function CameraScanner({ onScan }: CameraScannerProps) {
     window.addEventListener('error', handleError);
     window.addEventListener('unhandledrejection', handleRejection);
 
-    // Đoạn code tạm thời để ép trình duyệt xóa Service Worker (PWA Cache)
     if (typeof window !== 'undefined' && 'serviceWorker' in navigator) {
       navigator.serviceWorker.getRegistrations().then((registrations) => {
         for (const registration of registrations) {
@@ -218,198 +269,135 @@ export default function CameraScanner({ onScan }: CameraScannerProps) {
       });
     }
 
-    return () => { 
-      stopCamera(); 
+    return () => {
+      clearTimeout(timer);
+      stopCamera();
       window.removeEventListener('error', handleError);
       window.removeEventListener('unhandledrejection', handleRejection);
     };
-  }, [stopCamera]);
+  }, [startCamera, stopCamera]);
 
   return (
-    <div className="flex flex-col items-center gap-5 w-full">
-
-      {/* Camera box */}
-      <div className="relative w-full rounded-2xl overflow-hidden bg-slate-900 border border-slate-700"
-        style={{ aspectRatio: '1 / 1' }}
-      >
-
+    <>
+      {/* Camera Box / Overlay - Expanded to full relative viewport container */}
+      <div className="absolute inset-0 overflow-hidden bg-black/40 z-0">
         {/* Video feed */}
         <video
           ref={videoRef}
-          className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-300 ${state === 'active' ? 'opacity-100' : 'opacity-0'}`}
+          className={`absolute inset-0 w-full h-full object-cover z-1 transition-opacity duration-300 ${
+            state === 'active' ? 'opacity-100' : 'opacity-0'
+          }`}
           playsInline
           muted
           autoPlay
         />
 
-        {/* Hidden canvas for QR detection */}
-        <canvas ref={canvasRef} className="hidden" />
-
-        {/* Idle / Error state */}
+        {/* Idle / Error / Requesting states */}
         {state !== 'active' && (
-          <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 px-6">
-            <div
-              className="w-20 h-20 rounded-full flex items-center justify-center"
-              style={{ background: 'rgba(99,102,241,0.15)' }}
-            >
-              {/* Camera SVG icon — không dùng emoji */}
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                className="w-10 h-10 text-indigo-400"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-                strokeWidth={1.5}
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  d="M6.827 6.175A2.31 2.31 0 0 1 5.186 7.23c-.38.054-.757.112-1.134.175C2.999 7.58 2.25 8.507 2.25 9.574V18a2.25 2.25 0 0 0 2.25 2.25h15A2.25 2.25 0 0 0 21.75 18V9.574c0-1.067-.75-1.994-1.802-2.169a47.865 47.865 0 0 0-1.134-.175 2.31 2.31 0 0 1-1.64-1.055l-.822-1.316a2.192 2.192 0 0 0-1.736-1.039 48.774 48.774 0 0 0-5.232 0 2.192 2.192 0 0 0-1.736 1.039l-.821 1.316Z"
-                />
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  d="M16.5 12.75a4.5 4.5 0 1 1-9 0 4.5 4.5 0 0 1 9 0ZM18.75 10.5h.008v.008h-.008V10.5Z"
-                />
-              </svg>
-            </div>
-
+          <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 px-6 z-5">
             {state === 'error' ? (
-              <div className="text-center">
-                <p className="text-red-400 text-sm font-medium mb-1">Không thể mở camera</p>
-                <p className="text-slate-400 text-xs leading-relaxed whitespace-pre-line">
+              <div className="text-center bg-zinc-950/80 p-5 rounded-2xl border border-red-500/20">
+                <p className="color-red-400 text-sm font-medium mb-1 text-red-400">Không thể mở camera</p>
+                <p className="text-slate-400 text-xs leading-relaxed whiteSpace-pre-line">
                   {errorMsg}
                 </p>
               </div>
-            ) : state === 'requesting' ? (
-              <p className="text-slate-300 text-sm">Đang khởi động camera...</p>
             ) : (
-              <p className="text-slate-400 text-sm text-center">
-                Nhấn <span className="text-indigo-400 font-medium">Bật camera</span> để bắt đầu quét
-              </p>
+              <div className="flex flex-col items-center gap-3">
+                <div className="w-10 h-10 rounded-full border-4 border-brand border-t-transparent animate-spin" />
+                <p className="text-slate-400 text-sm">Đang mở camera...</p>
+              </div>
             )}
           </div>
         )}
 
-        {/* QR scan overlay — chỉ khi camera active */}
+        {/* QR scan overlay - Khung quét và tia quét */}
         {state === 'active' && (
-          <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-            {/* Dimmed corners */}
-            <div className="absolute inset-0"
-              style={{
-                background:
-                  'radial-gradient(ellipse 55% 55% at 50% 50%, transparent 40%, rgba(0,0,0,0.55) 100%)',
-              }}
-            />
+          <div className="absolute inset-0 pointer-events-none z-10 grid grid-rows-[1fr_250px_1fr] grid-cols-[1fr_250px_1fr] transform translate-z-0">
+            {/* Top mask overlay */}
+            <div className="bg-black/60 backdrop-blur-[5px]" style={{ gridRow: '1', gridColumn: '1 / 4' }} />
+            {/* Bottom mask overlay */}
+            <div className="bg-black/60 backdrop-blur-[5px]" style={{ gridRow: '3', gridColumn: '1 / 4' }} />
+            {/* Left mask overlay */}
+            <div className="bg-black/60 backdrop-blur-[5px]" style={{ gridRow: '2', gridColumn: '1' }} />
+            {/* Right mask overlay */}
+            <div className="bg-black/60 backdrop-blur-[5px]" style={{ gridRow: '2', gridColumn: '3' }} />
 
-            {/* Scan frame */}
-            <div className="relative w-56 h-56">
+            {/* Central scan frame (180px * 180px) */}
+            <div className="relative w-full h-full pointer-events-none" style={{ gridRow: '2', gridColumn: '2' }}>
               {/* Corner: top-left */}
-              <span className="absolute top-0 left-0 w-8 h-8 border-t-4 border-l-4 border-cyan-400 rounded-tl-lg" />
+              <span className="absolute top-0 left-0 w-6 h-6 border-t-4 border-l-4 border-white rounded-tl-[6px]" />
               {/* Corner: top-right */}
-              <span className="absolute top-0 right-0 w-8 h-8 border-t-4 border-r-4 border-cyan-400 rounded-tr-lg" />
+              <span className="absolute top-0 right-0 w-6 h-6 border-t-4 border-r-4 border-white rounded-tr-[6px]" />
               {/* Corner: bottom-left */}
-              <span className="absolute bottom-0 left-0 w-8 h-8 border-b-4 border-l-4 border-cyan-400 rounded-bl-lg" />
+              <span className="absolute bottom-0 left-0 w-6 h-6 border-b-4 border-l-4 border-white rounded-bl-[6px]" />
               {/* Corner: bottom-right */}
-              <span className="absolute bottom-0 right-0 w-8 h-8 border-b-4 border-r-4 border-cyan-400 rounded-br-lg" />
+              <span className="absolute bottom-0 right-0 w-6 h-6 border-b-4 border-r-4 border-white rounded-br-[6px]" />
 
               {/* Scanning line */}
-              <div
-                className="absolute left-2 right-2 h-0.5 bg-cyan-400 opacity-80"
-                style={{ animation: 'scanline 2s linear infinite', top: '50%' }}
-              />
-            </div>
-
-            <p className="absolute bottom-5 text-white text-xs bg-black/50 px-4 py-1.5 rounded-full">
-              Căn mã QR vào trong khung
-            </p>
-          </div>
-        )}
-
-        {/* Requesting overlay */}
-        {state === 'requesting' && (
-          <div className="absolute inset-0 flex items-center justify-center bg-slate-900/80">
-            <div className="flex flex-col items-center gap-3">
-              <div
-                className="w-10 h-10 border-4 border-indigo-500 border-t-transparent rounded-full"
-                style={{ animation: 'spin-loader 0.8s linear infinite' }}
-              />
-              <p className="text-slate-300 text-sm">Đang khởi động...</p>
+              <div className="absolute left-1.5 right-1.5 h-0.5 bg-emerald-400/80 shadow-[0_0_8px_#10B981] animate-scanline top-1/2" />
             </div>
           </div>
         )}
       </div>
 
-      {/* Buttons */}
-      <div className="w-full flex flex-col gap-3">
-        {state === 'active' ? (
+      {/* Floating Bottom Panel containing buttons and debug info */}
+      <div className="absolute bottom-[86px] left-6 right-6 z-20 flex flex-col gap-3">
+        {/* Bộ đôi nút Đèn Flash & Lịch Sử */}
+        <div className="grid grid-cols-2 gap-3.5 w-full">
           <button
-            onClick={stopCamera}
-            className="w-full py-4 rounded-2xl font-semibold text-white text-base transition-all active:scale-95"
-            style={{ background: 'rgba(239,68,68,0.2)', border: '1px solid rgba(239,68,68,0.4)' }}
+            onClick={() => {
+              if (streamRef.current) {
+                const track = streamRef.current.getVideoTracks()[0];
+                const capabilities = (track.getCapabilities?.() || {}) as MediaTrackCapabilities & { torch?: boolean };
+                if (capabilities && capabilities.torch) {
+                  const constraints = track.getConstraints() as MediaTrackConstraints & { advanced?: Array<{ torch?: boolean }> };
+                  const currentTorch = constraints.advanced?.[0]?.torch || false;
+                  void track.applyConstraints({
+                    advanced: [{ torch: !currentTorch } as MediaTrackConstraintSet & { torch?: boolean }]
+                  });
+                } else {
+                  console.log('Flashlight/Torch is not supported on this device/browser.');
+                }
+              }
+            }}
+            className="bg-white/8 backdrop-blur-md border border-white/12 rounded-2xl p-4 text-white flex flex-col items-center justify-center gap-2 cursor-pointer transition-all duration-200 active:scale-95 hover:bg-white/12"
           >
-            Tắt camera
+            {/* Flashlight Icon */}
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M18 6h-2l-1.2-2.4a1 1 0 0 0-.8-.6H10a1 1 0 0 0-.8.6L8 6H6a2 2 0 0 0-2 2v3a2 2 0 0 0 1.5 1.9L6 20a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2l.5-7.1A2 2 0 0 0 20 11V8a2 2 0 0 0-2-2z" />
+              <line x1="12" y1="12" x2="12" y2="12.01" />
+            </svg>
+            <span className="text-[11px] font-bold text-white/85 tracking-wider uppercase">
+              ĐÈN FLASH
+            </span>
           </button>
-        ) : (
+
           <button
-            onClick={startCamera}
-            disabled={state === 'requesting'}
-            className="w-full py-4 rounded-2xl font-semibold text-white text-base transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
-            style={{ background: state === 'requesting' ? '#4338ca' : '#4f46e5' }}
+            onClick={() => {
+              onViewHistory?.();
+            }}
+            className="bg-white/8 backdrop-blur-md border border-white/12 rounded-2xl p-4 text-white flex flex-col items-center justify-center gap-2 cursor-pointer transition-all duration-200 active:scale-95 hover:bg-white/12"
           >
-            {state === 'requesting' ? 'Đang khởi động...' : state === 'error' ? 'Thử lại' : 'Bật camera'}
+            {/* History Icon */}
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="12" cy="12" r="10" />
+              <polyline points="12 6 12 12 16 14" />
+            </svg>
+            <span className="text-[11px] font-bold text-white/85 tracking-wider uppercase">
+              LỊCH SỬ
+            </span>
           </button>
-        )}
-      </div>
-
-      {/* Status dot */}
-      <div className="flex items-center gap-2">
-        <span
-          className="w-2 h-2 rounded-full"
-          style={{
-            background: state === 'active' ? '#22c55e' : state === 'error' ? '#ef4444' : '#475569',
-            boxShadow: state === 'active' ? '0 0 6px #22c55e' : 'none',
-          }}
-        />
-        <span className="text-xs text-slate-500">
-          {state === 'active'
-            ? 'Camera đang hoạt động'
-            : state === 'requesting'
-            ? 'Đang khởi động...'
-            : state === 'error'
-            ? 'Camera bị lỗi'
-            : 'Sẵn sàng'}
-        </span>
-      </div>
-
-      {/* Debug info — chỉ hiện khi có lỗi */}
-      {debugInfo !== '' && (
-        <div
-          className="w-full rounded-xl px-4 py-3 text-xs text-slate-400 leading-relaxed"
-          style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)' }}
-        >
-          <p className="text-slate-500 font-medium mb-1">Chi tiết lỗi:</p>
-          <p className="whitespace-pre-wrap font-mono">{debugInfo}</p>
         </div>
-      )}
 
-      {/* Animations — dùng global style thay vì style jsx */}
-      <style>{`
-        @keyframes scanline {
-          0%   { top: 8%;  }
-          50%  { top: 88%; }
-          100% { top: 8%;  }
-        }
-        @keyframes spin-loader {
-          to { transform: rotate(360deg); }
-        }
-        .animate-scanline {
-          animation: scanline 2s ease-in-out infinite;
-        }
-        .animate-spin-loader {
-          animation: spin-loader 0.8s linear infinite;
-        }
-      `}</style>
-    </div>
+        {/* Debug details panel inside absolute container */}
+        {debugInfo !== '' && state === 'error' && (
+          <div className="w-full rounded-xl py-3 px-4 text-xs text-slate-300 leading-relaxed bg-slate-900/85 backdrop-blur-md border border-white/12">
+            <p className="text-slate-400 font-medium mb-1">Chi tiết kỹ thuật:</p>
+            <p className="margin-0 whiteSpace-pre-wrap font-mono">{debugInfo}</p>
+          </div>
+        )}
+      </div>
+    </>
   );
 }
