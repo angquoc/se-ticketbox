@@ -18,7 +18,8 @@ RUN npm ci
 COPY . .
 
 # Generate Prisma client
-RUN npx prisma generate
+# RUN npx prisma generate
+RUN DATABASE_URL="postgresql://dummy:dummy@localhost:5432/dummy" npx prisma generate
 
 # Build NestJS
 RUN npm run build
