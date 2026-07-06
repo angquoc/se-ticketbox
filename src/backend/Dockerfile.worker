@@ -9,9 +9,13 @@ RUN apk add --no-cache python3 make g++ git
 COPY package.json package-lock.json* ./
 # NOTE: we intentionally run install scripts here — bcrypt uses node-gyp-build
 # in its install hook to download prebuilt native binaries.
-RUN npm ci
+RUN npm install
 
 COPY . .
+
+ARG DATABASE_URL
+ENV DATABASE_URL=${DATABASE_URL:-postgresql://localhost:5432/build}
+
 RUN npx prisma generate
 RUN npm run build
 
@@ -28,12 +32,17 @@ COPY --from=builder --chown=nestjs:nodejs /app/node_modules  ./node_modules
 COPY --from=builder --chown=nestjs:nodejs /app/dist           ./dist
 COPY --from=builder --chown=nestjs:nodejs /app/prisma         ./prisma
 COPY --from=builder --chown=nestjs:nodejs /app/package.json   ./
-COPY --from=builder --chown=nestjs:nodejs /app/data           ./data
+COPY --from=builder --chown=nestjs:nodejs /app/package-lock.json ./
+COPY --from=builder --chown=nestjs:nodejs /app/prisma.config.ts ./
+COPY --from=builder --chown=nestjs:nodejs /app/tsconfig.json ./
 
 # Prune dev dependencies in the final image.
 # NOTE: we omit --ignore-scripts so bcrypt's install script (node-gyp-build)
 # can run to download/extract the prebuilt .node binary for this platform.
-RUN npm ci --omit=dev
+RUN npm install --omit=dev
+
+# Restore .prisma folder — npm ci --omit=dev removes it from node_modules
+COPY --from=builder --chown=nestjs:nodejs /app/node_modules/.prisma ./node_modules/.prisma
 
 USER nestjs
 
@@ -41,4 +50,4 @@ HEALTHCHECK --interval=30s --timeout=5s --start-period=15s --retries=3 \
   CMD wget -qO- http://localhost:3001/health || exit 1
 
 # Worker doesn't expose a port — it connects to Redis internally
-CMD ["node", "dist/worker/main"]
+CMD ["node", "dist/src/worker/main"]
