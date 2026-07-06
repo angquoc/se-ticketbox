@@ -57,6 +57,8 @@ services:
     build:
       context: ./src/backend
       dockerfile: Dockerfile
+      args:
+        DATABASE_URL: postgresql://ticketbox_user:ticketbox_password@postgres:5432/ticketbox_db?schema=public
     container_name: ticketbox-backend
     environment:
       DATABASE_URL: postgresql://ticketbox_user:ticketbox_password@postgres:5432/ticketbox_db?schema=public
@@ -89,6 +91,8 @@ services:
         condition: service_healthy
     ports:
       - "3001:3001"
+    volumes:
+      - ./data:/app/data
     healthcheck:
       test: ["CMD", "wget", "-qO-", "http://localhost:3001/health"]
       interval: 15s
@@ -100,6 +104,8 @@ services:
     build:
       context: ./src/backend
       dockerfile: Dockerfile.worker
+      args:
+        DATABASE_URL: postgresql://ticketbox_user:ticketbox_password@postgres:5432/ticketbox_db?schema=public
     container_name: ticketbox-worker
     environment:
       DATABASE_URL: postgresql://ticketbox_user:ticketbox_password@postgres:5432/ticketbox_db?schema=public
@@ -131,6 +137,8 @@ services:
         condition: service_healthy
       backend:
         condition: service_healthy
+    volumes:
+      - ./data:/app/data
 
   customer-web:
     build:

@@ -17,6 +17,10 @@ RUN npm ci
 # Copy source
 COPY . .
 
+# prisma generate only needs the env var to exist — a dummy URL is fine at build time
+ARG DATABASE_URL
+ENV DATABASE_URL=${DATABASE_URL:-postgresql://localhost:5432/build}
+
 # Generate Prisma client
 RUN npx prisma generate
 
@@ -38,13 +42,16 @@ COPY --from=builder --chown=nestjs:nodejs /app/node_modules          ./node_modu
 COPY --from=builder --chown=nestjs:nodejs /app/dist                    ./dist
 COPY --from=builder --chown=nestjs:nodejs /app/prisma                  ./prisma
 COPY --from=builder --chown=nestjs:nodejs /app/package.json            ./
-COPY --from=builder --chown=nestjs:nodejs /app/data                    ./data
+COPY --from=builder --chown=nestjs:nodejs /app/package-lock.json      ./
 
 # Prune dev dependencies in the final image.
 # NOTE: we omit --ignore-scripts so bcrypt's install script (node-gyp-build)
 # can run to download/extract the prebuilt .node binary for this platform.
 # bcrypt is a regular (not dev) dependency, so it is always installed.
 RUN npm ci --omit=dev
+
+# Restore .prisma folder — npm ci --omit=dev removes it from node_modules
+COPY --from=builder --chown=nestjs:nodejs /app/node_modules/.prisma ./node_modules/.prisma
 
 USER nestjs
 
@@ -53,4 +60,4 @@ EXPOSE 3001
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
   CMD wget -qO- http://localhost:3001/health || exit 1
 
-CMD ["node", "dist/main"]
+CMD ["node", "dist/src/main"]
