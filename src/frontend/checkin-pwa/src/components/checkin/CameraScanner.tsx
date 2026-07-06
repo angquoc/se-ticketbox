@@ -11,7 +11,7 @@ interface CameraScannerProps {
 
 export default function CameraScanner({ onScan, onViewHistory }: CameraScannerProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
-  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const animFrameRef = useRef<number>(0);
   const lastScanRef = useRef<number>(0);
@@ -196,8 +196,6 @@ export default function CameraScanner({ onScan, onViewHistory }: CameraScannerPr
       setDebugInfo(errorInstance.message);
     }
   }, [scanFrame]);
-
-  const canvasRef = useRef<HTMLCanvasElement | null>(null);
 
   useEffect(() => {
     let animId: number;

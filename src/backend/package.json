@@ -21,9 +21,9 @@
     "worker:dev": "ts-node -r tsconfig-paths/register src/worker/main.ts",
     "worker:prod": "node dist/worker/main",
     "db:migrate": "prisma migrate deploy",
-    "db:seed": "ts-node -r tsconfig-paths/register ../data/seed/seed.ts",
+    "db:seed": "ts-node -T --project tsconfig.json -r tsconfig-paths/register ../data/seed/seed.ts",
     "db:reset": "prisma migrate reset --force",
-    "db:init": "prisma migrate deploy && ts-node -r tsconfig-paths/register ../data/seed/seed.ts"
+    "db:init": "prisma migrate deploy && ts-node -T --project tsconfig.json -r tsconfig-paths/register ../data/seed/seed.ts"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1063.0",
@@ -63,7 +63,10 @@
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.1",
     "socket.io": "^4.8.3",
-    "uuid": "^14.0.0"
+    "uuid": "^14.0.0",
+    "ts-node": "^10.9.2",
+    "tsconfig-paths": "^4.2.0",
+    "typescript": "^5.7.3"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3.2.0",
@@ -96,9 +99,6 @@
     "supertest": "^7.0.0",
     "ts-jest": "^29.2.5",
     "ts-loader": "^9.5.2",
-    "ts-node": "^10.9.2",
-    "tsconfig-paths": "^4.2.0",
-    "typescript": "^5.7.3",
     "typescript-eslint": "^8.20.0"
   },
   "jest": {
@@ -119,6 +119,6 @@
     "testEnvironment": "node"
   },
   "prisma": {
-    "seed": "ts-node -r tsconfig-paths/register ../data/seed/seed.ts"
+    "seed": "ts-node -T --project tsconfig.json -r tsconfig-paths/register ../data/seed/seed.ts"
   }
 }

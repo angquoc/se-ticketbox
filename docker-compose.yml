@@ -61,6 +61,7 @@ services:
         DATABASE_URL: postgresql://ticketbox_user:ticketbox_password@postgres:5432/ticketbox_db?schema=public
     container_name: ticketbox-backend
     environment:
+      NODE_PATH: /app/node_modules
       DATABASE_URL: postgresql://ticketbox_user:ticketbox_password@postgres:5432/ticketbox_db?schema=public
       REDIS_URL: redis://redis:6379
       REDIS_HOST: redis
@@ -92,7 +93,7 @@ services:
     ports:
       - "3001:3001"
     volumes:
-      - ./data:/app/data
+      - ./data:/data
     healthcheck:
       test: ["CMD", "wget", "-qO-", "http://localhost:3001/health"]
       interval: 15s
@@ -108,6 +109,7 @@ services:
         DATABASE_URL: postgresql://ticketbox_user:ticketbox_password@postgres:5432/ticketbox_db?schema=public
     container_name: ticketbox-worker
     environment:
+      NODE_PATH: /app/node_modules
       DATABASE_URL: postgresql://ticketbox_user:ticketbox_password@postgres:5432/ticketbox_db?schema=public
       REDIS_URL: redis://redis:6379
       REDIS_HOST: redis
@@ -138,7 +140,7 @@ services:
       backend:
         condition: service_healthy
     volumes:
-      - ./data:/app/data
+      - ./data:/data
 
   customer-web:
     build:
@@ -160,6 +162,7 @@ services:
       dockerfile: Dockerfile
     container_name: ticketbox-admin-web
     environment:
+      PORT: "3002"
       BACKEND_API_URL: http://backend:3001
     depends_on:
       backend:
@@ -174,6 +177,7 @@ services:
       dockerfile: Dockerfile
     container_name: ticketbox-checkin-pwa
     environment:
+      PORT: "3003"
       BACKEND_API_URL: http://backend:3001
     depends_on:
       backend:

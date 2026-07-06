@@ -12,7 +12,7 @@ COPY package.json package-lock.json* ./
 # Install all dependencies (including dev, because Prisma generate needs it)
 # NOTE: we intentionally run install scripts here — bcrypt uses node-gyp-build
 # in its install hook to download prebuilt native binaries.
-RUN npm ci
+RUN npm install
 
 # Copy source
 COPY . .
@@ -43,12 +43,14 @@ COPY --from=builder --chown=nestjs:nodejs /app/dist                    ./dist
 COPY --from=builder --chown=nestjs:nodejs /app/prisma                  ./prisma
 COPY --from=builder --chown=nestjs:nodejs /app/package.json            ./
 COPY --from=builder --chown=nestjs:nodejs /app/package-lock.json      ./
+COPY --from=builder --chown=nestjs:nodejs /app/prisma.config.ts      ./
+COPY --from=builder --chown=nestjs:nodejs /app/tsconfig.json         ./
 
 # Prune dev dependencies in the final image.
 # NOTE: we omit --ignore-scripts so bcrypt's install script (node-gyp-build)
 # can run to download/extract the prebuilt .node binary for this platform.
 # bcrypt is a regular (not dev) dependency, so it is always installed.
-RUN npm ci --omit=dev
+RUN npm install --omit=dev
 
 # Restore .prisma folder — npm ci --omit=dev removes it from node_modules
 COPY --from=builder --chown=nestjs:nodejs /app/node_modules/.prisma ./node_modules/.prisma
