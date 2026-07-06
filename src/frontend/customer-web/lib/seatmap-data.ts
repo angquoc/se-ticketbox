@@ -71,6 +71,38 @@ export function applyZoneAvailabilityUpdates(
   };
 }
 
+export interface SocketZoneStatusUpdate {
+  ticketTypeId: string;
+  zoneId: string;
+  oldStatus?: string;
+  newStatus: string;
+  availableCount: number;
+  reservedCount?: number;
+  soldCount?: number;
+  timestamp?: string;
+  updatedAt?: string;
+}
+
+export function mapSocketZoneUpdates(
+  updates: SocketZoneStatusUpdate[],
+): Array<{
+  ticketTypeId: string;
+  zoneId: string;
+  status: ZoneStatus;
+  availableCount: number;
+  reservedCount?: number;
+  soldCount?: number;
+}> {
+  return updates.map((update) => ({
+    ticketTypeId: update.ticketTypeId,
+    zoneId: update.zoneId,
+    status: update.newStatus as ZoneStatus,
+    availableCount: update.availableCount,
+    reservedCount: update.reservedCount,
+    soldCount: update.soldCount,
+  }));
+}
+
 export function collectZoneAvailabilityUpdates(data: SeatMapData) {
   const updates = [];
   for (const ticketType of data.ticketTypes) {

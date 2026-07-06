@@ -18,6 +18,7 @@ interface InteractiveSeatMapProps {
   isZoneSelected: (ticketTypeId: string, zoneId: string) => boolean;
   onSelectZone: (ticketTypeId: string, zoneId: string) => void;
   onBackgroundLoaded?: () => void;
+  onBackgroundError?: () => void;
 }
 
 function resolveZoneElement(
@@ -79,6 +80,7 @@ export default function InteractiveSeatMap({
   isZoneSelected,
   onSelectZone,
   onBackgroundLoaded,
+  onBackgroundError,
 }: InteractiveSeatMapProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const svgHostRef = useRef<HTMLDivElement>(null);
@@ -89,6 +91,7 @@ export default function InteractiveSeatMap({
   const isZoneSelectedRef = useRef(isZoneSelected);
   const onSelectZoneRef = useRef(onSelectZone);
   const onBackgroundLoadedRef = useRef(onBackgroundLoaded);
+  const onBackgroundErrorRef = useRef(onBackgroundError);
   const tooltipRafRef = useRef<number | null>(null);
   const hoverProbeRafRef = useRef<number | null>(null);
   const pendingTooltipPosRef = useRef<{ x: number; y: number } | null>(null);
@@ -108,6 +111,10 @@ export default function InteractiveSeatMap({
   useEffect(() => {
     onBackgroundLoadedRef.current = onBackgroundLoaded;
   }, [onBackgroundLoaded]);
+
+  useEffect(() => {
+    onBackgroundErrorRef.current = onBackgroundError;
+  }, [onBackgroundError]);
 
   useEffect(() => {
     onSelectZoneRef.current = onSelectZone;
@@ -162,6 +169,7 @@ export default function InteractiveSeatMap({
       .catch(() => {
         if (!cancelled) {
           setSvgLoaded(false);
+          onBackgroundErrorRef.current?.();
           onBackgroundLoadedRef.current?.();
         }
       });
@@ -303,14 +311,23 @@ export default function InteractiveSeatMap({
       setHoveredZoneKey(zoneKey(entry.ticketType.id, entry.zone.zoneId), clientX, clientY);
     };
 
-    const handleMouseMove = (event: MouseEvent) => {
+    const scheduleHoverProbe = (clientX: number, clientY: number) => {
       if (dragging.current) return;
-      const { clientX, clientY } = event;
       if (hoverProbeRafRef.current !== null) return;
       hoverProbeRafRef.current = requestAnimationFrame(() => {
         hoverProbeRafRef.current = null;
         probeHover(clientX, clientY);
       });
+    };
+
+    const handleMouseMove = (event: MouseEvent) => {
+      scheduleHoverProbe(event.clientX, event.clientY);
+    };
+
+    const handleTouchMove = (event: TouchEvent) => {
+      const touch = event.touches[0];
+      if (!touch) return;
+      scheduleHoverProbe(touch.clientX, touch.clientY);
     };
 
     const handleMouseLeave = () => {
@@ -344,11 +361,13 @@ export default function InteractiveSeatMap({
     };
 
     host.addEventListener('mousemove', handleMouseMove);
+    host.addEventListener('touchmove', handleTouchMove, { passive: true });
     host.addEventListener('mouseleave', handleMouseLeave);
     host.addEventListener('click', handleClick);
 
     return () => {
       host.removeEventListener('mousemove', handleMouseMove);
+      host.removeEventListener('touchmove', handleTouchMove);
       host.removeEventListener('mouseleave', handleMouseLeave);
       host.removeEventListener('click', handleClick);
       zoneElementsRef.current.clear();
