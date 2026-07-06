@@ -4,10 +4,11 @@ import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { ALL_TICKET_TYPES, useSeatMap } from '@/hooks/useSeatMap';
-import { requestPurchaseAccess } from '@/lib/waiting-room-access';
+import { usePurchaseAccess } from '@/hooks/usePurchaseAccess';
 import CustomerHeader from '@/components/layout/CustomerHeader';
 import PendingOrderBanner from '@/components/payment/PendingOrderBanner';
 import BackendNotice from '@/components/ui/BackendNotice';
+import TokenExpiryBanner from '@/components/waiting-room/TokenExpiryBanner';
 import SeatFilters from './SeatFilters';
 import InteractiveSeatMap from './InteractiveSeatMap';
 import ZoneListFallback from './ZoneListFallback';
@@ -23,39 +24,7 @@ interface SeatMapPageProps {
 
 export default function SeatMapPage({ concertId }: SeatMapPageProps) {
   const router = useRouter();
-  const [accessChecked, setAccessChecked] = useState(false);
-  const [accessError, setAccessError] = useState<string | null>(null);
-
-  useEffect(() => {
-    let cancelled = false;
-
-    async function verifyAccess() {
-      setAccessError(null);
-      try {
-        const result = await requestPurchaseAccess(concertId);
-        if (cancelled) return;
-
-        if (result.granted) {
-          setAccessChecked(true);
-          return;
-        }
-
-        router.replace(`/concerts/${concertId}/waiting`);
-      } catch (error) {
-        if (!cancelled) {
-          setAccessError(
-            error instanceof Error ? error.message : 'Không thể xác minh quyền truy cập',
-          );
-        }
-      }
-    }
-
-    void verifyAccess();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [concertId, router]);
+  const { accessChecked, accessError, tokenRemainingMs } = usePurchaseAccess({ concertId });
 
   const {
     data,
@@ -184,6 +153,9 @@ export default function SeatMapPage({ concertId }: SeatMapPageProps) {
           </div>
           <div className="mt-3">
             <PendingOrderBanner concertId={concertId} />
+          </div>
+          <div className="mt-3">
+            <TokenExpiryBanner remainingMs={tokenRemainingMs} />
           </div>
           <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-slate-500">
             <span>Còn {availableTotal} vé trống</span>

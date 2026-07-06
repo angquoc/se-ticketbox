@@ -1,3 +1,5 @@
+import { isWaitingRoomAccessDenied } from '@/lib/waiting-room-constants';
+
 export class ClientApiError extends Error {
   constructor(
     message: string,
@@ -12,6 +14,10 @@ export function isClientApiError(error: unknown): error is ClientApiError {
   return error instanceof ClientApiError;
 }
 
+export function isWaitingRoomOrderError(error: unknown): boolean {
+  return isClientApiError(error) && error.status === 403 && isWaitingRoomAccessDenied(error.message);
+}
+
 export function getCheckoutErrorMessage(error: unknown): string {
   if (isClientApiError(error)) {
     if (error.status === 503) {
@@ -22,6 +28,9 @@ export function getCheckoutErrorMessage(error: unknown): string {
     }
     if (error.status === 422) {
       return error.message;
+    }
+    if (error.status === 403 && isWaitingRoomAccessDenied(error.message)) {
+      return 'Lượt mua vé đã hết hạn hoặc chưa đến lượt. Vui lòng vào phòng chờ và thử lại.';
     }
   }
 

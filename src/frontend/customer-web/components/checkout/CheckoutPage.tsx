@@ -5,14 +5,20 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import CustomerHeader from '@/components/layout/CustomerHeader';
 import PendingOrderBanner from '@/components/payment/PendingOrderBanner';
+import TokenExpiryBanner from '@/components/waiting-room/TokenExpiryBanner';
 import { useAuth } from '@/hooks/useAuth';
+import { usePurchaseAccess } from '@/hooks/usePurchaseAccess';
 import { concertApi } from '@/lib/api-client';
-import { getCheckoutErrorMessage } from '@/lib/api-error';
+import { getCheckoutErrorMessage, isWaitingRoomOrderError } from '@/lib/api-error';
 import { createOrderWithIdempotencyRetry } from '@/lib/create-order-retry';
 import {
   clearCheckoutIdempotencyKey,
   getCheckoutIdempotencyKey,
 } from '@/lib/idempotency';
+import {
+  clearWaitingRoomData,
+  readAdmittedToken,
+} from '@/lib/waiting-room-storage';
 import {
   clearPendingOrder,
   clearZoneSelection,
@@ -41,6 +47,10 @@ export default function CheckoutPage({ concertId }: CheckoutPageProps) {
   const [order, setOrder] = useState<Order | null>(null);
   const checkoutLockRef = useRef(false);
 
+  const { accessChecked, accessError, tokenRemainingMs, redirectToWaiting } = usePurchaseAccess({
+    concertId,
+  });
+
   const selection = useMemo(() => readZoneSelection(concertId), [concertId]);
   const concertName = getConcertName(concertId);
   const totalPrice = selection ? selection.unitPrice * selection.quantity : 0;
@@ -64,6 +74,12 @@ export default function CheckoutPage({ concertId }: CheckoutPageProps) {
   async function handleCheckout(button?: HTMLButtonElement) {
     if (!selection || checkoutLockRef.current) return;
 
+    const waitingRoomToken = readAdmittedToken(concertId);
+    if (!waitingRoomToken) {
+      redirectToWaiting();
+      return;
+    }
+
     checkoutLockRef.current = true;
     if (button) button.disabled = true;
 
@@ -82,6 +98,7 @@ export default function CheckoutPage({ concertId }: CheckoutPageProps) {
           items,
         },
         idempotencyKey,
+        waitingRoomToken,
       );
 
       const paymentUrl =
@@ -92,6 +109,7 @@ export default function CheckoutPage({ concertId }: CheckoutPageProps) {
 
       clearCheckoutIdempotencyKey(concertId);
       clearZoneSelection(concertId);
+      clearWaitingRoomData(concertId);
       savePendingOrder(concertId, orderResponse.order.id);
       setOrder(orderResponse.order);
 
@@ -101,6 +119,13 @@ export default function CheckoutPage({ concertId }: CheckoutPageProps) {
     } catch (err) {
       checkoutLockRef.current = false;
       if (button) button.disabled = false;
+
+      if (isWaitingRoomOrderError(err)) {
+        clearWaitingRoomData(concertId);
+        redirectToWaiting();
+        return;
+      }
+
       setStep('error');
       setError(getCheckoutErrorMessage(err));
     }
@@ -108,12 +133,18 @@ export default function CheckoutPage({ concertId }: CheckoutPageProps) {
 
   const isCheckoutLocked = step === 'processing';
 
-  if (authLoading || !selection) {
+  if (authLoading || !selection || !accessChecked) {
     return (
       <div className="flex min-h-screen flex-col bg-slate-50">
         <CustomerHeader concertName={concertName} />
-        <main className="flex flex-1 items-center justify-center">
-          <div className="h-10 w-10 animate-spin rounded-full border-4 border-indigo-200 border-t-indigo-600" />
+        <main className="flex flex-1 items-center justify-center p-4">
+          {accessError ? (
+            <div className="max-w-md rounded-xl border border-red-200 bg-red-50 p-6 text-center">
+              <p className="text-red-700">{accessError}</p>
+            </div>
+          ) : (
+            <div className="h-10 w-10 animate-spin rounded-full border-4 border-indigo-200 border-t-indigo-600" />
+          )}
         </main>
       </div>
     );
@@ -129,6 +160,10 @@ export default function CheckoutPage({ concertId }: CheckoutPageProps) {
 
         <div className="mt-4">
           <PendingOrderBanner concertId={concertId} />
+        </div>
+
+        <div className="mt-4">
+          <TokenExpiryBanner remainingMs={tokenRemainingMs} />
         </div>
 
         <div className="mt-6 rounded-xl border border-slate-200 bg-white p-5 shadow-sm">

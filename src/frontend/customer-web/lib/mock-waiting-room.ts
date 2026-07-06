@@ -156,6 +156,22 @@ export function pollWaitingRoom(sessionId: string): WaitingRoomPollResponse | nu
   return toPollResponse(record);
 }
 
+function getQueuePosition(record: WaitingSessionRecord): number {
+  let position = 1;
+  for (const other of sessions.values()) {
+    if (other.concertId !== record.concertId) continue;
+    if (!other.waitingRoomRequired || other.admitted) continue;
+    if (other.admitAt < record.admitAt) {
+      position += 1;
+      continue;
+    }
+    if (other.admitAt === record.admitAt && other.createdAt < record.createdAt) {
+      position += 1;
+    }
+  }
+  return position;
+}
+
 function toPollResponse(record: WaitingSessionRecord): WaitingRoomPollResponse {
   if (record.admitted && record.token) {
     return {
@@ -166,8 +182,13 @@ function toPollResponse(record: WaitingSessionRecord): WaitingRoomPollResponse {
     };
   }
 
+  const now = Date.now();
+  const estimatedWaitSeconds = Math.max(0, Math.ceil((record.admitAt - now) / 1000));
+
   return {
     status: 'waiting',
     waitingRoomRequired: record.waitingRoomRequired,
+    position: record.waitingRoomRequired ? getQueuePosition(record) : undefined,
+    estimatedWaitSeconds: record.waitingRoomRequired ? estimatedWaitSeconds : undefined,
   };
 }

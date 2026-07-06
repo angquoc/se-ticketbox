@@ -1,6 +1,7 @@
 import { ClientApiError } from '@/lib/api-error';
 import { emitAuthUnauthorized } from '@/lib/auth-session-events';
 import { getAccessToken } from '@/lib/auth-storage';
+import { WAITING_ROOM_TOKEN_HEADER } from '@/lib/waiting-room-constants';
 import type {
   AuthResponse,
   AuthUser,
@@ -29,7 +30,7 @@ interface ApiEnvelope<T> {
 
 async function clientFetch<T>(
   path: string,
-  options: RequestInit & { idempotencyKey?: string } = {},
+  options: RequestInit & { idempotencyKey?: string; waitingRoomToken?: string } = {},
 ): Promise<T> {
   const token = getAccessToken();
   const headers = new Headers(options.headers);
@@ -42,6 +43,9 @@ async function clientFetch<T>(
   }
   if (options.idempotencyKey) {
     headers.set('Idempotency-Key', options.idempotencyKey);
+  }
+  if (options.waitingRoomToken) {
+    headers.set(WAITING_ROOM_TOKEN_HEADER, options.waitingRoomToken);
   }
 
   const response = await fetch(path, {
@@ -107,11 +111,13 @@ export const orderApi = {
   create(
     payload: { concertId: string; items: Array<{ ticketTypeId: string; quantity: number }> },
     idempotencyKey: string,
+    waitingRoomToken?: string,
   ) {
     return clientFetch<CreateOrderResponse>('/api/orders', {
       method: 'POST',
       body: JSON.stringify(payload),
       idempotencyKey,
+      waitingRoomToken,
     });
   },
   getById(orderId: string) {

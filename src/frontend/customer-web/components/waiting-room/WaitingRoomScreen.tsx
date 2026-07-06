@@ -21,7 +21,7 @@ export default function WaitingRoomScreen({ concertId }: WaitingRoomScreenProps)
     }, 900);
   }, [concertId, router]);
 
-  const { concertName, status, error, backendError, messageTick, startedAt, retry } = useWaitingRoom({
+  const { concertName, status, error, backendError, messageTick, startedAt, position, estimatedWaitSeconds, retry } = useWaitingRoom({
     concertId,
     onAdmitted: handleAdmitted,
   });
@@ -136,6 +136,18 @@ export default function WaitingRoomScreen({ concertId }: WaitingRoomScreenProps)
                 ? 'Hệ thống đang đánh giá mức tải. Nếu không quá đông, bạn sẽ vào mua vé ngay.'
                 : 'Lượt truy cập đang cao. Chúng tôi sẽ tự động chuyển bạn sang trang mua vé ngay khi sẵn sàng — không cần làm gì thêm.'}
             </p>
+
+            {!isConnecting && position !== null && (
+              <p className="mt-4 text-sm font-medium text-indigo-700">
+                Vị trí trong hàng đợi: #{position}
+                {estimatedWaitSeconds !== null && estimatedWaitSeconds > 0 && (
+                  <span className="font-normal text-slate-500">
+                    {' '}
+                    · Ước tính còn khoảng {estimatedWaitSeconds} giây
+                  </span>
+                )}
+              </p>
+            )}
           </div>
 
           <div className="mt-8 rounded-xl bg-slate-50 px-4 py-3 text-center">

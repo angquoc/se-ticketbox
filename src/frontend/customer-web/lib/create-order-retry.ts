@@ -17,10 +17,11 @@ const PROCESSING_RETRY_DELAY_MS = 2000;
 export async function createOrderWithIdempotencyRetry(
   payload: CreateOrderPayload,
   idempotencyKey: string,
+  waitingRoomToken?: string,
 ): Promise<CreateOrderResponse> {
   for (let attempt = 0; attempt < MAX_PROCESSING_RETRIES; attempt++) {
     try {
-      return await orderApi.create(payload, idempotencyKey);
+      return await orderApi.create(payload, idempotencyKey, waitingRoomToken);
     } catch (error) {
       if (isClientApiError(error) && error.status === 409) {
         await sleep(PROCESSING_RETRY_DELAY_MS);

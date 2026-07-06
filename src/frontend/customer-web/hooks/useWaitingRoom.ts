@@ -24,6 +24,8 @@ export function useWaitingRoom({ concertId, onAdmitted }: UseWaitingRoomOptions)
   const [backendError, setBackendError] = useState<string | null>(null);
   const [messageTick, setMessageTick] = useState(0);
   const [startedAt, setStartedAt] = useState<number | null>(null);
+  const [position, setPosition] = useState<number | null>(null);
+  const [estimatedWaitSeconds, setEstimatedWaitSeconds] = useState<number | null>(null);
   const sessionIdRef = useRef<string | null>(null);
   const admittedRef = useRef(false);
   const joinStartedRef = useRef(false);
@@ -71,6 +73,8 @@ export function useWaitingRoom({ concertId, onAdmitted }: UseWaitingRoomOptions)
       cacheConcertName(concertId, data.concertName);
       setBackendError(data.backendError ?? null);
       setStartedAt(Date.now());
+      setPosition(data.position ?? null);
+      setEstimatedWaitSeconds(data.estimatedWaitSeconds ?? null);
 
       if (data.status === 'admitted' && data.token) {
         handleAdmitted(data.token, data.tokenExpiresAt);
@@ -79,7 +83,7 @@ export function useWaitingRoom({ concertId, onAdmitted }: UseWaitingRoomOptions)
 
       if (data.waitingRoomRequired === false) {
         setStatus('error');
-        setError('Trạng thái phòng chờ không hợp lệ');
+        setError('Không thể xác minh quyền truy cập. Vui lòng thử lại.');
         return;
       }
 
@@ -129,7 +133,11 @@ export function useWaitingRoom({ concertId, onAdmitted }: UseWaitingRoomOptions)
 
         if (data.status === 'admitted' && data.token) {
           handleAdmitted(data.token, data.tokenExpiresAt);
+          return;
         }
+
+        setPosition(data.position ?? null);
+        setEstimatedWaitSeconds(data.estimatedWaitSeconds ?? null);
       } catch (e) {
         if (!cancelled) {
           setError(e instanceof Error ? e.message : 'Lỗi không xác định');
@@ -144,7 +152,7 @@ export function useWaitingRoom({ concertId, onAdmitted }: UseWaitingRoomOptions)
       cancelled = true;
       clearInterval(interval);
     };
-  }, [concertId, status]);
+  }, [concertId, status, handleAdmitted]);
 
   useEffect(() => {
     if (status !== 'waiting') return;
@@ -160,6 +168,8 @@ export function useWaitingRoom({ concertId, onAdmitted }: UseWaitingRoomOptions)
     sessionIdRef.current = null;
     setMessageTick(0);
     setStartedAt(null);
+    setPosition(null);
+    setEstimatedWaitSeconds(null);
     setError(null);
     joinStartedRef.current = true;
     void joinQueue({ cancelled: false });
@@ -172,6 +182,8 @@ export function useWaitingRoom({ concertId, onAdmitted }: UseWaitingRoomOptions)
     backendError,
     messageTick,
     startedAt,
+    position,
+    estimatedWaitSeconds,
     retry,
   };
 }
