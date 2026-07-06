@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { ALL_TICKET_TYPES, useSeatMap } from '@/hooks/useSeatMap';
 import { requestPurchaseAccess } from '@/lib/waiting-room-access';
@@ -165,6 +166,12 @@ export default function SeatMapPage({ concertId }: SeatMapPageProps) {
       <CustomerHeader concertName={data.concertName} />
 
       <main className="mx-auto w-full max-w-7xl flex-1 px-4 py-6 pb-32 sm:px-6">
+        <Link
+          href={`/concerts/${concertId}`}
+          className="mb-4 inline-flex text-sm font-medium text-indigo-600 hover:text-indigo-700"
+        >
+          ← Chi tiết sự kiện
+        </Link>
         <div className="mb-6">
           <h1 className="text-2xl font-bold text-slate-900">Tổng quan khu vực ghế</h1>
           <p className="mt-1 text-slate-600">{data.concertName}</p>

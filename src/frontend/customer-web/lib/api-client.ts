@@ -10,6 +10,7 @@ import type {
   RegisterPayload,
   UpdateProfilePayload,
 } from '@/types/auth';
+import type { Concert, ConcertCardData } from '@/types/concert';
 import type {
   CreateOrderResponse,
   CreatePaymentResponse,
@@ -158,6 +159,12 @@ export const ticketApi = {
 };
 
 export const concertApi = {
+  list() {
+    return clientFetch<ConcertCardData[]>('/api/concerts');
+  },
+  getById(concertId: string) {
+    return clientFetch<Concert>(`/api/concerts/${concertId}`);
+  },
   getTicketTypes(concertId: string) {
     return clientFetch<{ data: TicketTypeAvailability[]; total: number }>(
       `/api/concerts/${concertId}/ticket-types`,

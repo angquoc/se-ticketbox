@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import CustomerHeader from '@/components/layout/CustomerHeader';
 import BackendNotice from '@/components/ui/BackendNotice';
+import { concertStatusLabel, formatShortDate } from '@/lib/concert-display';
 import type { ConcertCardData } from '@/types/concert';
 
 interface ConcertsApiResponse {
@@ -14,28 +15,11 @@ interface ConcertsApiResponse {
 }
 
 function formatDate(iso: string): string {
-  return new Date(iso).toLocaleDateString('vi-VN', {
-    day: '2-digit',
-    month: '2-digit',
-    year: 'numeric',
-  });
+  return formatShortDate(iso);
 }
 
 function statusLabel(status: ConcertCardData['status']): string {
-  switch (status) {
-    case 'SALE_OPEN':
-      return 'Đang mở bán';
-    case 'PUBLISHED':
-      return 'Sắp mở bán';
-    case 'COMPLETED':
-      return 'Đã diễn ra';
-    case 'SALE_CLOSED':
-      return 'Đóng bán';
-    case 'CANCELLED':
-      return 'Đã hủy';
-    default:
-      return status;
-  }
+  return concertStatusLabel(status);
 }
 
 function canBuyTickets(status: ConcertCardData['status']): boolean {
@@ -105,32 +89,34 @@ export default function ConcertList() {
                 key={concert.id}
                 className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm transition-shadow hover:shadow-md"
               >
-                <div className="flex items-start justify-between gap-2">
-                  <h2 className="text-lg font-semibold text-slate-900">{concert.title}</h2>
-                  <span className="shrink-0 rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-600">
-                    {statusLabel(concert.status)}
-                  </span>
-                </div>
-                <p className="mt-1 text-sm text-slate-500">{concert.venue}</p>
-                <p className="mt-1 text-sm text-slate-500">{formatDate(concert.startsAt)}</p>
-                {canBuyTickets(concert.status) ? (
-                  <Link
-                    href={`/concerts/${concert.id}/seats`}
-                    className="mt-4 inline-flex rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700"
-                  >
-                    Mua vé
-                  </Link>
-                ) : (
-                  <p className="mt-4 text-sm text-slate-500">
-                    Sự kiện không mở bán — có thể xem sơ đồ demo
-                  </p>
-                )}
-                <Link
-                  href={`/concerts/${concert.id}/seats`}
-                  className="mt-2 inline-flex text-sm font-medium text-indigo-600 hover:text-indigo-700"
-                >
-                  Xem sơ đồ ghế →
+                <Link href={`/concerts/${concert.id}`} className="block">
+                  <div className="flex items-start justify-between gap-2">
+                    <h2 className="text-lg font-semibold text-slate-900 hover:text-indigo-700">
+                      {concert.title}
+                    </h2>
+                    <span className="shrink-0 rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-600">
+                      {statusLabel(concert.status)}
+                    </span>
+                  </div>
+                  <p className="mt-1 text-sm text-slate-500">{concert.venue}</p>
+                  <p className="mt-1 text-sm text-slate-500">{formatDate(concert.startsAt)}</p>
                 </Link>
+                <div className="mt-4 flex flex-wrap gap-3">
+                  <Link
+                    href={`/concerts/${concert.id}`}
+                    className="inline-flex rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
+                  >
+                    Xem chi tiết
+                  </Link>
+                  {canBuyTickets(concert.status) && (
+                    <Link
+                      href={`/concerts/${concert.id}/seats`}
+                      className="inline-flex rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700"
+                    >
+                      Mua vé
+                    </Link>
+                  )}
+                </div>
               </article>
             ))}
           </div>
