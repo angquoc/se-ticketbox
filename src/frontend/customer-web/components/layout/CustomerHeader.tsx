@@ -29,9 +29,14 @@ export default function CustomerHeader({ concertName }: CustomerHeaderProps) {
             Sự kiện
           </Link>
           {isAuthenticated && (
-            <Link href="/tickets" className="text-slate-600 hover:text-indigo-600">
-              Vé của tôi
-            </Link>
+            <>
+              <Link href="/tickets" className="text-slate-600 hover:text-indigo-600">
+                Vé của tôi
+              </Link>
+              <Link href="/account" className="text-slate-600 hover:text-indigo-600">
+                Tài khoản
+              </Link>
+            </>
           )}
           {isAuthenticated ? (
             <>

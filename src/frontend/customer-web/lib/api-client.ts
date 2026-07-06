@@ -1,6 +1,15 @@
 import { ClientApiError } from '@/lib/api-error';
+import { emitAuthUnauthorized } from '@/lib/auth-session-events';
 import { getAccessToken } from '@/lib/auth-storage';
-import type { AuthResponse, LoginPayload, RegisterPayload } from '@/types/auth';
+import type {
+  AuthResponse,
+  AuthUser,
+  ChangePasswordPayload,
+  ChangePasswordResponse,
+  LoginPayload,
+  RegisterPayload,
+  UpdateProfilePayload,
+} from '@/types/auth';
 import type {
   CreateOrderResponse,
   CreatePaymentResponse,
@@ -41,6 +50,14 @@ async function clientFetch<T>(
 
   const json = (await response.json()) as ApiEnvelope<T>;
   if (!response.ok || !json.success) {
+    const skipSessionClear =
+      path === '/api/auth/login' ||
+      path === '/api/auth/register' ||
+      path === '/api/auth/change-password';
+
+    if (response.status === 401 && getAccessToken() && !skipSessionClear) {
+      emitAuthUnauthorized();
+    }
     throw new ClientApiError(json.message ?? 'Yêu cầu thất bại', response.status);
   }
 
@@ -56,6 +73,21 @@ export const authApi = {
   },
   register(payload: RegisterPayload) {
     return clientFetch<AuthResponse>('/api/auth/register', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+  },
+  getMe() {
+    return clientFetch<AuthUser>('/api/auth/me');
+  },
+  updateProfile(payload: UpdateProfilePayload) {
+    return clientFetch<AuthUser>('/api/auth/profile', {
+      method: 'PATCH',
+      body: JSON.stringify(payload),
+    });
+  },
+  changePassword(payload: ChangePasswordPayload) {
+    return clientFetch<ChangePasswordResponse>('/api/auth/change-password', {
       method: 'POST',
       body: JSON.stringify(payload),
     });
