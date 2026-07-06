@@ -53,20 +53,18 @@ export default function CheckinPage() {
 
   return (
     <div className="min-h-screen flex flex-col items-center font-sans text-white">
-      <div className={`w-full max-w-[390px] flex flex-col min-h-[100dvh] relative pb-24 box-border overflow-hidden transition-all duration-300 ${
-        scanResult
+      <div className={`w-full max-w-[390px] flex flex-col min-h-[100dvh] relative pb-24 box-border overflow-hidden transition-all duration-300 ${scanResult
           ? (scanResult.status === 'valid'
-              ? 'bg-gradient-to-b from-success to-emerald-800'
-              : 'bg-gradient-to-b from-error to-red-800')
+            ? 'bg-gradient-to-b from-success to-emerald-800'
+            : 'bg-gradient-to-b from-error to-red-800')
           : 'bg-transparent'
-      }`}>
+        }`}>
 
         {/* ── Header ── */}
-        <header className={`flex-shrink-0 relative z-10 flex items-center justify-between p-5 border-b transition-all duration-300 ${
-          scanResult
+        <header className={`flex-shrink-0 relative z-10 flex items-center justify-between p-5 border-b transition-all duration-300 ${scanResult
             ? 'bg-transparent border-white/15'
             : 'bg-zinc-950/80 backdrop-blur-md border-white/10'
-        }`}>
+          }`}>
           <div className="flex items-center gap-2">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={scanResult ? '#FFFFFF' : 'var(--color-brand)'} strokeWidth="2.5" strokeLinecap="round" className="transition-all duration-300">
               {scanResult ? (
@@ -110,12 +108,10 @@ export default function CheckinPage() {
             )}
 
             <div className="flex items-center gap-1.5">
-              <span className={`w-1.5 h-1.5 rounded-full transition-all duration-300 ${
-                isOnline ? 'bg-green-400 shadow-[0_0_6px_#4ade80]' : 'bg-red-400 shadow-[0_0_6px_#f87171]'
-              }`} />
-              <span className={`text-[10px] font-bold tracking-wide ${
-                isOnline ? 'text-green-400' : 'text-red-400'
-              }`}>
+              <span className={`w-1.5 h-1.5 rounded-full transition-all duration-300 ${isOnline ? 'bg-green-400 shadow-[0_0_6px_#4ade80]' : 'bg-red-400 shadow-[0_0_6px_#f87171]'
+                }`} />
+              <span className={`text-[10px] font-bold tracking-wide ${isOnline ? 'text-green-400' : 'text-red-400'
+                }`}>
                 {isOnline ? 'ONLINE' : 'OFFLINE'}
               </span>
             </div>
@@ -268,11 +264,10 @@ export default function CheckinPage() {
         )}
 
         {/* ── Fixed Bottom Navigation Bar ── */}
-        <div className={`fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[390px] h-[76px] flex justify-around items-center px-6 pb-3 box-border z-[100] border-t transition-all duration-300 ${
-          scanResult
+        <div className={`fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[390px] h-[76px] flex justify-around items-center px-6 pb-3 box-border z-[100] border-t transition-all duration-300 ${scanResult
             ? 'bg-transparent border-white/15'
             : 'bg-zinc-950/80 backdrop-blur-md border-white/5'
-        }`}>
+          }`}>
           {/* QR Tab */}
           <button
             id="tab-scan"
@@ -280,13 +275,12 @@ export default function CheckinPage() {
               setScanResult(null);
               setActiveTab('scan');
             }}
-            className={`border-none rounded-2xl w-[46px] h-[46px] flex items-center justify-center cursor-pointer transition-all duration-200 active:scale-95 ${
-              !scanResult && activeTab === 'scan'
+            className={`border-none rounded-2xl w-[46px] h-[46px] flex items-center justify-center cursor-pointer transition-all duration-200 active:scale-95 ${!scanResult && activeTab === 'scan'
                 ? 'bg-brand text-white shadow-md'
                 : scanResult
                   ? 'text-white/60'
                   : 'text-white/40 hover:text-white'
-            }`}
+              }`}
           >
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
               <rect x="3" y="3" width="7" height="7" />
@@ -303,13 +297,12 @@ export default function CheckinPage() {
               setScanResult(null);
               setActiveTab('history');
             }}
-            className={`border-none rounded-2xl w-[46px] h-[46px] flex items-center justify-center cursor-pointer transition-all duration-200 active:scale-95 ${
-              !scanResult && activeTab === 'history'
+            className={`border-none rounded-2xl w-[46px] h-[46px] flex items-center justify-center cursor-pointer transition-all duration-200 active:scale-95 ${!scanResult && activeTab === 'history'
                 ? 'bg-brand text-white shadow-md'
                 : scanResult
                   ? 'text-white/60'
                   : 'text-white/40 hover:text-white'
-            }`}
+              }`}
           >
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
               <circle cx="12" cy="12" r="10" />
@@ -324,13 +317,12 @@ export default function CheckinPage() {
               setScanResult(null);
               setActiveTab('settings');
             }}
-            className={`border-none rounded-2xl w-[46px] h-[46px] flex items-center justify-center cursor-pointer transition-all duration-200 active:scale-95 ${
-              !scanResult && activeTab === 'settings'
+            className={`border-none rounded-2xl w-[46px] h-[46px] flex items-center justify-center cursor-pointer transition-all duration-200 active:scale-95 ${!scanResult && activeTab === 'settings'
                 ? 'bg-brand text-white shadow-md'
                 : scanResult
                   ? 'text-white/60'
                   : 'text-white/40 hover:text-white'
-            }`}
+              }`}
           >
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
               <circle cx="12" cy="12" r="3" />
