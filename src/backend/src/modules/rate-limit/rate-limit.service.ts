@@ -35,7 +35,7 @@ export class RateLimitService implements OnModuleInit {
 
   private readonly scriptCache = new Map<string, string>();
 
-  constructor(private readonly redisService: RedisService) {}
+  constructor(private readonly redisService: RedisService) { }
 
   async onModuleInit(): Promise<void> {
     await this.loadScript();
@@ -43,10 +43,10 @@ export class RateLimitService implements OnModuleInit {
 
   private getScriptPath(filename: string): string {
     // At runtime __dirname = dist/src/modules/rate-limit/
-    // Source files are at src/modules/rate-limit/scripts/
-    // distRoot = src/backend/ (4 levels up from dist/src/modules/rate-limit/)
-    const distRoot = join(__dirname, '..', '..', '..', '..');
-    return join(distRoot, 'src', 'modules', 'rate-limit', 'scripts', filename);
+    // Lua files are at dist/modules/rate-limit/scripts/
+    // distRoot = dist/ (3 levels up from dist/src/modules/rate-limit/)
+    const distRoot = join(__dirname, '..', '..', '..');
+    return join(distRoot, 'modules', 'rate-limit', 'scripts', filename);
   }
 
   private async loadScript(): Promise<void> {
