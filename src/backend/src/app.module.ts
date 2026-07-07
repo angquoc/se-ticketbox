@@ -57,11 +57,17 @@ import { SeatmapModule } from './modules/seatmap/seatmap.module';
     BullModule.forRootAsync({
       imports: [ConfigModule],
       inject: [ConfigService],
-      useFactory: (configService: ConfigService) => ({
-        connection: {
-          url: configService.get<string>('redis.url', 'redis://localhost:6379'),
-        },
-      }),
+      useFactory: (configService: ConfigService) => {
+        const url = configService.get<string>('redis.url', 'redis://localhost:6379');
+        const isUpstash = url.includes('upstash');
+        return {
+          connection: {
+            url,
+            family: isUpstash ? 0 : 4,
+            ...(isUpstash && { tls: { rejectUnauthorized: false } }),
+          },
+        };
+      },
     }),
     UploadsModule,
     AdminModule,
