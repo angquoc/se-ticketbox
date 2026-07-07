@@ -6,6 +6,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import CustomerHeader from '@/components/layout/CustomerHeader';
 import { usePaymentStatus } from '@/hooks/usePaymentStatus';
 import { clearPendingOrder } from '@/lib/checkout-storage';
+import { abandonPurchaseFlow } from '@/lib/waiting-room-abandon';
 import { getConcertName } from '@/lib/concert-names';
 import { formatReservationCountdown, isReservationExpired } from '@/lib/order-expiry';
 import { formatVnd } from '@/lib/format';
@@ -52,6 +53,12 @@ export default function PaymentWaitingPage({ orderId }: PaymentWaitingPageProps)
       }
     },
   });
+
+  useEffect(() => {
+    if (concertId) {
+      abandonPurchaseFlow(concertId);
+    }
+  }, [concertId]);
 
   useEffect(() => {
     void orderApi.getById(orderId).then(setOrder).catch(() => undefined);
@@ -125,9 +132,12 @@ export default function PaymentWaitingPage({ orderId }: PaymentWaitingPageProps)
     setCancelling(true);
     try {
       await orderApi.cancel(orderId);
-      if (concertId) clearPendingOrder(concertId);
+      if (concertId) {
+        clearPendingOrder(concertId);
+        abandonPurchaseFlow(concertId);
+      }
       clearPaymentIdempotencyKey(orderId);
-      router.replace(concertId ? `/concerts/${concertId}/seats` : '/orders');
+      router.replace('/orders');
     } catch (err) {
       alert(err instanceof Error ? err.message : 'Không thể hủy đơn');
     } finally {

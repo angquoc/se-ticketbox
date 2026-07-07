@@ -6,6 +6,7 @@ import CustomerHeader from '@/components/layout/CustomerHeader';
 import BackendNotice from '@/components/ui/BackendNotice';
 import { useWaitingRoom } from '@/hooks/useWaitingRoom';
 import { getWaitingMessage, getWaitingTip } from '@/lib/waiting-room-messages';
+import { readPendingOrder } from '@/lib/checkout-storage';
 import { abandonPurchaseFlow } from '@/lib/waiting-room-abandon';
 import { setPurchaseIntent } from '@/lib/waiting-room-intent';
 
@@ -21,8 +22,15 @@ export default function WaitingRoomScreen({ concertId }: WaitingRoomScreenProps)
   const waitingPath = `/concerts/${concertId}/waiting`;
 
   useEffect(() => {
+    const pendingOrderId = readPendingOrder(concertId);
+    if (pendingOrderId) {
+      router.replace(
+        `/orders/${pendingOrderId}/payment?concertId=${encodeURIComponent(concertId)}`,
+      );
+      return;
+    }
     setPurchaseIntent(concertId);
-  }, [concertId]);
+  }, [concertId, router]);
 
   const handleAdmitted = useCallback(() => {
     setPurchaseIntent(concertId);

@@ -16,13 +16,13 @@ import {
   getCheckoutIdempotencyKey,
 } from '@/lib/idempotency';
 import {
-  clearWaitingRoomData,
   readAdmittedToken,
 } from '@/lib/waiting-room-storage';
-import { clearPurchaseIntent } from '@/lib/waiting-room-intent';
+import { abandonPurchaseFlow } from '@/lib/waiting-room-abandon';
 import {
   clearPendingOrder,
   clearZoneSelection,
+  readPendingOrder,
   readZoneSelection,
   savePendingOrder,
 } from '@/lib/checkout-storage';
@@ -58,6 +58,15 @@ export default function CheckoutPage({ concertId }: CheckoutPageProps) {
   const [selectionLoaded, setSelectionLoaded] = useState(false);
   const concertName = getConcertName(concertId);
   const totalPrice = selection ? selection.unitPrice * selection.quantity : 0;
+
+  useEffect(() => {
+    const pendingOrderId = readPendingOrder(concertId);
+    if (pendingOrderId) {
+      router.replace(
+        `/orders/${pendingOrderId}/payment?concertId=${encodeURIComponent(concertId)}`,
+      );
+    }
+  }, [concertId, router]);
 
   useEffect(() => {
     setSelection(readZoneSelection(concertId));
@@ -118,12 +127,11 @@ export default function CheckoutPage({ concertId }: CheckoutPageProps) {
 
       clearCheckoutIdempotencyKey(concertId);
       clearZoneSelection(concertId);
-      clearWaitingRoomData(concertId);
-      clearPurchaseIntent(concertId);
+      abandonPurchaseFlow(concertId);
       savePendingOrder(concertId, orderResponse.order.id);
       setOrder(orderResponse.order);
 
-      router.push(
+      router.replace(
         `/orders/${orderResponse.order.id}/payment?concertId=${encodeURIComponent(concertId)}&paymentUrl=${encodeURIComponent(paymentUrl)}`,
       );
     } catch (err) {
@@ -131,8 +139,7 @@ export default function CheckoutPage({ concertId }: CheckoutPageProps) {
       if (button) button.disabled = false;
 
       if (isWaitingRoomOrderError(err)) {
-        clearWaitingRoomData(concertId);
-        clearPurchaseIntent(concertId);
+        abandonPurchaseFlow(concertId);
         redirectToWaiting();
         return;
       }

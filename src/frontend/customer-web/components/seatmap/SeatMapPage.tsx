@@ -18,6 +18,7 @@ import SeatSummaryBar from './SeatSummaryBar';
 import { saveZoneSelection } from '@/lib/checkout-storage';
 import { hasPurchaseIntent, setPurchaseIntent } from '@/lib/waiting-room-intent';
 import { readAdmittedToken } from '@/lib/waiting-room-storage';
+import { readPendingOrder } from '@/lib/checkout-storage';
 import { formatVnd } from '@/lib/format';
 
 interface SeatMapPageProps {
@@ -27,7 +28,9 @@ interface SeatMapPageProps {
 export default function SeatMapPage({ concertId }: SeatMapPageProps) {
   const router = useRouter();
   const [requireToken] = useState(
-    () => hasPurchaseIntent(concertId) || readAdmittedToken(concertId) !== null,
+    () =>
+      !readPendingOrder(concertId) &&
+      (hasPurchaseIntent(concertId) || readAdmittedToken(concertId) !== null),
   );
   const { accessChecked, accessError, tokenRemainingMs } = usePurchaseAccess({
     concertId,

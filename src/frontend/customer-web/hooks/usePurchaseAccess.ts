@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import { isPurchaseFlowPath } from '@/lib/purchase-routes';
+import { readPendingOrder } from '@/lib/checkout-storage';
 import { abandonPurchaseFlow } from '@/lib/waiting-room-abandon';
 import { getAdmittedTokenRemainingMs } from '@/lib/waiting-room-storage';
 import { requestPurchaseAccess } from '@/lib/waiting-room-access';
@@ -35,6 +36,9 @@ export function usePurchaseAccess({
     if (!isPurchaseFlowPath(pathnameRef.current, concertId)) {
       return;
     }
+    if (readPendingOrder(concertId)) {
+      return;
+    }
     router.replace(`/concerts/${concertId}/waiting`);
   }, [concertId, router]);
 
@@ -43,6 +47,15 @@ export function usePurchaseAccess({
 
     async function verifyAccess() {
       setAccessError(null);
+
+      if (readPendingOrder(concertId)) {
+        if (!cancelled) {
+          setAccessChecked(true);
+          setTokenRemainingMs(null);
+        }
+        return;
+      }
+
       try {
         const result = await requestPurchaseAccess(concertId, { requireToken });
         if (cancelled) return;
@@ -78,6 +91,9 @@ export function usePurchaseAccess({
 
     function checkToken() {
       if (!isPurchaseFlowPath(pathnameRef.current, concertId)) {
+        return;
+      }
+      if (readPendingOrder(concertId)) {
         return;
       }
 
