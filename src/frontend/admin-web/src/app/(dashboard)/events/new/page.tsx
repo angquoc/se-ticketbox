@@ -163,7 +163,7 @@ export default function NewEventPage() {
               <TextInput
                 value={seatMapUrl}
                 onChange={setSeatMapUrl}
-                placeholder="https://example.com/seatmap.png"
+                placeholder="/seatmaps/concerts/your-concert-slug.svg"
               />
             </Field>
           </div>

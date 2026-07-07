@@ -9,7 +9,9 @@
     "start": "next start --port 3000",
     "lint": "next lint",
     "type-check": "tsc --noEmit",
-    "generate:seatmaps": "node scripts/generate-seatmap-svgs.mjs"
+    "seatmap:sync": "node scripts/generate-seatmap-svgs.mjs",
+    "seatmap:new": "node scripts/scaffold-seatmap.mjs",
+    "generate:seatmaps": "npm run seatmap:sync"
   },
   "dependencies": {
     "clsx": "^2.0.0",
