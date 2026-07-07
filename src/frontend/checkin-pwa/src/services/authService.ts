@@ -41,7 +41,7 @@ export async function loginStaff(
   const data = (await res.json()) as AuthLoginResponse;
 
   // Persist token + user info
-  localStorage.setItem(TOKEN_KEY, data.access_token);
+  localStorage.setItem(TOKEN_KEY, data.accessToken);
   localStorage.setItem(USER_KEY, JSON.stringify(data.user));
   localStorage.setItem(GATE_KEY, gate);
 
