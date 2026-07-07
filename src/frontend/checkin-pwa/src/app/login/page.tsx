@@ -14,10 +14,11 @@ import { loginStaff, isAuthenticated } from '@/services/authService';
 
 // ── Gate options ───────────────────────────────────────────────────────
 const GATES = [
-  'Cổng VIP (Tầng 1)',
-  'Cổng General (Tầng 1)',
-  'Cổng General (Tầng 2)',
-  'Cổng Nhân viên',
+  'GATE-A',
+  'GATE-B',
+  'GATE-C',
+  'GATE-D',
+  'GATE-E',
 ];
 
 // ── Main component ─────────────────────────────────────────────────────

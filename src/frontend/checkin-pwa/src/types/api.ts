@@ -8,15 +8,15 @@ export interface AuthLoginRequest {
 }
 
 export interface AuthLoginResponse {
-  access_token: string;
+  accessToken: string;
   user: StoredUser;
 }
 
 export interface StoredUser {
   id: string;
   email: string;
-  name: string;
-  role: 'STAFF' | 'ADMIN';
+  fullName: string;
+  role: 'STAFF' | 'ADMIN' | 'CUSTOMER' | 'ORGANIZER';
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -28,7 +28,7 @@ export interface CheckinVerifyRequest {
   /** raw token extracted from QR payload (NOT the hash) */
   token: string;
   deviceId: string;
-  gate?: string;
+  gateId?: string;
 }
 
 export interface CheckinVerifyResponse {
@@ -36,7 +36,8 @@ export interface CheckinVerifyResponse {
   ticketId: string;
   concertId?: string;
   ticketTypeName?: string;
-  status: 'CHECKED_IN' | 'ALREADY_CHECKED_IN' | 'INVALID_TICKET';
+  /** Backend returns TicketStatus enum values */
+  status: 'CHECKED_IN' | 'ALREADY_CHECKED_IN' | 'INVALID_TICKET' | 'GATE_MISMATCH';
   message: string;
 }
 
@@ -51,15 +52,11 @@ export interface OfflineScanRecord {
   /** raw token from QR payload */
   token: string;
   deviceId: string;
-  gate: string;
+  gateId: string;
   scannedAt: string; // ISO 8601
   isOffline: true;
   synced: boolean;
 }
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Sync offline batch — POST /checkin/sync
-// ─────────────────────────────────────────────────────────────────────────────
 
 export interface SyncCheckinRequest {
   records: Omit<OfflineScanRecord, 'synced'>[];
@@ -68,12 +65,16 @@ export interface SyncCheckinRequest {
 export interface SyncRecordResult {
   offlineEventId: string;
   success: boolean;
-  status: 'SUCCESS' | 'ALREADY_CHECKED_IN' | 'REJECTED_CONFLICT' | 'INVALID_TICKET';
+  status: 'SUCCESS' | 'ALREADY_CHECKED_IN' | 'REJECTED_CONFLICT' | 'INVALID_TICKET' | 'GATE_MISMATCH';
   conflict?: boolean;
   message: string;
 }
 
 export interface SyncCheckinResponse {
+  total: number;
+  success: number;
+  failed: number;
+  conflicts: number;
   results: SyncRecordResult[];
 }
 
@@ -85,6 +86,5 @@ export interface ParsedQrPayload {
   ticketId: string;
   /** raw token (qrTokenHash source) */
   token: string;
-  timestamp: number;
-  signature: string;
+  gateId: string;
 }
