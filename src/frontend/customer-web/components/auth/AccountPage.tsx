@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect } from 'react';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import CustomerHeader from '@/components/layout/CustomerHeader';
 import ChangePasswordForm from '@/components/auth/ChangePasswordForm';
@@ -45,6 +46,27 @@ export default function AccountPage() {
           </p>
           <div className="mt-5">
             <ProfileForm />
+          </div>
+        </section>
+
+        <section className="mt-6 rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
+          <h2 className="text-lg font-semibold text-slate-900">Đơn hàng & vé</h2>
+          <p className="mt-1 text-sm text-slate-600">
+            Xem lịch sử đơn hàng, tiếp tục thanh toán hoặc mở vé điện tử.
+          </p>
+          <div className="mt-4 flex flex-wrap gap-3">
+            <Link
+              href="/orders"
+              className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700"
+            >
+              Đơn hàng của tôi
+            </Link>
+            <Link
+              href="/tickets"
+              className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
+            >
+              Vé điện tử
+            </Link>
           </div>
         </section>
 

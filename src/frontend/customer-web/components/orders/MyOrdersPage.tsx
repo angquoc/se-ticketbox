@@ -1,15 +1,20 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import CustomerHeader from '@/components/layout/CustomerHeader';
 import { useAuth } from '@/hooks/useAuth';
 import { orderApi } from '@/lib/api-client';
 import { resolveFrontendConcertId } from '@/lib/concert-backend-mapping';
-import { formatReservationCountdown } from '@/lib/order-expiry';
+import { formatOrderItemsSummary, totalTicketQuantity } from '@/lib/order-items';
+import { formatReservationCountdown, isReservationExpired } from '@/lib/order-expiry';
 import { formatVnd } from '@/lib/format';
-import { orderStatusLabel } from '@/lib/order-status';
+import {
+  canRepurchaseOrder,
+  orderStatusBadgeClass,
+  orderStatusLabel,
+} from '@/lib/order-status';
 import type { Order, OrderStatus } from '@/types/order';
 
 const STATUS_FILTERS: Array<{ value: OrderStatus | 'ALL'; label: string }> = [
@@ -19,23 +24,8 @@ const STATUS_FILTERS: Array<{ value: OrderStatus | 'ALL'; label: string }> = [
   { value: 'EXPIRED', label: 'Hết hạn' },
   { value: 'CANCELLED', label: 'Đã hủy' },
   { value: 'PAYMENT_FAILED', label: 'Thanh toán thất bại' },
+  { value: 'REFUNDED', label: 'Đã hoàn tiền' },
 ];
-
-function statusBadgeClass(status: OrderStatus): string {
-  switch (status) {
-    case 'PAID':
-      return 'bg-emerald-100 text-emerald-800';
-    case 'PENDING_PAYMENT':
-      return 'bg-amber-100 text-amber-900';
-    case 'EXPIRED':
-    case 'PAYMENT_FAILED':
-      return 'bg-red-100 text-red-800';
-    case 'CANCELLED':
-      return 'bg-slate-100 text-slate-600';
-    default:
-      return 'bg-slate-100 text-slate-700';
-  }
-}
 
 function formatOrderDate(iso: string): string {
   return new Date(iso).toLocaleString('vi-VN', {
@@ -57,6 +47,11 @@ function buildPaymentHref(order: Order): string {
   return query ? `${base}?${query}` : base;
 }
 
+function buildRepurchaseHref(order: Order): string | null {
+  const frontendConcertId = resolveFrontendConcertId(order.concertId);
+  return frontendConcertId ? `/concerts/${frontendConcertId}/seats` : null;
+}
+
 export default function MyOrdersPage() {
   const router = useRouter();
   const { isAuthenticated, isLoading: authLoading } = useAuth();
@@ -69,6 +64,7 @@ export default function MyOrdersPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [, setCountdownTick] = useState(0);
+  const expiredRefetchRef = useRef<Set<string>>(new Set());
 
   const loadOrders = useCallback(
     async (targetPage: number, status: OrderStatus | 'ALL') => {
@@ -102,17 +98,34 @@ export default function MyOrdersPage() {
 
   useEffect(() => {
     if (!authLoading && isAuthenticated) {
+      expiredRefetchRef.current.clear();
       void loadOrders(1, statusFilter);
     }
   }, [authLoading, isAuthenticated, statusFilter, loadOrders]);
 
   useEffect(() => {
-    const hasPending = orders.some((order) => order.status === 'PENDING_PAYMENT');
-    if (!hasPending) return;
+    const pendingOrders = orders.filter(
+      (order) => order.status === 'PENDING_PAYMENT' && order.expiresAt,
+    );
+    if (pendingOrders.length === 0) return;
 
-    const timer = setInterval(() => setCountdownTick((tick) => tick + 1), 1000);
+    const timer = setInterval(() => {
+      setCountdownTick((tick) => tick + 1);
+
+      const newlyExpired = pendingOrders.filter(
+        (order) =>
+          isReservationExpired(order.expiresAt) &&
+          !expiredRefetchRef.current.has(order.id),
+      );
+
+      if (newlyExpired.length > 0) {
+        newlyExpired.forEach((order) => expiredRefetchRef.current.add(order.id));
+        void loadOrders(page, statusFilter);
+      }
+    }, 1000);
+
     return () => clearInterval(timer);
-  }, [orders]);
+  }, [orders, page, statusFilter, loadOrders]);
 
   if (authLoading || (!isAuthenticated && !error)) {
     return (
@@ -186,76 +199,98 @@ export default function MyOrdersPage() {
           </div>
         ) : (
           <ul className="space-y-4">
-            {orders.map((order) => (
-              <li
-                key={order.id}
-                className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm"
-              >
-                <div className="flex flex-wrap items-start justify-between gap-3">
-                  <div>
-                    <h2 className="font-semibold text-slate-900">{order.concertTitle}</h2>
-                    <p className="mt-1 font-mono text-xs text-slate-500">{order.id}</p>
-                  </div>
-                  <span
-                    className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-semibold ${statusBadgeClass(order.status)}`}
-                  >
-                    {orderStatusLabel(order.status)}
-                  </span>
-                </div>
+            {orders.map((order) => {
+              const repurchaseHref = buildRepurchaseHref(order);
+              const ticketQty = totalTicketQuantity(order.items);
 
-                <dl className="mt-4 grid gap-2 text-sm sm:grid-cols-2">
-                  <div>
-                    <dt className="text-slate-500">Tổng tiền</dt>
-                    <dd className="font-semibold text-indigo-600">
-                      {formatVnd(order.totalAmountInVnd)}
-                    </dd>
+              return (
+                <li
+                  key={order.id}
+                  className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm"
+                >
+                  <div className="flex flex-wrap items-start justify-between gap-3">
+                    <div className="min-w-0 flex-1">
+                      <h2 className="font-semibold text-slate-900">{order.concertTitle}</h2>
+                      <p className="mt-1 text-sm text-slate-600">
+                        {formatOrderItemsSummary(order.items)}
+                      </p>
+                      <p className="mt-1 font-mono text-xs text-slate-500">{order.id}</p>
+                    </div>
+                    <span
+                      className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-semibold ${orderStatusBadgeClass(order.status)}`}
+                    >
+                      {orderStatusLabel(order.status)}
+                    </span>
                   </div>
-                  <div>
-                    <dt className="text-slate-500">Ngày đặt</dt>
-                    <dd className="text-slate-900">{formatOrderDate(order.createdAt)}</dd>
-                  </div>
-                  {order.status === 'PENDING_PAYMENT' && order.expiresAt && (
+
+                  <dl className="mt-4 grid gap-2 text-sm sm:grid-cols-2">
                     <div>
-                      <dt className="text-slate-500">Giữ vé còn lại</dt>
-                      <dd className="font-mono font-semibold text-amber-700">
-                        {formatReservationCountdown(order.expiresAt)}
+                      <dt className="text-slate-500">Tổng tiền</dt>
+                      <dd className="font-semibold text-indigo-600">
+                        {formatVnd(order.totalAmountInVnd)}
                       </dd>
                     </div>
-                  )}
-                  {order.status === 'PAID' && (
                     <div>
-                      <dt className="text-slate-500">Số vé</dt>
-                      <dd className="text-slate-900">{order.ticketCount}</dd>
+                      <dt className="text-slate-500">Ngày đặt</dt>
+                      <dd className="text-slate-900">{formatOrderDate(order.createdAt)}</dd>
                     </div>
-                  )}
-                </dl>
+                    <div>
+                      <dt className="text-slate-500">Số lượng vé</dt>
+                      <dd className="text-slate-900">
+                        {order.status === 'PAID' ? order.ticketCount : ticketQty}
+                      </dd>
+                    </div>
+                    {order.status === 'PENDING_PAYMENT' && order.expiresAt && (
+                      <div>
+                        <dt className="text-slate-500">Giữ vé còn lại</dt>
+                        <dd className="font-mono font-semibold text-amber-700">
+                          {formatReservationCountdown(order.expiresAt)}
+                        </dd>
+                      </div>
+                    )}
+                    {order.status === 'PAID' && order.paidAt && (
+                      <div>
+                        <dt className="text-slate-500">Thanh toán lúc</dt>
+                        <dd className="text-slate-900">{formatOrderDate(order.paidAt)}</dd>
+                      </div>
+                    )}
+                  </dl>
 
-                <div className="mt-4 flex flex-wrap gap-2 border-t border-slate-100 pt-4">
-                  <Link
-                    href={`/orders/${order.id}`}
-                    className="rounded-lg border border-slate-300 px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-50"
-                  >
-                    Chi tiết
-                  </Link>
-                  {order.status === 'PENDING_PAYMENT' && (
+                  <div className="mt-4 flex flex-wrap gap-2 border-t border-slate-100 pt-4">
                     <Link
-                      href={buildPaymentHref(order)}
-                      className="rounded-lg bg-indigo-600 px-3 py-1.5 text-sm font-semibold text-white hover:bg-indigo-700"
+                      href={`/orders/${order.id}`}
+                      className="rounded-lg border border-slate-300 px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-50"
                     >
-                      Thanh toán
+                      Chi tiết
                     </Link>
-                  )}
-                  {order.status === 'PAID' && (
-                    <Link
-                      href={`/orders/${order.id}/tickets`}
-                      className="rounded-lg bg-indigo-600 px-3 py-1.5 text-sm font-semibold text-white hover:bg-indigo-700"
-                    >
-                      Xem vé QR
-                    </Link>
-                  )}
-                </div>
-              </li>
-            ))}
+                    {order.status === 'PENDING_PAYMENT' && (
+                      <Link
+                        href={buildPaymentHref(order)}
+                        className="rounded-lg bg-indigo-600 px-3 py-1.5 text-sm font-semibold text-white hover:bg-indigo-700"
+                      >
+                        Thanh toán
+                      </Link>
+                    )}
+                    {order.status === 'PAID' && (
+                      <Link
+                        href={`/orders/${order.id}/tickets`}
+                        className="rounded-lg bg-indigo-600 px-3 py-1.5 text-sm font-semibold text-white hover:bg-indigo-700"
+                      >
+                        Xem vé QR
+                      </Link>
+                    )}
+                    {canRepurchaseOrder(order.status) && repurchaseHref && (
+                      <Link
+                        href={repurchaseHref}
+                        className="rounded-lg border border-indigo-300 px-3 py-1.5 text-sm font-medium text-indigo-700 hover:bg-indigo-50"
+                      >
+                        Mua lại
+                      </Link>
+                    )}
+                  </div>
+                </li>
+              );
+            })}
           </ul>
         )}
 
