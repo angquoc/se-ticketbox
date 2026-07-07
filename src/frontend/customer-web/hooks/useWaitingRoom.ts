@@ -28,15 +28,25 @@ export function useWaitingRoom({ concertId, onAdmitted }: UseWaitingRoomOptions)
   const [estimatedWaitSeconds, setEstimatedWaitSeconds] = useState<number | null>(null);
   const sessionIdRef = useRef<string | null>(null);
   const admittedRef = useRef(false);
-  const joinStartedRef = useRef(false);
+  const mountedRef = useRef(true);
   const onAdmittedRef = useRef(onAdmitted);
 
   onAdmittedRef.current = onAdmitted;
+
+  useEffect(() => {
+    mountedRef.current = true;
+    admittedRef.current = false;
+    sessionIdRef.current = null;
+    return () => {
+      mountedRef.current = false;
+    };
+  }, [concertId]);
 
   const handleAdmitted = useCallback((token: string, tokenExpiresAt?: number) => {
     if (admittedRef.current) return;
     admittedRef.current = true;
     storeAdmittedToken(concertId, token, tokenExpiresAt);
+    if (!mountedRef.current) return;
     setStatus('admitted');
     onAdmittedRef.current?.(token);
   }, [concertId]);
@@ -97,21 +107,10 @@ export function useWaitingRoom({ concertId, onAdmitted }: UseWaitingRoomOptions)
   }, [concertId, handleAdmitted]);
 
   useEffect(() => {
-    admittedRef.current = false;
-    joinStartedRef.current = false;
-    sessionIdRef.current = null;
-  }, [concertId]);
-
-  useEffect(() => {
-    if (joinStartedRef.current) return;
-    joinStartedRef.current = true;
-
     const signal = { cancelled: false };
     void joinQueue(signal);
-
     return () => {
       signal.cancelled = true;
-      joinStartedRef.current = false;
     };
   }, [concertId, joinQueue]);
 
@@ -164,14 +163,12 @@ export function useWaitingRoom({ concertId, onAdmitted }: UseWaitingRoomOptions)
 
   const retry = useCallback(() => {
     admittedRef.current = false;
-    joinStartedRef.current = false;
     sessionIdRef.current = null;
     setMessageTick(0);
     setStartedAt(null);
     setPosition(null);
     setEstimatedWaitSeconds(null);
     setError(null);
-    joinStartedRef.current = true;
     void joinQueue({ cancelled: false });
   }, [joinQueue]);
 

@@ -1,11 +1,13 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import CustomerHeader from '@/components/layout/CustomerHeader';
 import BackendNotice from '@/components/ui/BackendNotice';
 import { useWaitingRoom } from '@/hooks/useWaitingRoom';
 import { getWaitingMessage, getWaitingTip } from '@/lib/waiting-room-messages';
+import { abandonPurchaseFlow } from '@/lib/waiting-room-abandon';
+import { setPurchaseIntent } from '@/lib/waiting-room-intent';
 
 interface WaitingRoomScreenProps {
   concertId: string;
@@ -14,17 +16,48 @@ interface WaitingRoomScreenProps {
 export default function WaitingRoomScreen({ concertId }: WaitingRoomScreenProps) {
   const router = useRouter();
   const [messageVisible, setMessageVisible] = useState(true);
+  const admittedRedirectRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const statusRef = useRef<'loading' | 'waiting' | 'admitted' | 'error'>('loading');
+  const waitingPath = `/concerts/${concertId}/waiting`;
+
+  useEffect(() => {
+    setPurchaseIntent(concertId);
+  }, [concertId]);
 
   const handleAdmitted = useCallback(() => {
-    setTimeout(() => {
-      router.replace(`/concerts/${concertId}/seats`);
-    }, 900);
-  }, [concertId, router]);
+    setPurchaseIntent(concertId);
+  }, [concertId]);
 
   const { concertName, status, error, backendError, messageTick, startedAt, position, estimatedWaitSeconds, retry } = useWaitingRoom({
     concertId,
     onAdmitted: handleAdmitted,
   });
+
+  statusRef.current = status;
+
+  useEffect(() => {
+    return () => {
+      if (statusRef.current !== 'admitted') {
+        abandonPurchaseFlow(concertId);
+      }
+    };
+  }, [concertId]);
+
+  useEffect(() => {
+    if (status !== 'admitted') return;
+
+    admittedRedirectRef.current = setTimeout(() => {
+      if (window.location.pathname !== waitingPath) return;
+      router.replace(`/concerts/${concertId}/seats`);
+    }, 900);
+
+    return () => {
+      if (admittedRedirectRef.current) {
+        clearTimeout(admittedRedirectRef.current);
+        admittedRedirectRef.current = null;
+      }
+    };
+  }, [status, concertId, router, waitingPath]);
 
   const [elapsedMs, setElapsedMs] = useState(0);
 

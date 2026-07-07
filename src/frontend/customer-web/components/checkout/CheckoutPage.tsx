@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import CustomerHeader from '@/components/layout/CustomerHeader';
@@ -19,6 +19,7 @@ import {
   clearWaitingRoomData,
   readAdmittedToken,
 } from '@/lib/waiting-room-storage';
+import { clearPurchaseIntent } from '@/lib/waiting-room-intent';
 import {
   clearPendingOrder,
   clearZoneSelection,
@@ -32,6 +33,7 @@ import {
 import { getConcertName } from '@/lib/concert-names';
 import { formatVnd } from '@/lib/format';
 import type { Order } from '@/types/order';
+import type { ZoneSelection } from '@/types/seatmap';
 
 interface CheckoutPageProps {
   concertId: string;
@@ -49,11 +51,18 @@ export default function CheckoutPage({ concertId }: CheckoutPageProps) {
 
   const { accessChecked, accessError, tokenRemainingMs, redirectToWaiting } = usePurchaseAccess({
     concertId,
+    requireToken: true,
   });
 
-  const selection = useMemo(() => readZoneSelection(concertId), [concertId]);
+  const [selection, setSelection] = useState<ZoneSelection | null>(null);
+  const [selectionLoaded, setSelectionLoaded] = useState(false);
   const concertName = getConcertName(concertId);
   const totalPrice = selection ? selection.unitPrice * selection.quantity : 0;
+
+  useEffect(() => {
+    setSelection(readZoneSelection(concertId));
+    setSelectionLoaded(true);
+  }, [concertId]);
 
   useEffect(() => {
     if (!authLoading && !isAuthenticated) {
@@ -62,10 +71,10 @@ export default function CheckoutPage({ concertId }: CheckoutPageProps) {
   }, [authLoading, isAuthenticated, concertId, router]);
 
   useEffect(() => {
-    if (!selection) {
+    if (selectionLoaded && !selection) {
       router.replace(`/concerts/${concertId}/seats`);
     }
-  }, [selection, concertId, router]);
+  }, [selectionLoaded, selection, concertId, router]);
 
   useEffect(() => {
     getCheckoutIdempotencyKey(concertId);
@@ -110,6 +119,7 @@ export default function CheckoutPage({ concertId }: CheckoutPageProps) {
       clearCheckoutIdempotencyKey(concertId);
       clearZoneSelection(concertId);
       clearWaitingRoomData(concertId);
+      clearPurchaseIntent(concertId);
       savePendingOrder(concertId, orderResponse.order.id);
       setOrder(orderResponse.order);
 
@@ -122,6 +132,7 @@ export default function CheckoutPage({ concertId }: CheckoutPageProps) {
 
       if (isWaitingRoomOrderError(err)) {
         clearWaitingRoomData(concertId);
+        clearPurchaseIntent(concertId);
         redirectToWaiting();
         return;
       }
@@ -133,7 +144,7 @@ export default function CheckoutPage({ concertId }: CheckoutPageProps) {
 
   const isCheckoutLocked = step === 'processing';
 
-  if (authLoading || !selection || !accessChecked) {
+  if (authLoading || !selectionLoaded || !selection || !accessChecked) {
     return (
       <div className="flex min-h-screen flex-col bg-slate-50">
         <CustomerHeader concertName={concertName} />

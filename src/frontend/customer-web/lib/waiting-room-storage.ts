@@ -61,6 +61,10 @@ export function getAdmittedTokenRemainingMs(concertId: string): number | null {
   return Math.max(0, record.tokenExpiresAt - Date.now());
 }
 
+export function clearWaitingSession(concertId: string): void {
+  sessionStorage.removeItem(SESSION_KEY(concertId));
+}
+
 export function clearWaitingRoomData(concertId: string): void {
   sessionStorage.removeItem(SESSION_KEY(concertId));
   sessionStorage.removeItem(TOKEN_KEY(concertId));

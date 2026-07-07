@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import CustomerHeader from '@/components/layout/CustomerHeader';
+import { setPurchaseIntent } from '@/lib/waiting-room-intent';
 import BackendNotice from '@/components/ui/BackendNotice';
 import { concertStatusLabel, formatShortDate } from '@/lib/concert-display';
 import type { ConcertCardData } from '@/types/concert';
@@ -110,7 +111,8 @@ export default function ConcertList() {
                   </Link>
                   {canBuyTickets(concert.status) && (
                     <Link
-                      href={`/concerts/${concert.id}/seats`}
+                      href={`/concerts/${concert.id}/waiting`}
+                      onClick={() => setPurchaseIntent(concert.id)}
                       className="inline-flex rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700"
                     >
                       Mua vé

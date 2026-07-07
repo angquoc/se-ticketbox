@@ -1,7 +1,9 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { usePathname, useRouter } from 'next/navigation';
+import { isPurchaseFlowPath } from '@/lib/purchase-routes';
+import { abandonPurchaseFlow } from '@/lib/waiting-room-abandon';
 import { getAdmittedTokenRemainingMs } from '@/lib/waiting-room-storage';
 import { requestPurchaseAccess } from '@/lib/waiting-room-access';
 
@@ -9,17 +11,30 @@ const TOKEN_CHECK_INTERVAL_MS = 5_000;
 
 interface UsePurchaseAccessOptions {
   concertId: string;
+  /** `true` khi user đang trong luồng mua vé và cần token (checkout / sau phòng chờ). */
+  requireToken?: boolean;
   /** Gọi khi token hết hạn hoặc không còn quyền mua vé */
   onAccessLost?: () => void;
 }
 
-export function usePurchaseAccess({ concertId, onAccessLost }: UsePurchaseAccessOptions) {
+export function usePurchaseAccess({
+  concertId,
+  requireToken = false,
+  onAccessLost,
+}: UsePurchaseAccessOptions) {
   const router = useRouter();
+  const pathname = usePathname();
   const [accessChecked, setAccessChecked] = useState(false);
   const [accessError, setAccessError] = useState<string | null>(null);
   const [tokenRemainingMs, setTokenRemainingMs] = useState<number | null>(null);
+  const pathnameRef = useRef(pathname);
+
+  pathnameRef.current = pathname;
 
   const redirectToWaiting = useCallback(() => {
+    if (!isPurchaseFlowPath(pathnameRef.current, concertId)) {
+      return;
+    }
     router.replace(`/concerts/${concertId}/waiting`);
   }, [concertId, router]);
 
@@ -29,12 +44,14 @@ export function usePurchaseAccess({ concertId, onAccessLost }: UsePurchaseAccess
     async function verifyAccess() {
       setAccessError(null);
       try {
-        const result = await requestPurchaseAccess(concertId);
+        const result = await requestPurchaseAccess(concertId, { requireToken });
         if (cancelled) return;
 
         if (result.granted) {
           setAccessChecked(true);
-          setTokenRemainingMs(getAdmittedTokenRemainingMs(concertId));
+          setTokenRemainingMs(
+            result.token ? getAdmittedTokenRemainingMs(concertId) : null,
+          );
           return;
         }
 
@@ -54,12 +71,16 @@ export function usePurchaseAccess({ concertId, onAccessLost }: UsePurchaseAccess
     return () => {
       cancelled = true;
     };
-  }, [concertId, redirectToWaiting]);
+  }, [concertId, requireToken, redirectToWaiting]);
 
   useEffect(() => {
-    if (!accessChecked) return;
+    if (!requireToken || !accessChecked) return;
 
     function checkToken() {
+      if (!isPurchaseFlowPath(pathnameRef.current, concertId)) {
+        return;
+      }
+
       const remaining = getAdmittedTokenRemainingMs(concertId);
       if (remaining === null) {
         onAccessLost?.();
@@ -72,12 +93,17 @@ export function usePurchaseAccess({ concertId, onAccessLost }: UsePurchaseAccess
     checkToken();
     const interval = setInterval(checkToken, TOKEN_CHECK_INTERVAL_MS);
     return () => clearInterval(interval);
-  }, [accessChecked, concertId, onAccessLost, redirectToWaiting]);
+  }, [accessChecked, concertId, onAccessLost, redirectToWaiting, requireToken]);
+
+  const abandonPurchaseFlowForConcert = useCallback(() => {
+    abandonPurchaseFlow(concertId);
+  }, [concertId]);
 
   return {
     accessChecked,
     accessError,
     tokenRemainingMs,
     redirectToWaiting,
+    abandonPurchaseFlow: abandonPurchaseFlowForConcert,
   };
 }

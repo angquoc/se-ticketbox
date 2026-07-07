@@ -16,6 +16,8 @@ import ZoneDetailPanel from './ZoneDetailPanel';
 import SeatLegend from './SeatLegend';
 import SeatSummaryBar from './SeatSummaryBar';
 import { saveZoneSelection } from '@/lib/checkout-storage';
+import { hasPurchaseIntent, setPurchaseIntent } from '@/lib/waiting-room-intent';
+import { readAdmittedToken } from '@/lib/waiting-room-storage';
 import { formatVnd } from '@/lib/format';
 
 interface SeatMapPageProps {
@@ -24,7 +26,13 @@ interface SeatMapPageProps {
 
 export default function SeatMapPage({ concertId }: SeatMapPageProps) {
   const router = useRouter();
-  const { accessChecked, accessError, tokenRemainingMs } = usePurchaseAccess({ concertId });
+  const [requireToken] = useState(
+    () => hasPurchaseIntent(concertId) || readAdmittedToken(concertId) !== null,
+  );
+  const { accessChecked, accessError, tokenRemainingMs } = usePurchaseAccess({
+    concertId,
+    requireToken,
+  });
 
   const {
     data,
@@ -70,6 +78,7 @@ export default function SeatMapPage({ concertId }: SeatMapPageProps) {
 
   const handleProceed = () => {
     if (!selectionState.selection) return;
+    setPurchaseIntent(concertId);
     saveZoneSelection(concertId, selectionState.selection);
     router.push(`/concerts/${concertId}/checkout`);
   };

@@ -7,6 +7,7 @@ import BackendNotice from '@/components/ui/BackendNotice';
 import PendingOrderBanner from '@/components/payment/PendingOrderBanner';
 import { useAuth } from '@/hooks/useAuth';
 import { cacheConcertName } from '@/lib/concert-names';
+import { setPurchaseIntent } from '@/lib/waiting-room-intent';
 import {
   canViewSeatmap,
   concertStatusBadgeClass,
@@ -308,7 +309,8 @@ export default function ConcertDetailPage({ concertId }: ConcertDetailPageProps)
             <div className="mt-8 flex flex-wrap gap-3 border-t border-slate-200 pt-8">
               {saleInfo.isOpen ? (
                 <Link
-                  href={`/concerts/${concertId}/seats`}
+                  href={`/concerts/${concertId}/waiting`}
+                  onClick={() => setPurchaseIntent(concertId)}
                   className="inline-flex rounded-lg bg-indigo-600 px-6 py-3 text-sm font-semibold text-white hover:bg-indigo-700"
                 >
                   Mua vé ngay
