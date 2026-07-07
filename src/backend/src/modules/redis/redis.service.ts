@@ -74,9 +74,13 @@ export class RedisService implements OnModuleDestroy, OnModuleInit {
         'redis.url',
         'redis://localhost:6379',
       );
+      
+      const isUpstash = redisUrl.includes('upstash');
+      
       const redis = new Redis(redisUrl, {
-        maxRetriesPerRequest: 1,
         enableReadyCheck: true,
+        family: isUpstash ? 0 : 4,
+        ...(isUpstash && { tls: { rejectUnauthorized: false } }),
       });
 
       redis.on('connect', () => this.logger.log('Connected to Redis'));

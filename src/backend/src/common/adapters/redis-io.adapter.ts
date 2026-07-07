@@ -7,8 +7,14 @@ export class RedisIoAdapter extends IoAdapter {
   private adapterConstructor: ReturnType<typeof createAdapter>;
 
   async connectToRedis(): Promise<void> {
+    const url = process.env['REDIS_URL'] || 'redis://localhost:6379';
+    const isUpstash = url.includes('upstash');
     const pubClient = createClient({
-      url: process.env['REDIS_URL'] || 'redis://localhost:6379',
+      url,
+      socket: {
+        family: isUpstash ? 0 : 4,
+        ...(isUpstash && { tls: true, rejectUnauthorized: false }),
+      },
     });
     const subClient = pubClient.duplicate();
 
