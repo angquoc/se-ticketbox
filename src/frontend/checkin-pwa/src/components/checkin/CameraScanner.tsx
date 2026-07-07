@@ -27,17 +27,11 @@ export default function CameraScanner({ onScan, onViewHistory }: CameraScannerPr
 
   const startCamera = useCallback(async () => {
     try {
-      console.log('[CameraScanner] Hàm startCamera được gọi.');
-      setDebugInfo('[Click] Đã nhận sự kiện bấm nút startCamera!\n');
-
       if (typeof window === 'undefined') {
-        console.log('[CameraScanner] Môi trường server, bỏ qua.');
         return;
       }
 
-      console.log('[CameraScanner] Kiểm tra isSecureContext:', window.isSecureContext);
       if (window.isSecureContext === false) {
-        console.warn('[CameraScanner] Không phải context bảo mật (HTTPS/localhost).');
         setState('error');
         setErrorMsg('Cần HTTPS để dùng camera.');
         setDebugInfo(
@@ -46,16 +40,13 @@ export default function CameraScanner({ onScan, onViewHistory }: CameraScannerPr
         return;
       }
 
-      console.log('[CameraScanner] Kiểm tra mediaDevices:', !!navigator.mediaDevices);
       if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-        console.warn('[CameraScanner] Trình duyệt không hỗ trợ mediaDevices.getUserMedia.');
         setState('error');
         setErrorMsg('Trình duyệt không hỗ trợ camera API.');
         setDebugInfo('navigator.mediaDevices = undefined. Dùng Chrome 60+ hoặc Safari 11+.');
         return;
       }
 
-      console.log('[CameraScanner] Bắt đầu request quyền camera...');
       setState('requesting');
       setErrorMsg('');
 
@@ -69,25 +60,20 @@ export default function CameraScanner({ onScan, onViewHistory }: CameraScannerPr
           audio: false,
         });
 
-        console.log('[CameraScanner] Đã lấy được stream camera.', stream.id);
         streamRef.current = stream;
 
         const video = videoRef.current;
         if (!video) {
-          console.error('[CameraScanner] Thẻ video không tồn tại trong DOM.');
           stream.getTracks().forEach((t) => t.stop());
           setState('error');
           setErrorMsg('Lỗi nội bộ: video element không tồn tại.');
           return;
         }
 
-        console.log('[CameraScanner] Gắn stream vào thẻ video.');
         video.srcObject = stream;
 
-        console.log('[CameraScanner] Chờ metadata của video...');
         await new Promise<void>((resolve) => {
           const onReady = () => {
-            console.log('[CameraScanner] Video đã sẵn sàng.');
             video.removeEventListener('loadedmetadata', onReady);
             video.removeEventListener('loadeddata', onReady);
             resolve();
@@ -95,17 +81,13 @@ export default function CameraScanner({ onScan, onViewHistory }: CameraScannerPr
           video.addEventListener('loadedmetadata', onReady, { once: true });
           video.addEventListener('loadeddata', onReady, { once: true });
           setTimeout(() => {
-            console.log('[CameraScanner] Timeout chờ metadata, vẫn tiếp tục...');
             resolve();
           }, 2000);
         });
 
-        console.log('[CameraScanner] Gọi video.play()...');
         await video.play();
-        console.log('[CameraScanner] Camera đang hoạt động.');
         setState('active');
       } catch (err: unknown) {
-        console.error('[CameraScanner] Lỗi khi getUserMedia hoặc play:', err);
         streamRef.current?.getTracks().forEach((t) => t.stop());
         streamRef.current = null;
         setState('error');
@@ -141,7 +123,6 @@ export default function CameraScanner({ onScan, onViewHistory }: CameraScannerPr
       }
     } catch (fatalErr: unknown) {
       const errorInstance = fatalErr instanceof Error ? fatalErr : new Error(String(fatalErr));
-      console.error('[CameraScanner] Lỗi nghiêm trọng chưa xử lý:', errorInstance);
       setState('error');
       setErrorMsg('Đã xảy ra lỗi nghiêm trọng.');
       setDebugInfo(errorInstance.message);
@@ -161,7 +142,7 @@ export default function CameraScanner({ onScan, onViewHistory }: CameraScannerPr
           canvas = document.createElement('canvas');
           canvasRef.current = canvas;
         }
-        const ctx = canvas.getContext('2d');
+        const ctx = canvas.getContext('2d', { willReadFrequently: true });
         if (ctx) {
           canvas.width = video.videoWidth;
           canvas.height = video.videoHeight;
@@ -172,7 +153,6 @@ export default function CameraScanner({ onScan, onViewHistory }: CameraScannerPr
           });
 
           if (code && code.data) {
-            console.log('[CameraScanner] QR Code detected:', code.data);
             hasScanned = true;
             if (onScan) {
               onScan(code.data);
@@ -213,7 +193,6 @@ export default function CameraScanner({ onScan, onViewHistory }: CameraScannerPr
       navigator.serviceWorker.getRegistrations().then((registrations) => {
         for (const registration of registrations) {
           registration.unregister();
-          console.log('[CameraScanner] Đã xóa Service Worker cũ để nhận code mới.');
         }
       });
     }
@@ -233,9 +212,8 @@ export default function CameraScanner({ onScan, onViewHistory }: CameraScannerPr
         {/* Video feed */}
         <video
           ref={videoRef}
-          className={`absolute inset-0 w-full h-full object-cover z-1 transition-opacity duration-300 ${
-            state === 'active' ? 'opacity-100' : 'opacity-0'
-          }`}
+          className={`absolute inset-0 w-full h-full object-cover z-1 transition-opacity duration-300 ${state === 'active' ? 'opacity-100' : 'opacity-0'
+            }`}
           playsInline
           muted
           autoPlay
@@ -305,8 +283,6 @@ export default function CameraScanner({ onScan, onViewHistory }: CameraScannerPr
                   void track.applyConstraints({
                     advanced: [{ torch: !currentTorch } as MediaTrackConstraintSet & { torch?: boolean }]
                   });
-                } else {
-                  console.log('Flashlight/Torch is not supported on this device/browser.');
                 }
               }
             }}
