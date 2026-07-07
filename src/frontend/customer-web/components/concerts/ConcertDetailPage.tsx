@@ -4,6 +4,8 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import CustomerHeader from '@/components/layout/CustomerHeader';
 import BackendNotice from '@/components/ui/BackendNotice';
+import PendingOrderBanner from '@/components/payment/PendingOrderBanner';
+import { useAuth } from '@/hooks/useAuth';
 import { cacheConcertName } from '@/lib/concert-names';
 import {
   canViewSeatmap,
@@ -50,6 +52,7 @@ function ticketTypeStatusLabel(status: TicketTypeAvailability['status']): string
 }
 
 export default function ConcertDetailPage({ concertId }: ConcertDetailPageProps) {
+  const { isAuthenticated } = useAuth();
   const [concert, setConcert] = useState<Concert | null>(null);
   const [ticketTypes, setTicketTypes] = useState<TicketTypeAvailability[]>([]);
   const [loading, setLoading] = useState(true);
@@ -240,6 +243,12 @@ export default function ConcertDetailPage({ concertId }: ConcertDetailPageProps)
             <div className="mt-6">
               <BackendNotice backendError={backendError} source={source} />
             </div>
+
+            {isAuthenticated && (
+              <div className="mt-4">
+                <PendingOrderBanner concertId={concertId} />
+              </div>
+            )}
 
             {concert.description && (
               <section className="mt-8">

@@ -30,6 +30,9 @@ export default function CustomerHeader({ concertName }: CustomerHeaderProps) {
           </Link>
           {isAuthenticated && (
             <>
+              <Link href="/orders" className="text-slate-600 hover:text-indigo-600">
+                Đơn hàng
+              </Link>
               <Link href="/tickets" className="text-slate-600 hover:text-indigo-600">
                 Vé của tôi
               </Link>
