@@ -74,10 +74,12 @@ export class RedisService implements OnModuleDestroy, OnModuleInit {
         'redis.url',
         'redis://localhost:6379',
       );
-      const isTls = redisUrl.startsWith('rediss://');
+      const isTls = redisUrl.startsWith('rediss://') || redisUrl.includes('upstash');
+      const isUpstash = redisUrl.includes('upstash');
       const redis = new Redis(redisUrl, {
         maxRetriesPerRequest: 1,
         enableReadyCheck: true,
+        family: isUpstash ? 0 : 4,
         ...(isTls ? { tls: { rejectUnauthorized: false } } : {}),
       });
 

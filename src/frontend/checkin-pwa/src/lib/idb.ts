@@ -46,10 +46,12 @@ export async function saveCheckinLog(record: OfflineScanRecord): Promise<void> {
   return new Promise((resolve, reject) => {
     const tx = db.transaction(STORE_NAME, 'readwrite');
     const store = tx.objectStore(STORE_NAME);
-    const req = store.put(record);
-    req.onsuccess = () => resolve();
-    req.onerror = () => reject(req.error);
-    tx.oncomplete = () => db.close();
+    store.put(record);
+    tx.oncomplete = () => {
+      db.close();
+      resolve();
+    };
+    tx.onerror = () => reject(tx.error);
   });
 }
 
@@ -62,9 +64,11 @@ export async function getUnsynced(): Promise<OfflineScanRecord[]> {
   return new Promise((resolve, reject) => {
     const tx = db.transaction(STORE_NAME, 'readonly');
     const store = tx.objectStore(STORE_NAME);
-    const index = store.index('synced');
-    const req = index.getAll(IDBKeyRange.only(false));
-    req.onsuccess = () => resolve(req.result as OfflineScanRecord[]);
+    const req = store.getAll();
+    req.onsuccess = () => {
+      const all = req.result as OfflineScanRecord[];
+      resolve(all.filter(r => !r.synced));
+    };
     req.onerror = () => reject(req.error);
     tx.oncomplete = () => db.close();
   });
@@ -81,7 +85,6 @@ export async function markSynced(offlineEventIds: string[]): Promise<void> {
     const tx = db.transaction(STORE_NAME, 'readwrite');
     const store = tx.objectStore(STORE_NAME);
 
-    let pending = offlineEventIds.length;
     for (const id of offlineEventIds) {
       const getReq = store.get(id);
       getReq.onsuccess = () => {
@@ -90,14 +93,18 @@ export async function markSynced(offlineEventIds: string[]): Promise<void> {
           record.synced = true;
           store.put(record);
         }
-        pending -= 1;
-        if (pending === 0) resolve();
       };
       getReq.onerror = () => reject(getReq.error);
     }
 
-    tx.onerror = () => reject(tx.error);
-    tx.oncomplete = () => db.close();
+    tx.onerror = () => {
+      db.close();
+      reject(tx.error);
+    };
+    tx.oncomplete = () => {
+      db.close();
+      resolve();
+    };
   });
 }
 
@@ -106,16 +113,8 @@ export async function markSynced(offlineEventIds: string[]): Promise<void> {
 // ─────────────────────────────────────────────────────────────────────────────
 
 export async function countUnsynced(): Promise<number> {
-  const db = await openDB();
-  return new Promise((resolve, reject) => {
-    const tx = db.transaction(STORE_NAME, 'readonly');
-    const store = tx.objectStore(STORE_NAME);
-    const index = store.index('synced');
-    const req = index.count(IDBKeyRange.only(false));
-    req.onsuccess = () => resolve(req.result);
-    req.onerror = () => reject(req.error);
-    tx.oncomplete = () => db.close();
-  });
+  const unsynced = await getUnsynced();
+  return unsynced.length;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

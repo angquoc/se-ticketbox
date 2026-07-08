@@ -47,17 +47,16 @@ export interface ScanLog {
 
 // ─────────────────────────────────────────────────────────────────────────────
 // QR Payload parser
-// Format: {ticketId}:{token}:{timestamp}:{signature}
+// Format: {ticketId}:{token}:{gateId}
 // ─────────────────────────────────────────────────────────────────────────────
 
 function parseQrPayload(raw: string): ParsedQrPayload | null {
-  const parts = raw.split(':');
-  if (parts.length < 4) return null;
-  // signature may contain colons (base64), so join remaining parts
-  const [ticketId, token, tsStr, ...sigParts] = parts;
-  const timestamp = parseInt(tsStr, 10);
-  if (!ticketId || !token || isNaN(timestamp)) return null;
-  return { ticketId, token, timestamp, signature: sigParts.join(':') };
+  const parts = raw.trim().split(':');
+  if (parts.length < 3) return null;
+  const [ticketId, token, ...gateParts] = parts;
+  const gateId = gateParts.join(':');
+  if (!ticketId || !token || !gateId) return null;
+  return { ticketId, token, gateId };
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -183,7 +182,7 @@ export function useOfflineCheckin() {
             ticketId: parsed.ticketId,
             token: parsed.token,
             deviceId,
-            gate,
+            gateId: gate || undefined,
           });
 
           const scanResult: ScanResult = {
@@ -215,7 +214,7 @@ export function useOfflineCheckin() {
         ticketId: parsed.ticketId,
         token: parsed.token,
         deviceId,
-        gate,
+        gateId: gate,
         scannedAt: now.toISOString(),
         isOffline: true as const,
         synced: false,
@@ -223,9 +222,9 @@ export function useOfflineCheckin() {
 
       try {
         await saveCheckinLog(offlineRecord);
-        void refreshPendingCount();
-      } catch {
-        // idb write failed — still show result to staff
+        await refreshPendingCount();
+      } catch (err) {
+        console.error('IDB write failed', err);
       }
 
       const offlineResult: ScanResult = {

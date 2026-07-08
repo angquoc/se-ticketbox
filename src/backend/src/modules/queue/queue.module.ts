@@ -15,30 +15,14 @@ import {
       imports: [ConfigModule],
       inject: [ConfigService],
       useFactory: (config: ConfigService) => {
-        const redisUrl = config.get<string>('REDIS_URL') || config.get<string>('redis.url');
-        if (redisUrl) {
-          const isTls = redisUrl.startsWith('rediss://');
-          return {
-            connection: {
-              url: redisUrl,
-              tls: isTls ? { rejectUnauthorized: false } : undefined,
-            },
-          };
-        }
-        const host = config.get<string>('REDIS_HOST', 'localhost');
-        const port = Number(config.get<string>('REDIS_PORT', '6379'));
-        const password = config.get<string>('REDIS_PASSWORD') || undefined;
-        const isTls =
-          config.get<string>('REDIS_TLS') === 'true' ||
-          host.includes('upstash.io') ||
-          host.includes('railway') ||
-          port === 6380;
+        const url = config.get<string>('REDIS_URL') || config.get<string>('redis.url') || 'redis://localhost:6379';
+        const isTls = url.startsWith('rediss://') || url.includes('upstash');
+        const isUpstash = url.includes('upstash');
         return {
           connection: {
-            host,
-            port,
-            password,
-            tls: isTls ? { rejectUnauthorized: false } : undefined,
+            url,
+            family: isUpstash ? 0 : 4,
+            ...(isTls ? { tls: { rejectUnauthorized: false } } : {}),
           },
         };
       },

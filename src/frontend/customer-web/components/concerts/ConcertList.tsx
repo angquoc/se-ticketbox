@@ -69,7 +69,7 @@ export default function ConcertList() {
         <h1 className="text-3xl font-bold text-slate-900">Sự kiện nổi bật</h1>
         <p className="mt-2 text-slate-600">
           {source === 'backend'
-            ? 'Danh sách từ Backend API (PostgreSQL seed)'
+            ? 'Danh sách sự kiện'
             : 'Chọn sự kiện và bắt đầu chọn ghế'}
         </p>
 

@@ -22,28 +22,13 @@ export class AiBioProcessor extends WorkerHost {
     private readonly config: ConfigService,
   ) {
     super();
-    const redisUrl = this.config.get<string>('REDIS_URL') || this.config.get<string>('redis.url');
-    if (redisUrl) {
-      const isTls = redisUrl.startsWith('rediss://');
-      this.redis = new Redis(redisUrl, {
-        tls: isTls ? { rejectUnauthorized: false } : undefined,
-      });
-    } else {
-      const host = this.config.get<string>('REDIS_HOST', 'localhost');
-      const port = Number(this.config.get<string>('REDIS_PORT', '6379'));
-      const password = this.config.get<string>('REDIS_PASSWORD') || undefined;
-      const isTls =
-        this.config.get<string>('REDIS_TLS') === 'true' ||
-        host.includes('upstash.io') ||
-        host.includes('railway') ||
-        port === 6380;
-      this.redis = new Redis({
-        host,
-        port,
-        password,
-        tls: isTls ? { rejectUnauthorized: false } : undefined,
-      });
-    }
+    const url = this.config.get<string>('redis.url') || process.env.REDIS_URL || 'redis://localhost:6379';
+    const isTls = url.startsWith('rediss://') || url.includes('upstash');
+    const isUpstash = url.includes('upstash');
+    this.redis = new Redis(url, {
+      family: isUpstash ? 0 : 4,
+      ...(isTls ? { tls: { rejectUnauthorized: false } } : {}),
+    });
   }
 
   async process(
