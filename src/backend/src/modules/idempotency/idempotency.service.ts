@@ -46,11 +46,12 @@ export class IdempotencyService {
   }
 
   constructor(private readonly config: ConfigService) {
-    const url = this.config.get<string>('redis.url', process.env.REDIS_URL || 'redis://localhost:6379');
+    const url = this.config.get<string>('redis.url') || process.env.REDIS_URL || 'redis://localhost:6379';
+    const isTls = url.startsWith('rediss://') || url.includes('upstash');
     const isUpstash = url.includes('upstash');
     this.redis = new Redis(url, {
       family: isUpstash ? 0 : 4,
-      ...(isUpstash && { tls: { rejectUnauthorized: false } }),
+      ...(isTls ? { tls: { rejectUnauthorized: false } } : {}),
     });
   }
 

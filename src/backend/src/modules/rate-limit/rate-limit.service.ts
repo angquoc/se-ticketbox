@@ -46,7 +46,10 @@ export class RateLimitService implements OnModuleInit {
     // Lua files are at dist/modules/rate-limit/scripts/
     // distRoot = dist/ (3 levels up from dist/src/modules/rate-limit/)
     const distRoot = join(__dirname, '..', '..', '..');
-    return join(distRoot, 'modules', 'rate-limit', 'scripts', filename);
+    if (__dirname.includes('dist')) {
+      return join(distRoot, 'modules', 'rate-limit', 'scripts', filename);
+    }
+    return join(distRoot, 'src', 'modules', 'rate-limit', 'scripts', filename);
   }
 
   private async loadScript(): Promise<void> {

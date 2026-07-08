@@ -14,13 +14,18 @@ import {
     BullModule.forRootAsync({
       imports: [ConfigModule],
       inject: [ConfigService],
-      useFactory: (config: ConfigService) => ({
-        connection: {
-          host: config.get<string>('REDIS_HOST', 'localhost'),
-          port: Number(config.get<string>('REDIS_PORT', '6379')),
-          password: config.get<string>('REDIS_PASSWORD') || undefined,
-        },
-      }),
+      useFactory: (config: ConfigService) => {
+        const url = config.get<string>('REDIS_URL') || config.get<string>('redis.url') || 'redis://localhost:6379';
+        const isTls = url.startsWith('rediss://') || url.includes('upstash');
+        const isUpstash = url.includes('upstash');
+        return {
+          connection: {
+            url,
+            family: isUpstash ? 0 : 4,
+            ...(isTls ? { tls: { rejectUnauthorized: false } } : {}),
+          },
+        };
+      },
     }),
 
     BullModule.registerQueue(

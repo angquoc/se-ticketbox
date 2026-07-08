@@ -74,13 +74,13 @@ export class RedisService implements OnModuleDestroy, OnModuleInit {
         'redis.url',
         'redis://localhost:6379',
       );
-      
+      const isTls = redisUrl.startsWith('rediss://') || redisUrl.includes('upstash');
       const isUpstash = redisUrl.includes('upstash');
-      
       const redis = new Redis(redisUrl, {
+        maxRetriesPerRequest: 1,
         enableReadyCheck: true,
         family: isUpstash ? 0 : 4,
-        ...(isUpstash && { tls: { rejectUnauthorized: false } }),
+        ...(isTls ? { tls: { rejectUnauthorized: false } } : {}),
       });
 
       redis.on('connect', () => this.logger.log('Connected to Redis'));
@@ -108,7 +108,10 @@ export class RedisService implements OnModuleDestroy, OnModuleInit {
     // At runtime __dirname = dist/src/modules/redis/
     // Lua files are at dist/modules/redis/scripts/
     const distRoot = join(__dirname, '..', '..', '..');
-    return join(distRoot, 'modules', 'redis', 'scripts', filename);
+    if (__dirname.includes('dist')) {
+      return join(distRoot, 'modules', 'redis', 'scripts', filename);
+    }
+    return join(distRoot, 'src', 'modules', 'redis', 'scripts', filename);
   }
 
   private async initScripts(): Promise<void> {
