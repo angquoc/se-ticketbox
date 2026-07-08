@@ -1,18 +1,24 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { ALL_TICKET_TYPES, useSeatMap } from '@/hooks/useSeatMap';
-import { requestPurchaseAccess } from '@/lib/waiting-room-access';
+import { usePurchaseAccess } from '@/hooks/usePurchaseAccess';
 import CustomerHeader from '@/components/layout/CustomerHeader';
 import PendingOrderBanner from '@/components/payment/PendingOrderBanner';
 import BackendNotice from '@/components/ui/BackendNotice';
+import TokenExpiryBanner from '@/components/waiting-room/TokenExpiryBanner';
 import SeatFilters from './SeatFilters';
 import InteractiveSeatMap from './InteractiveSeatMap';
 import ZoneListFallback from './ZoneListFallback';
+import ZoneDetailPanel from './ZoneDetailPanel';
 import SeatLegend from './SeatLegend';
 import SeatSummaryBar from './SeatSummaryBar';
 import { saveZoneSelection } from '@/lib/checkout-storage';
+import { hasPurchaseIntent, setPurchaseIntent } from '@/lib/waiting-room-intent';
+import { readAdmittedToken } from '@/lib/waiting-room-storage';
+import { readPendingOrder } from '@/lib/checkout-storage';
 import { formatVnd } from '@/lib/format';
 
 interface SeatMapPageProps {
@@ -21,39 +27,15 @@ interface SeatMapPageProps {
 
 export default function SeatMapPage({ concertId }: SeatMapPageProps) {
   const router = useRouter();
-  const [accessChecked, setAccessChecked] = useState(false);
-  const [accessError, setAccessError] = useState<string | null>(null);
-
-  useEffect(() => {
-    let cancelled = false;
-
-    async function verifyAccess() {
-      setAccessError(null);
-      try {
-        const result = await requestPurchaseAccess(concertId);
-        if (cancelled) return;
-
-        if (result.granted) {
-          setAccessChecked(true);
-          return;
-        }
-
-        router.replace(`/concerts/${concertId}/waiting`);
-      } catch (error) {
-        if (!cancelled) {
-          setAccessError(
-            error instanceof Error ? error.message : 'Không thể xác minh quyền truy cập',
-          );
-        }
-      }
-    }
-
-    void verifyAccess();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [concertId, router]);
+  const [requireToken] = useState(
+    () =>
+      !readPendingOrder(concertId) &&
+      (hasPurchaseIntent(concertId) || readAdmittedToken(concertId) !== null),
+  );
+  const { accessChecked, accessError, tokenRemainingMs } = usePurchaseAccess({
+    concertId,
+    requireToken,
+  });
 
   const {
     data,
@@ -63,21 +45,31 @@ export default function SeatMapPage({ concertId }: SeatMapPageProps) {
     backendError,
     warning,
     selectionState,
+    selectedEntry,
+    maxQuantityForSelection,
+    remainingAllowanceForSelection,
+    ticketTypeSummaries,
     ticketTypeFilter,
     setTicketTypeFilter,
     zoneFilter,
     setZoneFilter,
+    availabilityFilter,
+    setAvailabilityFilter,
     limitWarning,
     availabilityNotice,
+    isRefreshingAvailability,
+    isLiveConnected,
     filteredZones,
     zoneOptions,
     selectZone,
     setQuantity,
     isZoneSelected,
+    refreshAvailability,
   } = useSeatMap({ concertId });
 
   const [showFallback, setShowFallback] = useState(false);
   const [mapReady, setMapReady] = useState(false);
+  const [svgLoadFailed, setSvgLoadFailed] = useState(false);
   const handleBackgroundLoaded = useCallback(() => setMapReady(true), []);
 
   useEffect(() => {
@@ -87,19 +79,9 @@ export default function SeatMapPage({ concertId }: SeatMapPageProps) {
     return () => clearTimeout(timer);
   }, [mapReady, loading]);
 
-  const maxQuantity = useMemo(() => {
-    const selection = selectionState.selection;
-    if (!selection || !data) return 1;
-
-    const ticketType = data.ticketTypes.find((tt) => tt.id === selection.ticketTypeId);
-    const zone = ticketType?.zones.find((z) => z.zoneId === selection.zoneId);
-    if (!ticketType || !zone) return 1;
-
-    return Math.min(zone.availableCount, ticketType.maxPerUser);
-  }, [selectionState.selection, data]);
-
   const handleProceed = () => {
     if (!selectionState.selection) return;
+    setPurchaseIntent(concertId);
     saveZoneSelection(concertId, selectionState.selection);
     router.push(`/concerts/${concertId}/checkout`);
   };
@@ -159,12 +141,19 @@ export default function SeatMapPage({ concertId }: SeatMapPageProps) {
     (sum, tt) => sum + tt.zones.reduce((s, z) => s + z.availableCount, 0),
     0,
   );
+  const showTextFallback = showFallback && !mapReady || svgLoadFailed;
 
   return (
     <div className="flex min-h-screen flex-col bg-slate-50">
       <CustomerHeader concertName={data.concertName} />
 
       <main className="mx-auto w-full max-w-7xl flex-1 px-4 py-6 pb-32 sm:px-6">
+        <Link
+          href={`/concerts/${concertId}`}
+          className="mb-4 inline-flex text-sm font-medium text-indigo-600 hover:text-indigo-700"
+        >
+          ← Chi tiết sự kiện
+        </Link>
         <div className="mb-6">
           <h1 className="text-2xl font-bold text-slate-900">Tổng quan khu vực ghế</h1>
           <p className="mt-1 text-slate-600">{data.concertName}</p>
@@ -177,15 +166,38 @@ export default function SeatMapPage({ concertId }: SeatMapPageProps) {
           <div className="mt-3">
             <PendingOrderBanner concertId={concertId} />
           </div>
+          <div className="mt-3">
+            <TokenExpiryBanner remainingMs={tokenRemainingMs} />
+          </div>
+          <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-slate-500">
+            <span>Còn {availableTotal} vé trống</span>
+            {isLiveConnected && (
+              <span className="inline-flex items-center gap-1 text-emerald-700">
+                <span className="h-2 w-2 rounded-full bg-emerald-500" aria-hidden />
+                Cập nhật trực tiếp
+              </span>
+            )}
+            {isRefreshingAvailability && (
+              <span className="text-indigo-600">Đang tải lại dữ liệu…</span>
+            )}
+          </div>
+          <div className="mt-3 flex flex-wrap gap-2">
+            {ticketTypeSummaries.map((summary) => (
+              <span
+                key={summary.id}
+                className="rounded-full bg-white px-3 py-1 text-xs font-medium text-slate-700 ring-1 ring-slate-200"
+              >
+                {summary.name}: {summary.availableTotal} vé còn lại
+              </span>
+            ))}
+          </div>
           <p className="mt-2 text-sm text-slate-500">
-            Còn {availableTotal} vé trống
             {isAllTicketTypes ? (
-              <> · {data.ticketTypes.map((tt) => tt.name).join(', ')}</>
+              <>Loại vé: {data.ticketTypes.map((tt) => tt.name).join(', ')}</>
             ) : (
               activeTicketType && (
                 <>
-                  {' '}
-                  · {activeTicketType.name}: tối đa {activeTicketType.maxPerUser} vé/người (
+                  {activeTicketType.name}: tối đa {activeTicketType.maxPerUser} vé/người (
                   {formatVnd(activeTicketType.price)}/vé)
                 </>
               )
@@ -201,6 +213,8 @@ export default function SeatMapPage({ concertId }: SeatMapPageProps) {
             zones={zoneOptions}
             zoneFilter={zoneFilter}
             onZoneChange={setZoneFilter}
+            availabilityFilter={availabilityFilter}
+            onAvailabilityChange={setAvailabilityFilter}
           />
         </div>
 
@@ -216,7 +230,17 @@ export default function SeatMapPage({ concertId }: SeatMapPageProps) {
           </div>
         )}
 
-        {showFallback && !mapReady && (
+        {selectedEntry && selectionState.selection && (
+          <ZoneDetailPanel
+            ticketType={selectedEntry.ticketType}
+            zone={selectedEntry.zone}
+            quantity={selectionState.selection.quantity}
+            maxQuantity={maxQuantityForSelection}
+            remainingAllowance={remainingAllowanceForSelection}
+          />
+        )}
+
+        {showTextFallback && (
           <div className="mb-4">
             <ZoneListFallback
               zones={filteredZones}
@@ -224,19 +248,25 @@ export default function SeatMapPage({ concertId }: SeatMapPageProps) {
               onSelectZone={selectZone}
               onRetry={() => {
                 setShowFallback(false);
-                setMapReady(true);
+                setSvgLoadFailed(false);
+                setMapReady(false);
+                void refreshAvailability();
               }}
             />
           </div>
         )}
 
-        <div className={showFallback && !mapReady ? 'hidden' : 'mb-4'}>
+        <div className={showTextFallback ? 'hidden' : 'mb-4'}>
           <InteractiveSeatMap
             seatMapUrl={data.seatMapUrl}
             zones={filteredZones}
             isZoneSelected={isZoneSelected}
             onSelectZone={selectZone}
             onBackgroundLoaded={handleBackgroundLoaded}
+            onBackgroundError={() => {
+              setSvgLoadFailed(true);
+              setShowFallback(true);
+            }}
           />
         </div>
 
@@ -245,7 +275,7 @@ export default function SeatMapPage({ concertId }: SeatMapPageProps) {
 
       <SeatSummaryBar
         selectionState={selectionState}
-        maxQuantity={maxQuantity}
+        maxQuantity={maxQuantityForSelection}
         onQuantityChange={setQuantity}
         onProceed={handleProceed}
       />

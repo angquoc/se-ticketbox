@@ -17,6 +17,15 @@ export function resolveBackendConcertId(frontendConcertId: string): string {
   return map[frontendConcertId] ?? frontendConcertId;
 }
 
+/** Đảo ngược BACKEND_CONCERT_MAP để lấy slug frontend từ backend concert id. */
+export function resolveFrontendConcertId(backendConcertId: string): string | null {
+  const map = parseConcertMap();
+  for (const [frontendId, backendId] of Object.entries(map)) {
+    if (backendId === backendConcertId) return frontendId;
+  }
+  return null;
+}
+
 export function mapZoneSelectionToOrderItems(
   selection: ZoneSelection,
   backendTicketTypes: TicketTypeAvailability[],

@@ -6,7 +6,9 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import CustomerHeader from '@/components/layout/CustomerHeader';
 import { usePaymentStatus } from '@/hooks/usePaymentStatus';
 import { clearPendingOrder } from '@/lib/checkout-storage';
+import { abandonPurchaseFlow } from '@/lib/waiting-room-abandon';
 import { getConcertName } from '@/lib/concert-names';
+import { formatReservationCountdown, isReservationExpired } from '@/lib/order-expiry';
 import { formatVnd } from '@/lib/format';
 import { orderApi, paymentApi } from '@/lib/api-client';
 import { getPaymentIdempotencyKey, clearPaymentIdempotencyKey } from '@/lib/idempotency';
@@ -16,15 +18,6 @@ import type { Order } from '@/types/order';
 
 interface PaymentWaitingPageProps {
   orderId: string;
-}
-
-function formatCountdown(expiresAt: string | null): string {
-  if (!expiresAt) return '--:--';
-  const diffMs = new Date(expiresAt).getTime() - Date.now();
-  if (diffMs <= 0) return '00:00';
-  const minutes = Math.floor(diffMs / 60000);
-  const seconds = Math.floor((diffMs % 60000) / 1000);
-  return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
 }
 
 export default function PaymentWaitingPage({ orderId }: PaymentWaitingPageProps) {
@@ -62,6 +55,12 @@ export default function PaymentWaitingPage({ orderId }: PaymentWaitingPageProps)
   });
 
   useEffect(() => {
+    if (concertId) {
+      abandonPurchaseFlow(concertId);
+    }
+  }, [concertId]);
+
+  useEffect(() => {
     void orderApi.getById(orderId).then(setOrder).catch(() => undefined);
   }, [orderId]);
 
@@ -97,10 +96,15 @@ export default function PaymentWaitingPage({ orderId }: PaymentWaitingPageProps)
 
   useEffect(() => {
     const timer = setInterval(() => {
-      setCountdown(formatCountdown(order?.expiresAt ?? null));
+      const next = formatReservationCountdown(order?.expiresAt ?? null);
+      setCountdown(next);
+
+      if (order?.expiresAt && isReservationExpired(order.expiresAt)) {
+        void refresh();
+      }
     }, 1000);
     return () => clearInterval(timer);
-  }, [order?.expiresAt]);
+  }, [order?.expiresAt, refresh]);
 
   async function handleCreatePaymentUrl(button?: HTMLButtonElement) {
     if (createPaymentLockRef.current) return;
@@ -128,9 +132,12 @@ export default function PaymentWaitingPage({ orderId }: PaymentWaitingPageProps)
     setCancelling(true);
     try {
       await orderApi.cancel(orderId);
-      if (concertId) clearPendingOrder(concertId);
+      if (concertId) {
+        clearPendingOrder(concertId);
+        abandonPurchaseFlow(concertId);
+      }
       clearPaymentIdempotencyKey(orderId);
-      router.replace(`/concerts/${concertId}/seats`);
+      router.replace('/orders');
     } catch (err) {
       alert(err instanceof Error ? err.message : 'Không thể hủy đơn');
     } finally {

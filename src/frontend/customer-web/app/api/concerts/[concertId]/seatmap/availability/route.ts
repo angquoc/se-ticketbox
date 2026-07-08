@@ -1,17 +1,23 @@
 import { NextResponse } from 'next/server';
-import { fetchConcertByIdFromBackend, getBackendErrorMessage } from '@/lib/fetch-concerts';
 import { backendFetch } from '@/lib/api/backend-fetch';
+import { fetchConcertByIdFromBackend, getBackendErrorMessage } from '@/lib/fetch-concerts';
 import { collectZoneAvailabilityUpdates } from '@/lib/seatmap-data';
 import { getMockSeatMap } from '@/lib/mock-seatmap';
 import { buildSeatMapFromBackend } from '@/lib/seatmap-builder';
+import { resolveBackendConcertId } from '@/lib/concert-backend-mapping';
 import type { TicketTypeAvailability } from '@/types/order';
+import type { ZoneAvailabilityUpdate } from '@/types/seatmap';
 
 interface TicketTypeListResponse {
   data: TicketTypeAvailability[];
   total: number;
 }
 
-async function resolveSeatMap(concertId: string) {
+interface BackendAvailabilityResponse {
+  updates: ZoneAvailabilityUpdate[];
+}
+
+async function resolveSeatMapFallback(concertId: string) {
   const concert = await fetchConcertByIdFromBackend(concertId);
   if (!concert) {
     throw new Error('Không tìm thấy concert trên backend');
@@ -44,23 +50,37 @@ export async function GET(
   { params }: { params: Promise<{ concertId: string }> },
 ) {
   const { concertId } = await params;
+  const backendConcertId = resolveBackendConcertId(concertId);
 
   try {
-    const seatMap = await resolveSeatMap(concertId);
+    const backendData = await backendFetch<BackendAvailabilityResponse>(
+      `/concerts/${backendConcertId}/seatmap/availability`,
+    );
 
     return NextResponse.json({
       success: true,
-      data: {
-        updates: collectZoneAvailabilityUpdates(seatMap),
-      },
+      source: 'backend',
+      data: backendData,
     });
   } catch (error) {
-    return NextResponse.json(
-      {
-        success: false,
-        message: getBackendErrorMessage(error),
-      },
-      { status: 502 },
-    );
+    try {
+      const seatMap = await resolveSeatMapFallback(concertId);
+      return NextResponse.json({
+        success: true,
+        source: 'mock',
+        warning: getBackendErrorMessage(error),
+        data: {
+          updates: collectZoneAvailabilityUpdates(seatMap),
+        },
+      });
+    } catch (fallbackError) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: getBackendErrorMessage(fallbackError),
+        },
+        { status: 502 },
+      );
+    }
   }
 }

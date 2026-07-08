@@ -1,21 +1,28 @@
 'use client';
 
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import CustomerHeader from '@/components/layout/CustomerHeader';
 import PendingOrderBanner from '@/components/payment/PendingOrderBanner';
+import TokenExpiryBanner from '@/components/waiting-room/TokenExpiryBanner';
 import { useAuth } from '@/hooks/useAuth';
+import { usePurchaseAccess } from '@/hooks/usePurchaseAccess';
 import { concertApi } from '@/lib/api-client';
-import { getCheckoutErrorMessage } from '@/lib/api-error';
+import { getCheckoutErrorMessage, isWaitingRoomOrderError } from '@/lib/api-error';
 import { createOrderWithIdempotencyRetry } from '@/lib/create-order-retry';
 import {
   clearCheckoutIdempotencyKey,
   getCheckoutIdempotencyKey,
 } from '@/lib/idempotency';
 import {
+  readAdmittedToken,
+} from '@/lib/waiting-room-storage';
+import { abandonPurchaseFlow } from '@/lib/waiting-room-abandon';
+import {
   clearPendingOrder,
   clearZoneSelection,
+  readPendingOrder,
   readZoneSelection,
   savePendingOrder,
 } from '@/lib/checkout-storage';
@@ -26,6 +33,7 @@ import {
 import { getConcertName } from '@/lib/concert-names';
 import { formatVnd } from '@/lib/format';
 import type { Order } from '@/types/order';
+import type { ZoneSelection } from '@/types/seatmap';
 
 interface CheckoutPageProps {
   concertId: string;
@@ -41,9 +49,29 @@ export default function CheckoutPage({ concertId }: CheckoutPageProps) {
   const [order, setOrder] = useState<Order | null>(null);
   const checkoutLockRef = useRef(false);
 
-  const selection = useMemo(() => readZoneSelection(concertId), [concertId]);
+  const { accessChecked, accessError, tokenRemainingMs, redirectToWaiting } = usePurchaseAccess({
+    concertId,
+    requireToken: true,
+  });
+
+  const [selection, setSelection] = useState<ZoneSelection | null>(null);
+  const [selectionLoaded, setSelectionLoaded] = useState(false);
   const concertName = getConcertName(concertId);
   const totalPrice = selection ? selection.unitPrice * selection.quantity : 0;
+
+  useEffect(() => {
+    const pendingOrderId = readPendingOrder(concertId);
+    if (pendingOrderId) {
+      router.replace(
+        `/orders/${pendingOrderId}/payment?concertId=${encodeURIComponent(concertId)}`,
+      );
+    }
+  }, [concertId, router]);
+
+  useEffect(() => {
+    setSelection(readZoneSelection(concertId));
+    setSelectionLoaded(true);
+  }, [concertId]);
 
   useEffect(() => {
     if (!authLoading && !isAuthenticated) {
@@ -52,10 +80,10 @@ export default function CheckoutPage({ concertId }: CheckoutPageProps) {
   }, [authLoading, isAuthenticated, concertId, router]);
 
   useEffect(() => {
-    if (!selection) {
+    if (selectionLoaded && !selection) {
       router.replace(`/concerts/${concertId}/seats`);
     }
-  }, [selection, concertId, router]);
+  }, [selectionLoaded, selection, concertId, router]);
 
   useEffect(() => {
     getCheckoutIdempotencyKey(concertId);
@@ -63,6 +91,12 @@ export default function CheckoutPage({ concertId }: CheckoutPageProps) {
 
   async function handleCheckout(button?: HTMLButtonElement) {
     if (!selection || checkoutLockRef.current) return;
+
+    const waitingRoomToken = readAdmittedToken(concertId);
+    if (!waitingRoomToken) {
+      redirectToWaiting();
+      return;
+    }
 
     checkoutLockRef.current = true;
     if (button) button.disabled = true;
@@ -82,6 +116,7 @@ export default function CheckoutPage({ concertId }: CheckoutPageProps) {
           items,
         },
         idempotencyKey,
+        waitingRoomToken,
       );
 
       const paymentUrl =
@@ -92,15 +127,23 @@ export default function CheckoutPage({ concertId }: CheckoutPageProps) {
 
       clearCheckoutIdempotencyKey(concertId);
       clearZoneSelection(concertId);
+      abandonPurchaseFlow(concertId);
       savePendingOrder(concertId, orderResponse.order.id);
       setOrder(orderResponse.order);
 
-      router.push(
+      router.replace(
         `/orders/${orderResponse.order.id}/payment?concertId=${encodeURIComponent(concertId)}&paymentUrl=${encodeURIComponent(paymentUrl)}`,
       );
     } catch (err) {
       checkoutLockRef.current = false;
       if (button) button.disabled = false;
+
+      if (isWaitingRoomOrderError(err)) {
+        abandonPurchaseFlow(concertId);
+        redirectToWaiting();
+        return;
+      }
+
       setStep('error');
       setError(getCheckoutErrorMessage(err));
     }
@@ -108,12 +151,18 @@ export default function CheckoutPage({ concertId }: CheckoutPageProps) {
 
   const isCheckoutLocked = step === 'processing';
 
-  if (authLoading || !selection) {
+  if (authLoading || !selectionLoaded || !selection || !accessChecked) {
     return (
       <div className="flex min-h-screen flex-col bg-slate-50">
         <CustomerHeader concertName={concertName} />
-        <main className="flex flex-1 items-center justify-center">
-          <div className="h-10 w-10 animate-spin rounded-full border-4 border-indigo-200 border-t-indigo-600" />
+        <main className="flex flex-1 items-center justify-center p-4">
+          {accessError ? (
+            <div className="max-w-md rounded-xl border border-red-200 bg-red-50 p-6 text-center">
+              <p className="text-red-700">{accessError}</p>
+            </div>
+          ) : (
+            <div className="h-10 w-10 animate-spin rounded-full border-4 border-indigo-200 border-t-indigo-600" />
+          )}
         </main>
       </div>
     );
@@ -129,6 +178,10 @@ export default function CheckoutPage({ concertId }: CheckoutPageProps) {
 
         <div className="mt-4">
           <PendingOrderBanner concertId={concertId} />
+        </div>
+
+        <div className="mt-4">
+          <TokenExpiryBanner remainingMs={tokenRemainingMs} />
         </div>
 
         <div className="mt-6 rounded-xl border border-slate-200 bg-white p-5 shadow-sm">

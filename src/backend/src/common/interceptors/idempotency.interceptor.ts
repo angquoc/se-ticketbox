@@ -5,6 +5,7 @@ import {
   CallHandler,
   ConflictException,
   BadRequestException,
+  UnauthorizedException,
   Logger,
 } from '@nestjs/common';
 import { Observable, of } from 'rxjs';
@@ -105,15 +106,25 @@ export class IdempotencyInterceptor implements NestInterceptor {
         });
       }
     } else {
-      await this.prisma.idempotencyKey.create({
-        data: {
-          userId,
-          key: idempotencyKey,
-          requestHash,
-          status: 'PROCESSING',
-          expiresAt: new Date(Date.now() + this.TTL_MS),
-        },
-      });
+      try {
+        await this.prisma.idempotencyKey.create({
+          data: {
+            userId,
+            key: idempotencyKey,
+            requestHash,
+            status: 'PROCESSING',
+            expiresAt: new Date(Date.now() + this.TTL_MS),
+          },
+        });
+      } catch (err) {
+        if (
+          err instanceof Prisma.PrismaClientKnownRequestError &&
+          err.code === 'P2003'
+        ) {
+          throw new UnauthorizedException('Tài khoản không hợp lệ hoặc đã bị xóa');
+        }
+        throw err;
+      }
     }
 
     return next.handle().pipe(

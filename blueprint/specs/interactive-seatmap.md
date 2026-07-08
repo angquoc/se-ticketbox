@@ -504,3 +504,101 @@ user-limit:{userId}:{ticketTypeId}
 - Dynamic pricing based on zone popularity
 - Accessibility enhancements for screen readers and high contrast
 - Analytics for zone-level popularity and traffic patterns
+
+---
+
+## 13. Seatmap Asset Pipeline (Frontend-only)
+
+> **Cập nhật:** Thêm pipeline tự động hóa phía `customer-web`, không cần thay đổi backend.
+
+### Nguyên tắc
+
+| Thành phần | Vai trò | Ai chỉnh |
+|---|---|---|
+| `configs/_layouts/{slug}.json` | **Nguồn thiết kế duy nhất** — vị trí zone, tên hạng vé, background | Designer / dev |
+| `backgrounds/*.svg` | Nền sân khấu dùng chung | Designer |
+| `concerts/{slug}.svg` | SVG interactive (sinh tự động) | Script — không sửa tay |
+| `configs/{slug}.json` | Pointer trỏ tới SVG (sinh tự động) | Script |
+| `Concert.seatMapUrl` (DB) | URL backend lưu khi tạo concert | Admin (tùy chọn) |
+| `TicketType.name` (DB) | Ghép với `data-ticket-type` trong SVG | Admin |
+
+Backend **không** sinh layout. Chỉ cung cấp `seatMapUrl` (tùy chọn) và inventory theo ticket type.
+
+### Thêm concert mới — 3 bước
+
+```bash
+cd src/frontend/customer-web
+
+# Bước 1: Tạo layout từ template có sẵn
+npm run seatmap:new -- --slug my-concert-2026 --title "MY CONCERT 2026" --from summer-music-festival-2026
+
+# Bước 2: Chỉnh zones trong configs/_layouts/my-concert-2026.json
+#         (ticketTypeName phải khớp tên hạng vé trên admin)
+
+# Bước 3: Sinh SVG + config pointer
+npm run seatmap:sync
+```
+
+Sau đó tạo concert trên admin với:
+- **slug** = `my-concert-2026` (khớp tên layout)
+- **seatMapUrl** = `/seatmaps/concerts/my-concert-2026.svg`
+- **ticket types** có tên trùng `ticketTypeName` trong layout (vd. `PLATINUM PASS`, `GOLD PASS`)
+
+### Layout schema (`configs/_layouts/{slug}.json`)
+
+```json
+{
+  "slug": "my-concert-2026",
+  "title": "MY CONCERT 2026",
+  "background": "summer-festival",
+  "zones": [
+    {
+      "zoneId": "platinum-pass",
+      "zoneName": "PLATINUM PASS",
+      "ticketTypeName": "PLATINUM PASS",
+      "rect": { "x": 275, "y": 115, "width": 250, "height": 120, "rx": 8 }
+    }
+  ]
+}
+```
+
+**`background` hỗ trợ:**
+- `"summer-festival"` — layout festival 4 zone (MAIN STAGE)
+- `"theater-tiered.svg"` hoặc bỏ trống — nhà hát nhiều tầng (mặc định)
+
+### Runtime auto-resolve (customer-web)
+
+Khi user mở seatmap, frontend resolve theo thứ tự:
+
+1. `configs/{slug}.json` (nếu có)
+2. `concerts/{slug}.svg` tồn tại → tự dùng `/seatmaps/concerts/{slug}.svg`
+3. `_layouts/{slug}.json` tồn tại → dùng URL theo convention slug
+4. `Concert.seatMapUrl` từ backend
+5. Fallback demo: `summer-music-festival-2026.svg`
+
+→ Chỉ cần **slug concert khớp tên layout** là seatmap tự gắn, không bắt buộc tạo config JSON thủ công.
+
+### NPM scripts
+
+| Script | Mô tả |
+|---|---|
+| `npm run seatmap:new` | Scaffold layout mới từ template + chạy sync |
+| `npm run seatmap:sync` | Đọc tất cả `_layouts/*.json` → sinh SVG + config + manifest |
+| `npm run generate:seatmaps` | Alias của `seatmap:sync` |
+
+### Template có sẵn
+
+| Template slug | Kiểu sân | Số zone mặc định |
+|---|---|---|
+| `summer-music-festival-2026` | Festival | 4 |
+| `tgc-vietnam-2026` | Theater tiered | 6 |
+| `jessica-reflections-2026` | Theater tiered | (tùy layout) |
+| `2026-kangin-fan-meeting-in-ho-chi-minh` | Theater tiered | (tùy layout) |
+
+### Lưu ý slug admin
+
+Form admin hiện sinh slug kèm hậu tố ngẫu nhiên. Để seatmap tự gắn:
+- Đặt slug cố định trùng layout khi tạo concert, **hoặc**
+- Nhập `seatMapUrl` trỏ đúng SVG đã generate
+
+Availability (còn/bán/hết) vẫn cập nhật realtime từ backend như mô tả ở mục 7 — pipeline này chỉ tự động hóa **phần layout tĩnh**.

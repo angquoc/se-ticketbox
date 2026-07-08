@@ -1,11 +1,14 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import CustomerHeader from '@/components/layout/CustomerHeader';
 import BackendNotice from '@/components/ui/BackendNotice';
 import { useWaitingRoom } from '@/hooks/useWaitingRoom';
 import { getWaitingMessage, getWaitingTip } from '@/lib/waiting-room-messages';
+import { readPendingOrder } from '@/lib/checkout-storage';
+import { abandonPurchaseFlow } from '@/lib/waiting-room-abandon';
+import { setPurchaseIntent } from '@/lib/waiting-room-intent';
 
 interface WaitingRoomScreenProps {
   concertId: string;
@@ -14,17 +17,55 @@ interface WaitingRoomScreenProps {
 export default function WaitingRoomScreen({ concertId }: WaitingRoomScreenProps) {
   const router = useRouter();
   const [messageVisible, setMessageVisible] = useState(true);
+  const admittedRedirectRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const statusRef = useRef<'loading' | 'waiting' | 'admitted' | 'error'>('loading');
+  const waitingPath = `/concerts/${concertId}/waiting`;
 
-  const handleAdmitted = useCallback(() => {
-    setTimeout(() => {
-      router.replace(`/concerts/${concertId}/seats`);
-    }, 900);
+  useEffect(() => {
+    const pendingOrderId = readPendingOrder(concertId);
+    if (pendingOrderId) {
+      router.replace(
+        `/orders/${pendingOrderId}/payment?concertId=${encodeURIComponent(concertId)}`,
+      );
+      return;
+    }
+    setPurchaseIntent(concertId);
   }, [concertId, router]);
 
-  const { concertName, status, error, backendError, messageTick, startedAt, retry } = useWaitingRoom({
+  const handleAdmitted = useCallback(() => {
+    setPurchaseIntent(concertId);
+  }, [concertId]);
+
+  const { concertName, status, error, backendError, messageTick, startedAt, position, estimatedWaitSeconds, retry } = useWaitingRoom({
     concertId,
     onAdmitted: handleAdmitted,
   });
+
+  statusRef.current = status;
+
+  useEffect(() => {
+    return () => {
+      if (statusRef.current !== 'admitted') {
+        abandonPurchaseFlow(concertId);
+      }
+    };
+  }, [concertId]);
+
+  useEffect(() => {
+    if (status !== 'admitted') return;
+
+    admittedRedirectRef.current = setTimeout(() => {
+      if (window.location.pathname !== waitingPath) return;
+      router.replace(`/concerts/${concertId}/seats`);
+    }, 900);
+
+    return () => {
+      if (admittedRedirectRef.current) {
+        clearTimeout(admittedRedirectRef.current);
+        admittedRedirectRef.current = null;
+      }
+    };
+  }, [status, concertId, router, waitingPath]);
 
   const [elapsedMs, setElapsedMs] = useState(0);
 
@@ -136,6 +177,18 @@ export default function WaitingRoomScreen({ concertId }: WaitingRoomScreenProps)
                 ? 'Hệ thống đang đánh giá mức tải. Nếu không quá đông, bạn sẽ vào mua vé ngay.'
                 : 'Lượt truy cập đang cao. Chúng tôi sẽ tự động chuyển bạn sang trang mua vé ngay khi sẵn sàng — không cần làm gì thêm.'}
             </p>
+
+            {!isConnecting && position !== null && (
+              <p className="mt-4 text-sm font-medium text-indigo-700">
+                Vị trí trong hàng đợi: #{position}
+                {estimatedWaitSeconds !== null && estimatedWaitSeconds > 0 && (
+                  <span className="font-normal text-slate-500">
+                    {' '}
+                    · Ước tính còn khoảng {estimatedWaitSeconds} giây
+                  </span>
+                )}
+              </p>
+            )}
           </div>
 
           <div className="mt-8 rounded-xl bg-slate-50 px-4 py-3 text-center">

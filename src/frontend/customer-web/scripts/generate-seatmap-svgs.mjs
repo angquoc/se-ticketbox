@@ -1,4 +1,13 @@
-import { readFile, writeFile, mkdir } from 'fs/promises';
+/**
+ * Đồng bộ seatmap assets từ thiết kế (_layouts) → SVG + config pointer + manifest.
+ *
+ * Nguồn thiết kế duy nhất: public/seatmaps/configs/_layouts/{slug}.json
+ * Output:
+ *   - public/seatmaps/concerts/{slug}.svg
+ *   - public/seatmaps/configs/{slug}.json (tạo mới hoặc cập nhật seatMapUrl)
+ *   - public/seatmaps/manifest.json
+ */
+import { readFile, writeFile, mkdir, readdir, access } from 'fs/promises';
 import path from 'path';
 import { fileURLToPath } from 'url';
 
@@ -6,6 +15,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.join(__dirname, '..');
 const SEATMAPS_ROOT = path.join(ROOT, 'public', 'seatmaps');
 const LAYOUTS_DIR = path.join(SEATMAPS_ROOT, 'configs', '_layouts');
+const CONFIGS_DIR = path.join(SEATMAPS_ROOT, 'configs');
 const BACKGROUNDS_DIR = path.join(SEATMAPS_ROOT, 'backgrounds');
 const OUTPUT_DIR = path.join(SEATMAPS_ROOT, 'concerts');
 
@@ -25,6 +35,10 @@ function slugify(value) {
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/^-+|-+$/g, '');
+}
+
+function defaultSeatMapUrlForSlug(slug) {
+  return `/seatmaps/concerts/${slug}.svg`;
 }
 
 function parseViewBox(svgText) {
@@ -88,34 +102,102 @@ async function readJson(filePath) {
   return JSON.parse(raw);
 }
 
+async function fileExists(filePath) {
+  try {
+    await access(filePath);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+async function resolveBackground(layout, theaterBackground) {
+  if (layout?.background === 'summer-festival') {
+    return SUMMER_FESTIVAL_BACKGROUND;
+  }
+
+  const backgroundFile =
+    typeof layout?.background === 'string' && layout.background.endsWith('.svg')
+      ? layout.background
+      : 'theater-tiered.svg';
+
+  return readFile(path.join(BACKGROUNDS_DIR, backgroundFile), 'utf-8');
+}
+
+async function listLayoutSlugs() {
+  const files = await readdir(LAYOUTS_DIR);
+  return files
+    .filter((file) => file.endsWith('.json') && !file.startsWith('_'))
+    .map((file) => file.replace(/\.json$/, ''))
+    .sort();
+}
+
+async function syncConfigPointer(slug, layout) {
+  const configPath = path.join(CONFIGS_DIR, `${slug}.json`);
+  const seatMapUrl = defaultSeatMapUrlForSlug(slug);
+  const existing = (await fileExists(configPath)) ? await readJson(configPath) : null;
+
+  const next = {
+    slug,
+    title: existing?.title ?? layout.title ?? slug,
+    seatMapUrl,
+  };
+
+  await writeFile(configPath, `${JSON.stringify(next, null, 2)}\n`, 'utf-8');
+  return configPath;
+}
+
+async function syncManifest(slugs) {
+  const manifestPath = path.join(SEATMAPS_ROOT, 'manifest.json');
+  const manifest = {
+    version: 3,
+    description:
+      'Mỗi concert có layout thiết kế tại configs/_layouts/{slug}.json. Chạy npm run seatmap:sync để sinh SVG + config.',
+    configs: slugs,
+    layouts: '_layouts',
+    backgrounds: 'backgrounds',
+  };
+  await writeFile(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`, 'utf-8');
+}
+
 async function main() {
   await mkdir(OUTPUT_DIR, { recursive: true });
 
-  const manifest = await readJson(path.join(SEATMAPS_ROOT, 'manifest.json'));
+  const slugs = await listLayoutSlugs();
+  if (slugs.length === 0) {
+    console.warn('Không có layout nào trong configs/_layouts/');
+    return;
+  }
+
   const theaterBackground = await readFile(
     path.join(BACKGROUNDS_DIR, 'theater-tiered.svg'),
     'utf-8',
   );
 
-  for (const slug of manifest.configs) {
-    const layout = await readJson(path.join(LAYOUTS_DIR, `${slug}.json`));
+  for (const slug of slugs) {
+    const layoutPath = path.join(LAYOUTS_DIR, `${slug}.json`);
+    const layout = await readJson(layoutPath);
     const zones = layout?.zones ?? [];
 
     if (zones.length === 0) {
-      console.warn(`Skip ${slug}: no zones defined in _layouts`);
+      console.warn(`Skip ${slug}: không có zones trong layout`);
       continue;
     }
 
-    const background =
-      layout?.background === 'summer-festival'
-        ? SUMMER_FESTIVAL_BACKGROUND
-        : theaterBackground;
-
+    const background = await resolveBackground(layout, theaterBackground);
     const svg = buildSeatmapSvg(background, zones);
     const outputPath = path.join(OUTPUT_DIR, `${slug}.svg`);
     await writeFile(outputPath, svg, 'utf-8');
-    console.log(`Generated ${outputPath}`);
+
+    const configPath = await syncConfigPointer(slug, layout);
+    console.log(`✓ ${slug}`);
+    console.log(`  SVG:    ${path.relative(ROOT, outputPath)}`);
+    console.log(`  Config: ${path.relative(ROOT, configPath)}`);
   }
+
+  await syncManifest(slugs);
+  console.log(`\nĐã đồng bộ ${slugs.length} seatmap(s). Manifest cập nhật.`);
+  console.log('Khi tạo concert trên admin, đặt slug trùng layout hoặc seatMapUrl = /seatmaps/concerts/{slug}.svg');
 }
 
 main().catch((error) => {

@@ -24,17 +24,29 @@ export function useWaitingRoom({ concertId, onAdmitted }: UseWaitingRoomOptions)
   const [backendError, setBackendError] = useState<string | null>(null);
   const [messageTick, setMessageTick] = useState(0);
   const [startedAt, setStartedAt] = useState<number | null>(null);
+  const [position, setPosition] = useState<number | null>(null);
+  const [estimatedWaitSeconds, setEstimatedWaitSeconds] = useState<number | null>(null);
   const sessionIdRef = useRef<string | null>(null);
   const admittedRef = useRef(false);
-  const joinStartedRef = useRef(false);
+  const mountedRef = useRef(true);
   const onAdmittedRef = useRef(onAdmitted);
 
   onAdmittedRef.current = onAdmitted;
+
+  useEffect(() => {
+    mountedRef.current = true;
+    admittedRef.current = false;
+    sessionIdRef.current = null;
+    return () => {
+      mountedRef.current = false;
+    };
+  }, [concertId]);
 
   const handleAdmitted = useCallback((token: string, tokenExpiresAt?: number) => {
     if (admittedRef.current) return;
     admittedRef.current = true;
     storeAdmittedToken(concertId, token, tokenExpiresAt);
+    if (!mountedRef.current) return;
     setStatus('admitted');
     onAdmittedRef.current?.(token);
   }, [concertId]);
@@ -71,6 +83,8 @@ export function useWaitingRoom({ concertId, onAdmitted }: UseWaitingRoomOptions)
       cacheConcertName(concertId, data.concertName);
       setBackendError(data.backendError ?? null);
       setStartedAt(Date.now());
+      setPosition(data.position ?? null);
+      setEstimatedWaitSeconds(data.estimatedWaitSeconds ?? null);
 
       if (data.status === 'admitted' && data.token) {
         handleAdmitted(data.token, data.tokenExpiresAt);
@@ -79,7 +93,7 @@ export function useWaitingRoom({ concertId, onAdmitted }: UseWaitingRoomOptions)
 
       if (data.waitingRoomRequired === false) {
         setStatus('error');
-        setError('Trạng thái phòng chờ không hợp lệ');
+        setError('Không thể xác minh quyền truy cập. Vui lòng thử lại.');
         return;
       }
 
@@ -93,21 +107,10 @@ export function useWaitingRoom({ concertId, onAdmitted }: UseWaitingRoomOptions)
   }, [concertId, handleAdmitted]);
 
   useEffect(() => {
-    admittedRef.current = false;
-    joinStartedRef.current = false;
-    sessionIdRef.current = null;
-  }, [concertId]);
-
-  useEffect(() => {
-    if (joinStartedRef.current) return;
-    joinStartedRef.current = true;
-
     const signal = { cancelled: false };
     void joinQueue(signal);
-
     return () => {
       signal.cancelled = true;
-      joinStartedRef.current = false;
     };
   }, [concertId, joinQueue]);
 
@@ -129,7 +132,11 @@ export function useWaitingRoom({ concertId, onAdmitted }: UseWaitingRoomOptions)
 
         if (data.status === 'admitted' && data.token) {
           handleAdmitted(data.token, data.tokenExpiresAt);
+          return;
         }
+
+        setPosition(data.position ?? null);
+        setEstimatedWaitSeconds(data.estimatedWaitSeconds ?? null);
       } catch (e) {
         if (!cancelled) {
           setError(e instanceof Error ? e.message : 'Lỗi không xác định');
@@ -144,7 +151,7 @@ export function useWaitingRoom({ concertId, onAdmitted }: UseWaitingRoomOptions)
       cancelled = true;
       clearInterval(interval);
     };
-  }, [concertId, status]);
+  }, [concertId, status, handleAdmitted]);
 
   useEffect(() => {
     if (status !== 'waiting') return;
@@ -156,12 +163,12 @@ export function useWaitingRoom({ concertId, onAdmitted }: UseWaitingRoomOptions)
 
   const retry = useCallback(() => {
     admittedRef.current = false;
-    joinStartedRef.current = false;
     sessionIdRef.current = null;
     setMessageTick(0);
     setStartedAt(null);
+    setPosition(null);
+    setEstimatedWaitSeconds(null);
     setError(null);
-    joinStartedRef.current = true;
     void joinQueue({ cancelled: false });
   }, [joinQueue]);
 
@@ -172,6 +179,8 @@ export function useWaitingRoom({ concertId, onAdmitted }: UseWaitingRoomOptions)
     backendError,
     messageTick,
     startedAt,
+    position,
+    estimatedWaitSeconds,
     retry,
   };
 }
