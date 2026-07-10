@@ -270,24 +270,6 @@ export default function InteractiveSeatMap({
 
     host.innerHTML = svgMarkup;
 
-    const elementMap = new Map<string, SVGGraphicsElement>();
-    host.querySelectorAll<SVGGraphicsElement>('[data-zone]').forEach((element) => {
-      const zoneId = element.getAttribute('data-zone');
-      if (!zoneId) return;
-
-      const ticketTypeName = element.getAttribute('data-ticket-type')?.trim().toLowerCase();
-      const entry = Array.from(zoneByKeyRef.current.values()).find(
-        (item) =>
-          item.zone.zoneId === zoneId ||
-          item.ticketType.name.trim().toLowerCase() === ticketTypeName,
-      );
-      if (!entry) return;
-
-      elementMap.set(zoneKey(entry.ticketType.id, entry.zone.zoneId), element);
-    });
-    zoneElementsRef.current = elementMap;
-    syncAllZones();
-
     const probeHover = (clientX: number, clientY: number) => {
       const hit = document.elementFromPoint(clientX, clientY);
       const zoneElement = hit ? resolveZoneElement(hit, host) : null;
@@ -375,10 +357,36 @@ export default function InteractiveSeatMap({
     };
   }, [svgLoaded, svgMarkup, setHoveredZoneKey, syncAllZones]);
 
+  // Update SVG zone elements map when zones change or SVG finishes loading
+  useEffect(() => {
+    if (!svgLoaded) return;
+    const host = svgHostRef.current;
+    if (!host) return;
+
+    const elementMap = new Map<string, SVGGraphicsElement>();
+    host.querySelectorAll<SVGGraphicsElement>('[data-zone]').forEach((element) => {
+      const zoneId = element.getAttribute('data-zone');
+      if (!zoneId) return;
+
+      const ticketTypeName = element.getAttribute('data-ticket-type')?.trim().toLowerCase();
+      const entry = zones.find(
+        (item) =>
+          item.zone.zoneId === zoneId ||
+          item.ticketType.name.trim().toLowerCase() === ticketTypeName,
+      );
+      if (!entry) return;
+
+      elementMap.set(zoneKey(entry.ticketType.id, entry.zone.zoneId), element);
+    });
+    zoneElementsRef.current = elementMap;
+    syncAllZones();
+  }, [svgLoaded, zones, syncAllZones]);
+
+  // Sync styling when zone selections change
   useEffect(() => {
     if (!svgLoaded || zoneElementsRef.current.size === 0) return;
     syncAllZones();
-  }, [svgLoaded, zones, isZoneSelected, syncAllZones]);
+  }, [svgLoaded, isZoneSelected, syncAllZones]);
 
   useEffect(() => {
     const container = containerRef.current;

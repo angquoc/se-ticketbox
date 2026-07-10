@@ -238,6 +238,18 @@ export function useSeatMap({ concertId }: UseSeatMapOptions) {
     });
   }, [zones, ticketTypeFilter, zoneFilter, availabilityFilter]);
 
+  useEffect(() => {
+    if (selection) {
+      const isStillFiltered = filteredZones.some(
+        ({ ticketType, zone }) =>
+          ticketType.id === selection.ticketTypeId && zone.zoneId === selection.zoneId
+      );
+      if (!isStillFiltered) {
+        setSelection(null);
+      }
+    }
+  }, [filteredZones, selection]);
+
   const zoneOptions = useMemo(() => {
     const seen = new Map<string, string>();
     for (const { zone } of zones) {
@@ -355,7 +367,7 @@ export function useSeatMap({ concertId }: UseSeatMapOptions) {
         zoneId: zone.zoneId,
         ticketTypeName: ticketType.name,
         zoneName: zone.zoneName,
-        quantity: 1,
+        quantity: 0,
         unitPrice: ticketType.price,
       });
     },
@@ -372,7 +384,7 @@ export function useSeatMap({ concertId }: UseSeatMapOptions) {
       const { ticketType, zone } = entry;
       const allowance = getRemainingAllowance(ticketType.id, ticketType.maxPerUser);
       const cap = Math.min(zone.availableCount, ticketType.maxPerUser, allowance);
-      const nextQuantity = Math.max(1, Math.min(quantity, cap));
+      const nextQuantity = Math.max(0, Math.min(quantity, cap));
 
       if (allowance <= 0) {
         setLimitWarning(
