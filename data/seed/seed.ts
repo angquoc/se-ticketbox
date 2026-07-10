@@ -18,7 +18,11 @@ import * as dotenv from 'dotenv';
 import * as path from 'path';
 
 // Resolve .env from the backend directory (one level up from data/)
-dotenv.config({ path: path.resolve(__dirname, '../../backend/.env') });
+import * as fs from 'fs';
+const envPath = fs.existsSync(path.resolve(__dirname, '../../src/backend/.env'))
+  ? path.resolve(__dirname, '../../src/backend/.env')
+  : path.resolve(__dirname, '../../backend/.env');
+dotenv.config({ path: envPath });
 
 const connectionString = process.env.DATABASE_URL;
 if (!connectionString) {
