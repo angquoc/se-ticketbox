@@ -70,6 +70,7 @@ export default function SeatMapPage({ concertId }: SeatMapPageProps) {
   } = useSeatMap({ concertId });
 
   const [selectedSeats, setSelectedSeats] = useState<string[]>([]);
+  const [lastZoneKey, setLastZoneKey] = useState<string | null>(null);
 
   const saleInfo = data
     ? getSaleWindowInfo(
@@ -83,21 +84,29 @@ export default function SeatMapPage({ concertId }: SeatMapPageProps) {
     ? `${selectionState.selection.ticketTypeId}:${selectionState.selection.zoneId}`
     : null;
 
+  // Restore selected seats on mount / concertId change
   useEffect(() => {
-    if (selectedZoneKey) {
-      setSelectedSeats((prev) => {
-        if (prev.length === selectionState.selection?.quantity) {
-          return prev;
-        }
-        const initSeat = 'A-1';
-        saveSelectedSeats(concertId, [initSeat]);
-        return [initSeat];
-      });
+    const rawSeats = sessionStorage.getItem(`selected-seats:${concertId}`);
+    if (rawSeats) {
+      try {
+        setSelectedSeats(JSON.parse(rawSeats));
+      } catch {}
     } else {
       setSelectedSeats([]);
-      saveSelectedSeats(concertId, []);
     }
-  }, [selectedZoneKey, concertId, selectionState.selection?.quantity]);
+  }, [concertId]);
+
+  // Handle selected zone change: reset selected seats and quantity if zone changes
+  useEffect(() => {
+    if (selectedZoneKey !== lastZoneKey) {
+      setLastZoneKey(selectedZoneKey);
+      if (lastZoneKey !== null) {
+        setSelectedSeats([]);
+        saveSelectedSeats(concertId, []);
+        setQuantity(0);
+      }
+    }
+  }, [selectedZoneKey, lastZoneKey, concertId, setQuantity]);
 
   const handleSelectSeat = (seatName: string) => {
     setSelectedSeats((prev) => {
@@ -332,7 +341,7 @@ export default function SeatMapPage({ concertId }: SeatMapPageProps) {
 
       <SeatSummaryBar
         selectionState={selectionState}
-        maxQuantity={0}
+        maxQuantity={maxQuantityForSelection}
         disabled={!saleInfo.isOpen || !selectionState.selection || selectedSeats.length === 0}
         onQuantityChange={saleInfo.isOpen ? setQuantity : () => {}}
         onProceed={saleInfo.isOpen ? handleProceed : undefined}

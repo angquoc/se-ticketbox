@@ -94,9 +94,20 @@ export default function PaymentWaitingPage({ orderId }: PaymentWaitingPageProps)
     window.open(resolvedPaymentUrl, '_blank', 'noopener,noreferrer');
   }, [resolvedPaymentUrl, status?.status]);
 
+  const [driftMs, setDriftMs] = useState<number>(0);
+
+  useEffect(() => {
+    if (order?.serverTime) {
+      setDriftMs(Date.now() - new Date(order.serverTime).getTime());
+    }
+  }, [order?.serverTime]);
+
   useEffect(() => {
     const timer = setInterval(() => {
-      const serverTime = (order as any)?.serverTime ?? null;
+      let serverTime: string | null = null;
+      if (order?.serverTime) {
+        serverTime = new Date(Date.now() - driftMs).toISOString();
+      }
       const next = formatReservationCountdown(order?.expiresAt ?? null, serverTime);
       setCountdown(next);
 
@@ -105,7 +116,7 @@ export default function PaymentWaitingPage({ orderId }: PaymentWaitingPageProps)
       }
     }, 1000);
     return () => clearInterval(timer);
-  }, [order?.expiresAt, (order as any)?.serverTime, refresh]);
+  }, [order?.expiresAt, order?.serverTime, driftMs, refresh]);
 
   async function handleCreatePaymentUrl(button?: HTMLButtonElement) {
     if (createPaymentLockRef.current) return;
