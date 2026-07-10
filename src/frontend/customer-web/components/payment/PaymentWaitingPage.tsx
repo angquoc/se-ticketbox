@@ -96,15 +96,16 @@ export default function PaymentWaitingPage({ orderId }: PaymentWaitingPageProps)
 
   useEffect(() => {
     const timer = setInterval(() => {
-      const next = formatReservationCountdown(order?.expiresAt ?? null);
+      const serverTime = (order as any)?.serverTime ?? null;
+      const next = formatReservationCountdown(order?.expiresAt ?? null, serverTime);
       setCountdown(next);
 
-      if (order?.expiresAt && isReservationExpired(order.expiresAt)) {
+      if (order?.expiresAt && isReservationExpired(order.expiresAt, serverTime)) {
         void refresh();
       }
     }, 1000);
     return () => clearInterval(timer);
-  }, [order?.expiresAt, refresh]);
+  }, [order?.expiresAt, (order as any)?.serverTime, refresh]);
 
   async function handleCreatePaymentUrl(button?: HTMLButtonElement) {
     if (createPaymentLockRef.current) return;
