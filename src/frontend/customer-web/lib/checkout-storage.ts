@@ -37,3 +37,21 @@ export function readPendingOrder(concertId: string): string | null {
 export function clearPendingOrder(concertId: string): void {
   getSessionStorage()?.removeItem(`${PENDING_ORDER_PREFIX}${concertId}`);
 }
+
+export function saveSelectedSeats(concertId: string, seats: string[]): void {
+  getSessionStorage()?.setItem(`selected-seats:${concertId}`, JSON.stringify(seats));
+}
+
+export function readSelectedSeats(concertId: string): string[] {
+  const raw = getSessionStorage()?.getItem(`selected-seats:${concertId}`);
+  if (!raw) return [];
+  try {
+    return JSON.parse(raw) as string[];
+  } catch {
+    return [];
+  }
+}
+
+export function clearSelectedSeats(concertId: string): void {
+  getSessionStorage()?.removeItem(`selected-seats:${concertId}`);
+}

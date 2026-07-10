@@ -10,6 +10,9 @@ interface ZoneDetailPanelProps {
   quantity: number;
   maxQuantity: number;
   remainingAllowance?: number;
+  selectedSeats?: string[];
+  onSelectSeat?: (seatName: string) => void;
+  disabled?: boolean;
 }
 
 export default function ZoneDetailPanel({
@@ -18,8 +21,23 @@ export default function ZoneDetailPanel({
   quantity,
   maxQuantity,
   remainingAllowance,
+  selectedSeats = [],
+  onSelectSeat,
+  disabled = false,
 }: ZoneDetailPanelProps) {
   const label = zoneAvailabilityLabel(zone);
+
+  const totalSeats = zone.availableCount + zone.reservedCount + zone.soldCount;
+  const seatsPerRow = 10;
+  const numRows = Math.ceil(totalSeats / seatsPerRow);
+  const rows = Array.from({ length: numRows }, (_, i) => String.fromCharCode(65 + i));
+
+  const getSeatStatus = (rowIndex: number, seatNum: number) => {
+    const flatIndex = rowIndex * seatsPerRow + (seatNum - 1);
+    if (flatIndex >= totalSeats) return 'empty_slot';
+    const isOccupied = flatIndex < (zone.soldCount + zone.reservedCount);
+    return isOccupied ? 'occupied' : 'available';
+  };
 
   return (
     <div className="mb-4 rounded-xl border border-indigo-200 bg-indigo-50/60 p-4">
@@ -66,6 +84,80 @@ export default function ZoneDetailPanel({
           Bạn còn được mua tối đa {remainingAllowance} vé {ticketType.name} cho sự kiện này.
         </p>
       )}
+
+      <div className="mt-6 border-t border-indigo-100 pt-4">
+        <h3 className="text-sm font-semibold text-slate-900 mb-3 flex items-center justify-between">
+          <span>Sơ đồ vị trí ghế khu vực {zone.zoneName}</span>
+          <span className="text-xs font-normal text-slate-500">Hành lang / Lối đi ở giữa</span>
+        </h3>
+        
+        <div className="mb-4 flex flex-wrap gap-x-4 gap-y-2 text-xs">
+          <div className="flex items-center gap-1.5">
+            <div className="h-4 w-4 rounded border border-slate-300 bg-white" />
+            <span className="text-slate-600">Còn trống</span>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <div className="h-4 w-4 rounded border border-indigo-600 bg-indigo-600" />
+            <span className="text-slate-600">Đang chọn</span>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <div className="h-4 w-4 rounded border border-slate-200 bg-slate-200 flex items-center justify-center text-[10px] text-slate-400 font-bold">X</div>
+            <span className="text-slate-600">Đã bán / Giữ chỗ</span>
+          </div>
+        </div>
+
+        {totalSeats === 0 ? (
+          <p className="text-sm text-slate-500 italic">Khu vực này hiện không có ghế.</p>
+        ) : (
+          <div className="overflow-x-auto rounded-lg border border-slate-200 bg-white p-4">
+            <div className="min-w-[480px] flex flex-col gap-2">
+              {rows.map((rowLetter, rowIndex) => (
+                <div key={rowLetter} className="flex items-center gap-3">
+                  <span className="w-6 text-center text-sm font-bold text-slate-400">{rowLetter}</span>
+                  
+                  <div className="flex flex-1 items-center justify-between gap-1">
+                    {Array.from({ length: seatsPerRow }).map((_, seatIdx) => {
+                      const seatNum = seatIdx + 1;
+                      const seatName = `${rowLetter}-${seatNum}`;
+                      const status = getSeatStatus(rowIndex, seatNum);
+
+                      if (status === 'empty_slot') {
+                        return <div key={seatIdx} className="h-8 w-8 flex-1" />;
+                      }
+
+                      const isOccupied = status === 'occupied';
+                      const isSelected = selectedSeats?.includes(seatName) || false;
+
+                      let btnClass = "h-8 w-8 rounded text-xs font-semibold flex items-center justify-center transition-colors border ";
+                      if (isOccupied) {
+                        btnClass += "bg-slate-200 text-slate-400 border-slate-200 cursor-not-allowed";
+                      } else if (isSelected) {
+                        btnClass += "bg-indigo-600 text-white border-indigo-600 shadow-sm";
+                      } else {
+                        btnClass += "bg-white hover:bg-indigo-50 border-slate-300 text-slate-700 cursor-pointer";
+                      }
+
+                      return (
+                        <button
+                          key={seatName}
+                          type="button"
+                          disabled={isOccupied || disabled}
+                          onClick={() => onSelectSeat?.(seatName)}
+                          className={btnClass}
+                          title={isOccupied ? `Ghế ${seatName} đã được bán/giữ` : `Ghế ${seatName}`}
+                          aria-label={`Ghế ${seatName}`}
+                        >
+                          {isOccupied ? 'X' : seatNum}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   );
 }
