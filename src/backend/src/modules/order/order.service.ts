@@ -35,6 +35,7 @@ import {
   NOTIFICATION_QUEUE,
 } from '../queue/queue.constants';
 import { PaymentService } from '../payment/payment.service';
+import { SeatmapBroadcastService } from '../seatmap/seatmap-broadcast.service';
 
 const DEFAULT_RESERVATION_TTL_SECONDS = 15 * 60; // 15 minutes
 
@@ -81,6 +82,7 @@ export class OrderService {
     private redis: RedisService,
     private configService: ConfigService,
     private paymentService: PaymentService,
+    private readonly seatmapBroadcastService: SeatmapBroadcastService,
     @InjectQueue(ORDER_EXPIRE_QUEUE) private readonly expireQueue: Queue,
     @InjectQueue(NOTIFICATION_QUEUE) private readonly notificationQueue: Queue,
   ) {}
@@ -536,6 +538,14 @@ export class OrderService {
     );
     this.logger.debug(`Expire job scheduled for order ${orderId} in ${ttl}s`);
 
+    // Broadcast seatmap updates
+    for (const m of ticketMeta) {
+      void this.seatmapBroadcastService.refreshAndBroadcast(
+        dto.concertId,
+        m.ticketTypeId,
+      );
+    }
+
     return {
       // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
       order: this.toOrderResponseMinimal(created, paymentUrl),
@@ -717,6 +727,15 @@ export class OrderService {
     });
 
     this.logger.log(`Order ${orderId} cancelled by user ${userId}`);
+
+    // Broadcast seatmap updates
+    for (const item of updated.items) {
+      void this.seatmapBroadcastService.refreshAndBroadcast(
+        updated.concertId,
+        item.ticketTypeId,
+      );
+    }
+
     return this.toOrderResponseMinimal(updated, null);
   }
 
@@ -869,6 +888,14 @@ export class OrderService {
       },
     });
 
-    this.logger.log(`Order ${orderId} expired — inventory released`);
+    this.logger.log(`Order ${orderId} expired and inventory released`);
+
+    // Broadcast seatmap updates
+    for (const item of order.items) {
+      void this.seatmapBroadcastService.refreshAndBroadcast(
+        order.concertId,
+        item.ticketTypeId,
+      );
+    }
   }
 }

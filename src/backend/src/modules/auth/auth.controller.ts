@@ -1,4 +1,4 @@
-import {  Controller, Post, Body, Get, Patch, UseGuards, } from '@nestjs/common';
+import { Controller, Post, Body, Get, Patch, UseGuards } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
@@ -23,9 +23,7 @@ export class AuthController {
 
   @Get('me')
   @UseGuards(AuthGuard)
-  getMe(
-    @CurrentUser('sub') userId: string,
-  ) {
+  getMe(@CurrentUser('sub') userId: string) {
     return this.authService.getMe(userId);
   }
 
@@ -35,10 +33,7 @@ export class AuthController {
     @CurrentUser('sub') userId: string,
     @Body() body: UpdateProfileDto,
   ) {
-    return this.authService.updateProfile(
-      userId,
-      body,
-    );
+    return this.authService.updateProfile(userId, body);
   }
 
   @Post('change-password')
@@ -47,9 +42,6 @@ export class AuthController {
     @CurrentUser('sub') userId: string,
     @Body() body: ChangePasswordDto,
   ) {
-    return this.authService.changePassword(
-      userId,
-      body,
-    );
+    return this.authService.changePassword(userId, body);
   }
 }

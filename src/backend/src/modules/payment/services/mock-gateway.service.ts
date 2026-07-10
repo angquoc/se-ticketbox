@@ -6,7 +6,7 @@ export type MockVerifyResult = 'SUCCESS' | 'FAILED' | 'PENDING';
 
 @Injectable()
 export class MockGatewayService {
-  constructor(private readonly config: ConfigService) { }
+  constructor(private readonly config: ConfigService) {}
 
   createPaymentUrl(orderId: string, amount: number): Promise<string> {
     const baseUrl = this.config.get<string>(

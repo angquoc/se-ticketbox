@@ -8,9 +8,16 @@ import { IdempotencyModule } from '../idempotency/idempotency.module';
 import { PaymentCircuitBreakerService } from './services/payment-circuit-breaker.service';
 import { MockGatewayService } from './services/mock-gateway.service';
 import { PaymentCronService } from './services/payment-cron.service';
+import { SeatmapModule } from '../seatmap/seatmap.module';
 
 @Module({
-  imports: [ConfigModule, PrismaModule, QueueModule, IdempotencyModule],
+  imports: [
+    ConfigModule,
+    PrismaModule,
+    QueueModule,
+    IdempotencyModule,
+    SeatmapModule,
+  ],
   controllers: [PaymentController],
   providers: [
     PaymentService,

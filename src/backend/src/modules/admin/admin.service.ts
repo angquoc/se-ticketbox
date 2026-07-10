@@ -209,4 +209,84 @@ export class AdminService {
       };
     }
   }
+
+  /**
+   * Aggregates total revenue, tickets sold, active concerts, and per-concert revenue.
+   * Restricts data to the requesting organizer's concerts if the role is ORGANIZER.
+   */
+  async getDashboardStats(userId: string, role: Role) {
+    const isOrganizer = role === Role.ORGANIZER;
+
+    const concertFilter: Prisma.ConcertWhereInput = isOrganizer
+      ? { organizerId: userId }
+      : {};
+
+    const orderFilter: Prisma.OrderWhereInput = {
+      status: 'PAID',
+      ...(isOrganizer ? { concert: { organizerId: userId } } : {}),
+    };
+
+    const [
+      totalRevenueResult,
+      ticketsSold,
+      activeConcerts,
+      revenueByConcertRaw,
+    ] = await Promise.all([
+      // 1. Total revenue
+      this.prisma.order.aggregate({
+        where: orderFilter,
+        _sum: {
+          totalAmountInVnd: true,
+        },
+      }),
+      // 2. Total tickets sold (ISSUED or CHECKED_IN)
+      this.prisma.ticket.count({
+        where: {
+          status: { in: ['ISSUED', 'CHECKED_IN'] },
+          ...(isOrganizer ? { concert: { organizerId: userId } } : {}),
+        },
+      }),
+      // 3. Total active concerts
+      this.prisma.concert.count({
+        where: {
+          status: { in: ['PUBLISHED', 'SALE_OPEN'] },
+          ...concertFilter,
+        },
+      }),
+      // 4. Grouped revenue by concert
+      this.prisma.order.groupBy({
+        by: ['concertId'],
+        where: orderFilter,
+        _sum: {
+          totalAmountInVnd: true,
+        },
+      }),
+    ]);
+
+    const concertIds = revenueByConcertRaw.map((r) => r.concertId);
+    const concerts = await this.prisma.concert.findMany({
+      where: {
+        id: { in: concertIds },
+      },
+      select: {
+        id: true,
+        title: true,
+      },
+    });
+
+    const concertMap = new Map(concerts.map((c) => [c.id, c.title]));
+
+    const revenueByConcert = revenueByConcertRaw.map((r) => ({
+      concertId: r.concertId,
+      title: concertMap.get(r.concertId) ?? 'Unknown Concert',
+      revenue: r._sum.totalAmountInVnd ?? 0,
+    }));
+
+    return {
+      totalRevenue: totalRevenueResult._sum.totalAmountInVnd ?? 0,
+      ticketsSold,
+      activeConcerts,
+      revenueByConcert,
+    };
+  }
 }

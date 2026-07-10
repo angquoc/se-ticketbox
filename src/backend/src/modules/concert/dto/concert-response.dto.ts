@@ -60,4 +60,3 @@ export class ConcertListResponseDto {
   limit!: number;
   totalPages!: number;
 }
-

@@ -106,10 +106,7 @@ export class AuthService {
     };
   }
 
-  async updateProfile(
-    userId: string,
-    data: UpdateProfileDto,
-  ) {
+  async updateProfile(userId: string, data: UpdateProfileDto) {
     const user = await this.prisma.user.update({
       where: {
         id: userId,
@@ -133,10 +130,7 @@ export class AuthService {
     };
   }
 
-  async changePassword(
-    userId: string,
-    data: ChangePasswordDto,
-  ) {
+  async changePassword(userId: string, data: ChangePasswordDto) {
     const user = await this.prisma.user.findUnique({
       where: {
         id: userId,
@@ -144,9 +138,7 @@ export class AuthService {
     });
 
     if (!user) {
-      throw new UnauthorizedException(
-        'Người dùng không tồn tại',
-      );
+      throw new UnauthorizedException('Người dùng không tồn tại');
     }
 
     const isMatch = await bcrypt.compare(
@@ -155,26 +147,16 @@ export class AuthService {
     );
 
     if (!isMatch) {
-      throw new UnauthorizedException(
-        'Mật khẩu hiện tại không đúng',
-      );
+      throw new UnauthorizedException('Mật khẩu hiện tại không đúng');
     }
 
-    if (
-      data.currentPassword ===
-      data.newPassword
-    ) {
-      throw new ConflictException(
-        'Mật khẩu mới phải khác mật khẩu hiện tại',
-      );
+    if (data.currentPassword === data.newPassword) {
+      throw new ConflictException('Mật khẩu mới phải khác mật khẩu hiện tại');
     }
 
     const salt = await bcrypt.genSalt(10);
 
-    const passwordHash = await bcrypt.hash(
-      data.newPassword,
-      salt,
-    );
+    const passwordHash = await bcrypt.hash(data.newPassword, salt);
 
     await this.prisma.user.update({
       where: {

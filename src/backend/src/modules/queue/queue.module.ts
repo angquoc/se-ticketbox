@@ -15,7 +15,10 @@ import {
       imports: [ConfigModule],
       inject: [ConfigService],
       useFactory: (config: ConfigService) => {
-        const url = config.get<string>('REDIS_URL') || config.get<string>('redis.url') || 'redis://localhost:6379';
+        const url =
+          config.get<string>('REDIS_URL') ||
+          config.get<string>('redis.url') ||
+          'redis://localhost:6379';
         const isTls = url.startsWith('rediss://') || url.includes('upstash');
         const isUpstash = url.includes('upstash');
         return {

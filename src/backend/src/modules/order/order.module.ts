@@ -6,9 +6,10 @@ import { RedisModule } from '../redis/redis.module';
 import { PaymentModule } from '../payment/payment.module';
 import { QueueModule } from '../queue/queue.module';
 import { IdempotencyInterceptor } from '../../common/interceptors/idempotency.interceptor';
+import { SeatmapModule } from '../seatmap/seatmap.module';
 
 @Module({
-  imports: [RedisModule, PaymentModule, QueueModule],
+  imports: [RedisModule, PaymentModule, QueueModule, SeatmapModule],
   controllers: [OrderController],
   providers: [OrderService, OrderExpireProcessor, IdempotencyInterceptor],
   exports: [OrderService],

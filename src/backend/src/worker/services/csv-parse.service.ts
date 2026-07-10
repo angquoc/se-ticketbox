@@ -18,7 +18,6 @@ export class CsvParseService {
   parseBuffer(buffer: Buffer) {
     this.logger.log('Bắt đầu parse nội dung CSV...');
 
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-assignment
     const parsedData = parse(buffer, {
       columns: true,
       skip_empty_lines: true,

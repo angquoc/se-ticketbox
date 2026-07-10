@@ -35,7 +35,7 @@ export class RateLimitService implements OnModuleInit {
 
   private readonly scriptCache = new Map<string, string>();
 
-  constructor(private readonly redisService: RedisService) { }
+  constructor(private readonly redisService: RedisService) {}
 
   async onModuleInit(): Promise<void> {
     await this.loadScript();
