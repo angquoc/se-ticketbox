@@ -1,8 +1,18 @@
-import { Controller, Get, Post, ServiceUnavailableException, ForbiddenException, HttpCode, HttpStatus } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  ServiceUnavailableException,
+  ForbiddenException,
+  HttpCode,
+  HttpStatus,
+} from '@nestjs/common';
 import { PrismaService } from '../../database/prisma.service';
 import { RedisService } from '../redis';
 import * as path from 'path';
 import * as fs from 'fs';
+import { exec } from 'child_process';
+import { promisify } from 'util';
 
 function findBackendDir(): string {
   let currentDir = __dirname;
@@ -71,15 +81,15 @@ export class HealthController {
   @HttpCode(HttpStatus.OK)
   async resetDatabase() {
     if (process.env.NODE_ENV === 'production') {
-      throw new ForbiddenException('Không được phép reset DB ở môi trường production');
+      throw new ForbiddenException(
+        'Không được phép reset DB ở môi trường production',
+      );
     }
     try {
       // Clear Redis cache
       await this.redisService.flushall();
 
       // Run seed script via child_process
-      const { exec } = require('child_process');
-      const { promisify } = require('util');
       const execAsync = promisify(exec);
 
       const backendDir = findBackendDir();
@@ -87,13 +97,16 @@ export class HealthController {
 
       return {
         status: 'success',
-        message: 'Database and Redis cache reset successfully with test seed data.',
+        message:
+          'Database and Redis cache reset successfully with test seed data.',
       };
-    } catch (error) {
+    } catch (error: unknown) {
+      const errorMessage =
+        error instanceof Error ? error.message : String(error);
       throw new ServiceUnavailableException({
         status: 'error',
         message: 'Reset database failed',
-        error: error.message || error,
+        error: errorMessage,
       });
     }
   }
