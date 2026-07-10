@@ -156,11 +156,8 @@ export class ConcertService {
       throw new NotFoundException(`Concert with ID "${id}" not found`);
     }
 
-    // Only allow viewing published concerts publicly
-    if (
-      concert.status !== ConcertStatus.PUBLISHED &&
-      concert.status !== ConcertStatus.SALE_OPEN
-    ) {
+    // Hide drafts from the public
+    if (concert.status === ConcertStatus.DRAFT) {
       throw new NotFoundException(`Concert with ID "${id}" not found`);
     }
 
@@ -188,11 +185,8 @@ export class ConcertService {
       throw new NotFoundException(`Concert with slug "${slug}" not found`);
     }
 
-    // Only allow viewing published concerts publicly
-    if (
-      concert.status !== ConcertStatus.PUBLISHED &&
-      concert.status !== ConcertStatus.SALE_OPEN
-    ) {
+    // Hide drafts from the public
+    if (concert.status === ConcertStatus.DRAFT) {
       throw new NotFoundException(`Concert with slug "${slug}" not found`);
     }
 

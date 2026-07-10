@@ -55,6 +55,7 @@ export class OrderResponseDto {
   ticketCount!: number;
   /** Full ticket records with QR payloads (only available when status = PAID) */
   tickets?: OrderTicketResponseDto[];
+  serverTime?: Date;
 }
 
 export class OrderListResponseDto {

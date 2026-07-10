@@ -166,6 +166,7 @@ export class OrderService {
       paymentUrl,
       ticketCount: tickets.length,
       tickets: order.status === OrderStatus.PAID ? tickets : undefined,
+      serverTime: new Date(),
     };
   }
 
@@ -195,6 +196,7 @@ export class OrderService {
         (sum, item) => sum + (item.tickets?.length ?? 0),
         0,
       ),
+      serverTime: new Date(),
     };
   }
 
