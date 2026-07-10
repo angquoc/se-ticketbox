@@ -121,7 +121,7 @@ export async function runSeeding() {
   });
 
   // Create Tester 1 Customers
-  const customerT1List = [];
+  const customerT1List: any[] = [];
   for (let i = 1; i <= 5; i++) {
     const cust = await prisma.user.create({
       data: {
@@ -135,7 +135,7 @@ export async function runSeeding() {
   }
 
   // Create Tester 2 Customers
-  const customerT2List = [];
+  const customerT2List: any[] = [];
   for (let i = 1; i <= 5; i++) {
     const cust = await prisma.user.create({
       data: {
@@ -159,7 +159,7 @@ export async function runSeeding() {
   });
 
   // Create Tester 4 Customers (for concurrent & load testing)
-  const customerT4List = [];
+  const customerT4List: any[] = [];
   for (let i = 1; i <= 20; i++) {
     const indexStr = i < 10 ? `0${i}` : `${i}`;
     const cust = await prisma.user.create({
