@@ -49,6 +49,7 @@ export interface RedisClient {
   del(key: string): Promise<number>;
   exists(key: string): Promise<number>;
   ping(): Promise<string>;
+  flushall(): Promise<string>;
   quit(): Promise<string>;
   on(event: 'connect' | 'error', cb: (arg?: unknown) => void): void;
 }
@@ -214,6 +215,10 @@ export class RedisService implements OnModuleDestroy, OnModuleInit {
 
   async exists(key: string): Promise<boolean> {
     return (await this.client.exists(key)) === 1;
+  }
+
+  async flushall(): Promise<string> {
+    return this.client.flushall();
   }
 
   // ─────────────────────────────────────────────────────────────────────────

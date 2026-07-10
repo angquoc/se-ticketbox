@@ -23,6 +23,7 @@
     "worker:prod": "node dist/src/worker/main",
     "db:migrate": "prisma migrate deploy",
     "db:seed": "ts-node -T --project tsconfig.json -r tsconfig-paths/register ../data/seed/seed.ts",
+    "db:seed-test": "ts-node -T --project tsconfig.json -r tsconfig-paths/register ../data/seed/seed-test.ts",
     "db:reset": "prisma migrate reset --force",
     "db:init": "prisma migrate deploy && ts-node -T --project tsconfig.json -r tsconfig-paths/register ../data/seed/seed.ts"
   },
