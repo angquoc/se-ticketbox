@@ -144,7 +144,7 @@ export class NotificationProcessor extends WorkerHost {
           },
         },
         take: BATCH_SIZE,
-        skip: 0,
+        skip: cursor ? 1 : 0,
         cursor: cursor ? { id: cursor } : undefined,
         distinct: ['id'],
         orderBy: { createdAt: 'asc' },

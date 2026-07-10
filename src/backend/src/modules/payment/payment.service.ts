@@ -22,6 +22,7 @@ import { NOTIFICATION_QUEUE } from '../queue/queue.constants';
 import { PaymentCircuitBreakerService } from './services/payment-circuit-breaker.service';
 import { MockGatewayService } from './services/mock-gateway.service';
 import { MockPaymentResult, MockWebhookDto } from './dto/mock-webhook.dto';
+import { SeatmapBroadcastService } from '../seatmap/seatmap-broadcast.service';
 
 /**
  * Generates a cryptographically secure QR token for a ticket.
@@ -67,6 +68,7 @@ export class PaymentService {
     private readonly mockGateway: MockGatewayService,
     private readonly redisService: RedisService,
     private readonly configService: ConfigService,
+    private readonly seatmapBroadcastService: SeatmapBroadcastService,
     @InjectQueue(NOTIFICATION_QUEUE)
     private readonly notificationQueue: Queue,
   ) {}
@@ -308,6 +310,7 @@ export class PaymentService {
     order: {
       id: string;
       userId: string;
+      concertId: string;
       items: { ticketTypeId: string; quantity: number }[];
     },
   ) {
@@ -364,6 +367,11 @@ export class PaymentService {
         }),
       ),
     );
+
+    // Broadcast seatmap updates
+    for (const item of order.items) {
+      void this.seatmapBroadcastService.refreshAndBroadcast(order.concertId, item.ticketTypeId);
+    }
   }
 
   /**
@@ -564,6 +572,11 @@ export class PaymentService {
         removeOnFail: false,
       },
     );
+
+    // Broadcast seatmap updates
+    for (const item of order.items) {
+      void this.seatmapBroadcastService.refreshAndBroadcast(order.concertId, item.ticketTypeId);
+    }
   }
 
   async getPaymentStatus(orderId: string, userId: string) {

@@ -3,6 +3,7 @@ import {
   NotFoundException,
   ConflictException,
   BadRequestException,
+  ForbiddenException,
   Inject,
 } from '@nestjs/common';
 import { PrismaService } from '../../database/prisma.service';
@@ -12,6 +13,7 @@ import {
   TicketType,
   Prisma,
   UploadedFile,
+  Role,
 } from '@prisma/client';
 import { CreateConcertDto, UpdateConcertDto, ConcertQueryDto } from './dto';
 import {
@@ -248,9 +250,9 @@ export class ConcertService {
   }
 
   /**
-   * Update an existing concert. Admin only.
+   * Update an existing concert. Admin or authorized organizer.
    */
-  async update(id: string, dto: UpdateConcertDto): Promise<ConcertResponseDto> {
+  async update(id: string, dto: UpdateConcertDto, userId?: string, userRole?: Role): Promise<ConcertResponseDto> {
     // Check if concert exists
     const existing = await this.prisma.concert.findUnique({
       where: { id },
@@ -258,6 +260,10 @@ export class ConcertService {
 
     if (!existing) {
       throw new NotFoundException(`Concert with ID "${id}" not found`);
+    }
+
+    if (userRole === Role.ORGANIZER && existing.organizerId !== userId) {
+      throw new ForbiddenException('Bạn không có quyền cập nhật concert này');
     }
 
     // If slug is being updated, check for conflicts
@@ -422,7 +428,7 @@ export class ConcertService {
   /**
    * Get a single concert details by ID for admin (including drafts, files, ticket types, and organizer).
    */
-  async findAdminOne(id: string): Promise<ConcertResponseDto> {
+  async findAdminOne(id: string, userId?: string, userRole?: Role): Promise<ConcertResponseDto> {
     const concert = await this.prisma.concert.findUnique({
       where: { id },
       include: {
@@ -440,18 +446,28 @@ export class ConcertService {
       throw new NotFoundException(`Concert with ID "${id}" not found`);
     }
 
+    if (userRole === Role.ORGANIZER && concert.organizerId !== userId) {
+      throw new ForbiddenException('Bạn không có quyền xem concert này');
+    }
+
     return this.toResponse(concert);
   }
 
   /**
    * Get all guest list entries for a single concert.
    */
-  async findAdminGuests(id: string) {
+  async findAdminGuests(id: string, userId?: string, userRole?: Role) {
     const concert = await this.prisma.concert.findUnique({
       where: { id },
     });
     if (!concert) {
       throw new NotFoundException(`Concert with ID "${id}" not found`);
+    }
+
+    if (userRole === Role.ORGANIZER && concert.organizerId !== userId) {
+      throw new ForbiddenException(
+        'Bạn không có quyền xem danh sách khách mời của concert này',
+      );
     }
 
     return this.prisma.guestListEntry.findMany({

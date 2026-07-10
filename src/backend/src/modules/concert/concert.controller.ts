@@ -73,8 +73,8 @@ export class ConcertController {
   @Get('admin/concerts/:id')
   @UseGuards(AuthGuard, RolesGuard)
   @Roles(Role.ADMIN, Role.ORGANIZER)
-  async findAdminOne(@Param('id') id: string) {
-    return this.concertService.findAdminOne(id);
+  async findAdminOne(@Param('id') id: string, @CurrentUser() user: AuthUser) {
+    return this.concertService.findAdminOne(id, user.sub, user.role);
   }
 
   /**
@@ -84,8 +84,8 @@ export class ConcertController {
   @Get('admin/concerts/:id/guests')
   @UseGuards(AuthGuard, RolesGuard)
   @Roles(Role.ADMIN, Role.ORGANIZER)
-  async findAdminGuests(@Param('id') id: string) {
-    return this.concertService.findAdminGuests(id);
+  async findAdminGuests(@Param('id') id: string, @CurrentUser() user: AuthUser) {
+    return this.concertService.findAdminGuests(id, user.sub, user.role);
   }
 
   /**
@@ -110,8 +110,12 @@ export class ConcertController {
   @Patch('admin/concerts/:id')
   @UseGuards(AuthGuard, RolesGuard)
   @Roles(Role.ADMIN, Role.ORGANIZER)
-  async update(@Param('id') id: string, @Body() dto: UpdateConcertDto) {
-    return this.concertService.update(id, dto);
+  async update(
+    @Param('id') id: string,
+    @Body() dto: UpdateConcertDto,
+    @CurrentUser() user: AuthUser,
+  ) {
+    return this.concertService.update(id, dto, user.sub, user.role);
   }
 
   /**

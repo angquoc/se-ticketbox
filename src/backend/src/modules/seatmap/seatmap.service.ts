@@ -2,7 +2,7 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../database/prisma.service';
 import { RedisService } from '../redis/redis.service';
 
-const AVAILABILITY_TTL_SEC = 30; // 30 seconds
+const AVAILABILITY_TTL_SEC = 3; // 3 seconds
 
 export interface ZoneAvailability {
   zoneId: string;

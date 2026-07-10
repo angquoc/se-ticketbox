@@ -6,6 +6,8 @@ import { MockGatewayService } from './mock-gateway.service';
 import { InjectQueue } from '@nestjs/bullmq';
 import { Queue } from 'bullmq';
 import { TICKET_ISSUE_QUEUE } from '../../queue/queue.constants';
+import { RedisService } from '../../redis/redis.service';
+import { SeatmapBroadcastService } from '../../seatmap/seatmap-broadcast.service';
 
 @Injectable()
 export class PaymentCronService {
@@ -14,6 +16,8 @@ export class PaymentCronService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly mockGateway: MockGatewayService,
+    private readonly redisService: RedisService,
+    private readonly seatmapBroadcastService: SeatmapBroadcastService,
 
     @InjectQueue(TICKET_ISSUE_QUEUE)
     private readonly ticketIssueQueue: Queue,
@@ -102,6 +106,7 @@ export class PaymentCronService {
     order: {
       id: string;
       userId: string;
+      concertId: string;
       totalAmountInVnd: number;
       items: Array<{
         ticketTypeId: string;
@@ -181,6 +186,29 @@ export class PaymentCronService {
           },
         });
       }
+    });
+
+    // Release Redis reservations after transaction completes successfully
+    await Promise.all(
+      order.items.map((item) =>
+        this.redisService.releaseReservation({
+          ticketTypeId: item.ticketTypeId,
+          userId: order.userId,
+          orderId: order.id,
+          quantity: item.quantity,
+        }),
+      ),
+    ).catch((err) => {
+      this.logger.error(`Cron release reservation failed for order ${order.id}: ${err}`);
+    });
+
+    // Broadcast seatmap updates
+    await Promise.all(
+      order.items.map((item) =>
+        this.seatmapBroadcastService.refreshAndBroadcast(order.concertId, item.ticketTypeId),
+      ),
+    ).catch((err) => {
+      this.logger.error(`Cron seatmap broadcast failed for order ${order.id}: ${err}`);
     });
   }
 }
