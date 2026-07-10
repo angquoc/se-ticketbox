@@ -23,6 +23,7 @@ import { PaymentCircuitBreakerService } from './services/payment-circuit-breaker
 import { MockGatewayService } from './services/mock-gateway.service';
 import { MockPaymentResult, MockWebhookDto } from './dto/mock-webhook.dto';
 import { SeatmapBroadcastService } from '../seatmap/seatmap-broadcast.service';
+import { ConcertService } from '../concert/concert.service';
 
 /**
  * Generates a cryptographically secure QR token for a ticket.
@@ -69,6 +70,7 @@ export class PaymentService {
     private readonly redisService: RedisService,
     private readonly configService: ConfigService,
     private readonly seatmapBroadcastService: SeatmapBroadcastService,
+    private readonly concertService: ConcertService,
     @InjectQueue(NOTIFICATION_QUEUE)
     private readonly notificationQueue: Queue,
   ) {}
@@ -563,6 +565,9 @@ export class PaymentService {
         }),
       ),
     );
+
+    // Invalidate concert cache so soldQty / availability reflect the purchase
+    void this.concertService.invalidateCache(order.concertId);
 
     // Queue notification email — processor fetches ticket data directly from DB
     await this.notificationQueue.add(

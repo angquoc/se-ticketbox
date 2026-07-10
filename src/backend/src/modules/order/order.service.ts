@@ -36,6 +36,7 @@ import {
 } from '../queue/queue.constants';
 import { PaymentService } from '../payment/payment.service';
 import { SeatmapBroadcastService } from '../seatmap/seatmap-broadcast.service';
+import { ConcertService } from '../concert/concert.service';
 
 const DEFAULT_RESERVATION_TTL_SECONDS = 15 * 60; // 15 minutes
 
@@ -83,6 +84,7 @@ export class OrderService {
     private configService: ConfigService,
     private paymentService: PaymentService,
     private readonly seatmapBroadcastService: SeatmapBroadcastService,
+    private readonly concertService: ConcertService,
     @InjectQueue(ORDER_EXPIRE_QUEUE) private readonly expireQueue: Queue,
     @InjectQueue(NOTIFICATION_QUEUE) private readonly notificationQueue: Queue,
   ) {}
@@ -548,6 +550,9 @@ export class OrderService {
       );
     }
 
+    // reservedQty changed — refresh concert detail/list cache
+    void this.concertService.invalidateCache(dto.concertId);
+
     return {
       // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
       order: this.toOrderResponseMinimal(created, paymentUrl),
@@ -738,6 +743,8 @@ export class OrderService {
       );
     }
 
+    void this.concertService.invalidateCache(updated.concertId);
+
     return this.toOrderResponseMinimal(updated, null);
   }
 
@@ -899,5 +906,7 @@ export class OrderService {
         item.ticketTypeId,
       );
     }
+
+    void this.concertService.invalidateCache(order.concertId);
   }
 }

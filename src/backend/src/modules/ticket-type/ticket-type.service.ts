@@ -18,6 +18,7 @@ import {
   TicketTypeResponseDto,
   TicketTypeListResponseDto,
 } from './dto/ticket-type-response.dto';
+import { ConcertService } from '../concert/concert.service';
 
 type TicketTypeWithAvailability = TicketType & {
   availableQty?: number;
@@ -25,7 +26,10 @@ type TicketTypeWithAvailability = TicketType & {
 
 @Injectable()
 export class TicketTypeService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private readonly concertService: ConcertService,
+  ) {}
 
   private toResponse(tt: TicketTypeWithAvailability): TicketTypeResponseDto {
     return {
@@ -183,6 +187,8 @@ export class TicketTypeService {
       },
     });
 
+    void this.concertService.invalidateCache(concertId);
+
     return this.toResponse(ticketType);
   }
 
@@ -277,9 +283,11 @@ export class TicketTypeService {
         where: { id },
         data: { status: TicketTypeStatus.SOLD_OUT },
       });
+      void this.concertService.invalidateCache(existing.concertId);
       return this.toResponse(updated);
     }
 
+    void this.concertService.invalidateCache(existing.concertId);
     return this.toResponse(ticketType);
   }
 
@@ -314,6 +322,8 @@ export class TicketTypeService {
     await this.prisma.ticketType.delete({
       where: { id },
     });
+
+    void this.concertService.invalidateCache(ticketType.concertId);
 
     return {
       message: `Ticket type "${ticketType.name}" deleted successfully`,
