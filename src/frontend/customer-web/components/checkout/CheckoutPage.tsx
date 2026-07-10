@@ -56,6 +56,17 @@ export default function CheckoutPage({ concertId }: CheckoutPageProps) {
 
   const [selection, setSelection] = useState<ZoneSelection | null>(null);
   const [selectionLoaded, setSelectionLoaded] = useState(false);
+  const [selectedSeats, setSelectedSeats] = useState<string[]>([]);
+
+  useEffect(() => {
+    const rawSeats = sessionStorage.getItem(`selected-seats:${concertId}`);
+    if (rawSeats) {
+      try {
+        setSelectedSeats(JSON.parse(rawSeats));
+      } catch {}
+    }
+  }, [concertId]);
+
   const concertName = getConcertName(concertId);
   const totalPrice = selection ? selection.unitPrice * selection.quantity : 0;
 
@@ -127,6 +138,7 @@ export default function CheckoutPage({ concertId }: CheckoutPageProps) {
 
       clearCheckoutIdempotencyKey(concertId);
       clearZoneSelection(concertId);
+      sessionStorage.removeItem(`selected-seats:${concertId}`);
       abandonPurchaseFlow(concertId);
       savePendingOrder(concertId, orderResponse.order.id);
       setOrder(orderResponse.order);
@@ -189,11 +201,18 @@ export default function CheckoutPage({ concertId }: CheckoutPageProps) {
             Vé đã chọn
           </h2>
           <ul className="mt-3 space-y-2">
-            <li className="flex items-center justify-between text-sm text-slate-700">
-              <span>
-                {selection.ticketTypeName} · {selection.zoneName} · {selection.quantity} vé
-              </span>
-              <span className="font-medium">{formatVnd(totalPrice)}</span>
+            <li className="flex flex-col gap-1 text-sm text-slate-700">
+              <div className="flex items-center justify-between">
+                <span>
+                  {selection.ticketTypeName} · {selection.zoneName} · {selection.quantity} vé
+                </span>
+                <span className="font-medium">{formatVnd(totalPrice)}</span>
+              </div>
+              {selectedSeats.length > 0 && (
+                <div className="text-xs text-slate-500 font-medium">
+                  Ghế đã chọn: <span className="font-semibold text-slate-700">{selectedSeats.join(', ')}</span>
+                </div>
+              )}
             </li>
           </ul>
 

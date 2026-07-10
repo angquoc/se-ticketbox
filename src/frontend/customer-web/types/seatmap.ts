@@ -26,6 +26,9 @@ export interface SeatMapData {
   venueName?: string;
   seatMapUrl: string;
   ticketTypes: TicketType[];
+  concertStatus?: string;
+  saleStartsAt?: string;
+  saleEndsAt?: string;
 }
 
 export interface ZoneSelection {

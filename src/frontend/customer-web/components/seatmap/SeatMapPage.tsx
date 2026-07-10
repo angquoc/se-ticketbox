@@ -15,11 +15,13 @@ import ZoneListFallback from './ZoneListFallback';
 import ZoneDetailPanel from './ZoneDetailPanel';
 import SeatLegend from './SeatLegend';
 import SeatSummaryBar from './SeatSummaryBar';
-import { saveZoneSelection } from '@/lib/checkout-storage';
+import { saveZoneSelection, saveSelectedSeats } from '@/lib/checkout-storage';
 import { hasPurchaseIntent, setPurchaseIntent } from '@/lib/waiting-room-intent';
 import { readAdmittedToken } from '@/lib/waiting-room-storage';
 import { readPendingOrder } from '@/lib/checkout-storage';
 import { formatVnd } from '@/lib/format';
+import { getSaleWindowInfo } from '@/lib/concert-display';
+import type { ConcertStatus } from '@/types/concert';
 
 interface SeatMapPageProps {
   concertId: string;
@@ -66,6 +68,53 @@ export default function SeatMapPage({ concertId }: SeatMapPageProps) {
     isZoneSelected,
     refreshAvailability,
   } = useSeatMap({ concertId });
+
+  const [selectedSeats, setSelectedSeats] = useState<string[]>([]);
+
+  const saleInfo = data
+    ? getSaleWindowInfo(
+        (data.concertStatus as ConcertStatus) || 'DRAFT',
+        data.saleStartsAt || null,
+        data.saleEndsAt || null,
+      )
+    : { isOpen: true, reason: null };
+
+  const selectedZoneKey = selectionState.selection
+    ? `${selectionState.selection.ticketTypeId}:${selectionState.selection.zoneId}`
+    : null;
+
+  useEffect(() => {
+    if (selectedZoneKey) {
+      setSelectedSeats((prev) => {
+        if (prev.length === selectionState.selection?.quantity) {
+          return prev;
+        }
+        const initSeat = 'A-1';
+        saveSelectedSeats(concertId, [initSeat]);
+        return [initSeat];
+      });
+    } else {
+      setSelectedSeats([]);
+      saveSelectedSeats(concertId, []);
+    }
+  }, [selectedZoneKey, concertId, selectionState.selection?.quantity]);
+
+  const handleSelectSeat = (seatName: string) => {
+    setSelectedSeats((prev) => {
+      let nextSeats: string[];
+      if (prev.includes(seatName)) {
+        nextSeats = prev.filter((s) => s !== seatName);
+      } else {
+        if (prev.length >= maxQuantityForSelection) {
+          return prev;
+        }
+        nextSeats = [...prev, seatName];
+      }
+      setQuantity(nextSeats.length);
+      saveSelectedSeats(concertId, nextSeats);
+      return nextSeats;
+    });
+  };
 
   const [showFallback, setShowFallback] = useState(false);
   const [mapReady, setMapReady] = useState(false);
@@ -160,6 +209,11 @@ export default function SeatMapPage({ concertId }: SeatMapPageProps) {
           {data.venueName && (
             <p className="mt-1 text-sm text-slate-500">{data.venueName}</p>
           )}
+          {!saleInfo.isOpen && (
+            <div className="mt-4 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-800 shadow-sm">
+              <span className="font-bold">Chỉ xem sơ đồ:</span> Sự kiện này hiện không trong thời gian mở bán vé ({saleInfo.reason}). Sơ đồ dưới đây chỉ phục vụ xem vị trí và kiểm tra tình trạng ghế trống. Bạn không thể chọn vé hay thanh toán.
+            </div>
+          )}
           <div className="mt-3">
             <BackendNotice backendError={backendError} warning={warning} source={source} />
           </div>
@@ -235,8 +289,11 @@ export default function SeatMapPage({ concertId }: SeatMapPageProps) {
             ticketType={selectedEntry.ticketType}
             zone={selectedEntry.zone}
             quantity={selectionState.selection.quantity}
-            maxQuantity={maxQuantityForSelection}
+            maxQuantity={saleInfo.isOpen ? maxQuantityForSelection : 0}
             remainingAllowance={remainingAllowanceForSelection}
+            selectedSeats={selectedSeats}
+            onSelectSeat={handleSelectSeat}
+            disabled={!saleInfo.isOpen}
           />
         )}
 
@@ -275,9 +332,10 @@ export default function SeatMapPage({ concertId }: SeatMapPageProps) {
 
       <SeatSummaryBar
         selectionState={selectionState}
-        maxQuantity={maxQuantityForSelection}
-        onQuantityChange={setQuantity}
-        onProceed={handleProceed}
+        maxQuantity={0}
+        disabled={!saleInfo.isOpen || !selectionState.selection || selectedSeats.length === 0}
+        onQuantityChange={saleInfo.isOpen ? setQuantity : () => {}}
+        onProceed={saleInfo.isOpen ? handleProceed : undefined}
       />
     </div>
   );

@@ -39,7 +39,12 @@ export async function GET(
       return NextResponse.json({
         success: true,
         source: 'backend',
-        data: backendSeatMap,
+        data: {
+          ...backendSeatMap,
+          concertStatus: concert.status,
+          saleStartsAt: concert.saleStartsAt,
+          saleEndsAt: concert.saleEndsAt,
+        },
       });
     }
 
@@ -52,9 +57,14 @@ export async function GET(
       source: 'mock',
       warning:
         concert.status === 'COMPLETED' || concert.status === 'SALE_CLOSED'
-          ? 'Sự kiện không còn mở bán. Đang hiển thị sơ đồ ghế demo để thử nghiệm giao diện.'
+          ? 'Sự kiện không còn mở bán. Đang hiển thị sơ đồ ghế để xem.'
           : 'Chưa có loại vé khả dụng trên backend. Đang hiển thị sơ đồ ghế demo.',
-      data: mockData,
+      data: {
+        ...mockData,
+        concertStatus: concert.status,
+        saleStartsAt: concert.saleStartsAt,
+        saleEndsAt: concert.saleEndsAt,
+      },
     });
   } catch (error) {
     const mockData = await getMockSeatMap(concertId, {
