@@ -9,6 +9,7 @@
  */
 
 import { PrismaClient, Role, ConcertStatus, TicketTypeStatus, OrderStatus, PaymentProvider, PaymentStatus, TicketStatus } from '@prisma/client';
+import { seedTestData } from './seed-test';
 import { Pool } from 'pg';
 import { PrismaPg } from '@prisma/adapter-pg';
 import * as crypto from 'crypto';
@@ -817,6 +818,7 @@ async function main() {
   });
 
   console.log('Created orders, tickets, payments, and guest list entries');
+  await seedTestData(prisma);
   console.log('Seeding completed successfully!');
 }
 

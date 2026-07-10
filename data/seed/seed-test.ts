@@ -74,6 +74,12 @@ export async function runSeeding() {
 
   console.log('Cleaned existing database records');
 
+  await seedTestData(prisma);
+
+  console.log('Seeding completed successfully!');
+}
+
+export async function seedTestData(prisma: PrismaClient) {
   // Create Users
   const admin = await prisma.user.create({
     data: {
@@ -807,7 +813,7 @@ export async function runSeeding() {
     },
   });
 
-  console.log('Seeding completed successfully!');
+  console.log('Test seeding records created successfully.');
 }
 
 // Allow executing this file directly from shell
