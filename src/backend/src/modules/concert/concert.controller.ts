@@ -84,7 +84,10 @@ export class ConcertController {
   @Get('admin/concerts/:id/guests')
   @UseGuards(AuthGuard, RolesGuard)
   @Roles(Role.ADMIN, Role.ORGANIZER)
-  async findAdminGuests(@Param('id') id: string, @CurrentUser() user: AuthUser) {
+  async findAdminGuests(
+    @Param('id') id: string,
+    @CurrentUser() user: AuthUser,
+  ) {
     return this.concertService.findAdminGuests(id, user.sub, user.role);
   }
 

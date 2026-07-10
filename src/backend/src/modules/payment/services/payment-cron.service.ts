@@ -199,16 +199,23 @@ export class PaymentCronService {
         }),
       ),
     ).catch((err) => {
-      this.logger.error(`Cron release reservation failed for order ${order.id}: ${err}`);
+      this.logger.error(
+        `Cron release reservation failed for order ${order.id}: ${err}`,
+      );
     });
 
     // Broadcast seatmap updates
     await Promise.all(
       order.items.map((item) =>
-        this.seatmapBroadcastService.refreshAndBroadcast(order.concertId, item.ticketTypeId),
+        this.seatmapBroadcastService.refreshAndBroadcast(
+          order.concertId,
+          item.ticketTypeId,
+        ),
       ),
     ).catch((err) => {
-      this.logger.error(`Cron seatmap broadcast failed for order ${order.id}: ${err}`);
+      this.logger.error(
+        `Cron seatmap broadcast failed for order ${order.id}: ${err}`,
+      );
     });
   }
 }

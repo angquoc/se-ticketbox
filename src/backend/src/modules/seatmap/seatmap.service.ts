@@ -47,7 +47,10 @@ export class SeatmapService {
     private readonly redisService: RedisService,
   ) {}
 
-  private zoneAvailabilityCacheKey(concertId: string, ticketTypeId: string): string {
+  private zoneAvailabilityCacheKey(
+    concertId: string,
+    ticketTypeId: string,
+  ): string {
     return `seatmap:${concertId}:${ticketTypeId}:zones`;
   }
 
@@ -71,10 +74,7 @@ export class SeatmapService {
       throw new NotFoundException('Không tìm thấy concert');
     }
 
-    if (
-      concert.status !== 'PUBLISHED' &&
-      concert.status !== 'SALE_OPEN'
-    ) {
+    if (concert.status !== 'PUBLISHED' && concert.status !== 'SALE_OPEN') {
       throw new NotFoundException('Không tìm thấy concert');
     }
 
@@ -230,15 +230,13 @@ export class SeatmapService {
    * Models each TicketType as a single synthetic zone.
    * Extensible when a Zone model is added to the schema.
    */
-  private computeZoneAvailability(
-    ticketType: {
-      id: string;
-      name: string;
-      totalQty: number;
-      soldQty: number;
-      reservedQty: number;
-    },
-  ): ZoneAvailability[] {
+  private computeZoneAvailability(ticketType: {
+    id: string;
+    name: string;
+    totalQty: number;
+    soldQty: number;
+    reservedQty: number;
+  }): ZoneAvailability[] {
     const available =
       ticketType.totalQty - ticketType.soldQty - ticketType.reservedQty;
 

@@ -540,7 +540,10 @@ export class OrderService {
 
     // Broadcast seatmap updates
     for (const m of ticketMeta) {
-      void this.seatmapBroadcastService.refreshAndBroadcast(dto.concertId, m.ticketTypeId);
+      void this.seatmapBroadcastService.refreshAndBroadcast(
+        dto.concertId,
+        m.ticketTypeId,
+      );
     }
 
     return {
@@ -727,7 +730,10 @@ export class OrderService {
 
     // Broadcast seatmap updates
     for (const item of updated.items) {
-      void this.seatmapBroadcastService.refreshAndBroadcast(updated.concertId, item.ticketTypeId);
+      void this.seatmapBroadcastService.refreshAndBroadcast(
+        updated.concertId,
+        item.ticketTypeId,
+      );
     }
 
     return this.toOrderResponseMinimal(updated, null);
@@ -886,7 +892,10 @@ export class OrderService {
 
     // Broadcast seatmap updates
     for (const item of order.items) {
-      void this.seatmapBroadcastService.refreshAndBroadcast(order.concertId, item.ticketTypeId);
+      void this.seatmapBroadcastService.refreshAndBroadcast(
+        order.concertId,
+        item.ticketTypeId,
+      );
     }
   }
 }

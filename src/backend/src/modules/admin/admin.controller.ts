@@ -1,16 +1,14 @@
-import {
-  Controller,
-  Get,
-  Query,
-  UseGuards,
-} from '@nestjs/common';
+import { Controller, Get, Query, UseGuards } from '@nestjs/common';
 import { AdminService } from './admin.service';
 import { ListUsersQueryDto } from './dto/list-users-query.dto';
 import { AuthGuard } from '../auth/guards/auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { Role } from '@prisma/client';
-import { CurrentUser, type AuthUser } from '../auth/decorators/current-user.decorator';
+import {
+  CurrentUser,
+  type AuthUser,
+} from '../auth/decorators/current-user.decorator';
 
 @Controller('admin')
 @UseGuards(AuthGuard, RolesGuard)

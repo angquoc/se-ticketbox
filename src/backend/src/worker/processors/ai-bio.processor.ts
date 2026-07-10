@@ -22,7 +22,10 @@ export class AiBioProcessor extends WorkerHost {
     private readonly config: ConfigService,
   ) {
     super();
-    const url = this.config.get<string>('redis.url') || process.env.REDIS_URL || 'redis://localhost:6379';
+    const url =
+      this.config.get<string>('redis.url') ||
+      process.env.REDIS_URL ||
+      'redis://localhost:6379';
     const isTls = url.startsWith('rediss://') || url.includes('upstash');
     const isUpstash = url.includes('upstash');
     this.redis = new Redis(url, {

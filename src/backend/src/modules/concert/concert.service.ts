@@ -252,7 +252,12 @@ export class ConcertService {
   /**
    * Update an existing concert. Admin or authorized organizer.
    */
-  async update(id: string, dto: UpdateConcertDto, userId?: string, userRole?: Role): Promise<ConcertResponseDto> {
+  async update(
+    id: string,
+    dto: UpdateConcertDto,
+    userId?: string,
+    userRole?: Role,
+  ): Promise<ConcertResponseDto> {
     // Check if concert exists
     const existing = await this.prisma.concert.findUnique({
       where: { id },
@@ -428,7 +433,11 @@ export class ConcertService {
   /**
    * Get a single concert details by ID for admin (including drafts, files, ticket types, and organizer).
    */
-  async findAdminOne(id: string, userId?: string, userRole?: Role): Promise<ConcertResponseDto> {
+  async findAdminOne(
+    id: string,
+    userId?: string,
+    userRole?: Role,
+  ): Promise<ConcertResponseDto> {
     const concert = await this.prisma.concert.findUnique({
       where: { id },
       include: {

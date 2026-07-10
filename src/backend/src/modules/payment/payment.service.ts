@@ -370,7 +370,10 @@ export class PaymentService {
 
     // Broadcast seatmap updates
     for (const item of order.items) {
-      void this.seatmapBroadcastService.refreshAndBroadcast(order.concertId, item.ticketTypeId);
+      void this.seatmapBroadcastService.refreshAndBroadcast(
+        order.concertId,
+        item.ticketTypeId,
+      );
     }
   }
 
@@ -575,7 +578,10 @@ export class PaymentService {
 
     // Broadcast seatmap updates
     for (const item of order.items) {
-      void this.seatmapBroadcastService.refreshAndBroadcast(order.concertId, item.ticketTypeId);
+      void this.seatmapBroadcastService.refreshAndBroadcast(
+        order.concertId,
+        item.ticketTypeId,
+      );
     }
   }
 

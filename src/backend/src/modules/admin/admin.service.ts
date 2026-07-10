@@ -226,7 +226,12 @@ export class AdminService {
       ...(isOrganizer ? { concert: { organizerId: userId } } : {}),
     };
 
-    const [totalRevenueResult, ticketsSold, activeConcerts, revenueByConcertRaw] = await Promise.all([
+    const [
+      totalRevenueResult,
+      ticketsSold,
+      activeConcerts,
+      revenueByConcertRaw,
+    ] = await Promise.all([
       // 1. Total revenue
       this.prisma.order.aggregate({
         where: orderFilter,

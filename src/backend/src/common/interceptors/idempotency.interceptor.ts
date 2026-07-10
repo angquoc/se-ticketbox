@@ -97,25 +97,33 @@ export class IdempotencyInterceptor implements NestInterceptor {
 
     return next.handle().pipe(
       tap({
-        next: async (responseBody: unknown) => {
+        next: (responseBody: unknown) => {
           const completedRecord: IdempotencyRecord = {
             status: 'COMPLETED',
             requestHash,
             responseBody,
           };
-          await this.redis.set(
-            redisKey,
-            JSON.stringify(completedRecord),
-            this.TTL_SECONDS,
-          );
+          this.redis
+            .set(redisKey, JSON.stringify(completedRecord), this.TTL_SECONDS)
+            .catch((err) => {
+              this.logger.error(
+                `Failed to mark idempotency key COMPLETED in Redis: ${err}`,
+              );
+            });
           this.logger.debug(
             `Idempotency key "${idempotencyKey}" marked COMPLETED in Redis`,
           );
         },
-        error: async () => {
+        error: () => {
           // Delete on failure so client can retry immediately
-          await this.redis.del(redisKey);
-          this.logger.debug(`Idempotency key "${idempotencyKey}" deleted on error`);
+          this.redis.del(redisKey).catch((err) => {
+            this.logger.error(
+              `Failed to delete idempotency key on error in Redis: ${err}`,
+            );
+          });
+          this.logger.debug(
+            `Idempotency key "${idempotencyKey}" deleted on error`,
+          );
         },
       }),
     );
@@ -135,7 +143,7 @@ export class IdempotencyInterceptor implements NestInterceptor {
     if (value === null || value === undefined) return undefined;
     if (Array.isArray(value)) return value.map((v) => this.normalize(v));
     if (typeof value === 'object') {
-      return Object.keys(value as object)
+      return Object.keys(value)
         .sort()
         .reduce<Record<string, unknown>>((acc, key) => {
           const n = this.normalize((value as Record<string, unknown>)[key]);
