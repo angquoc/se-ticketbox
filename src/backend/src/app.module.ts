@@ -25,7 +25,6 @@ import { TicketModule } from './modules/ticket/ticket.module';
 import { NotificationModule } from './modules/notification/notification.module';
 import { CheckinModule } from './modules/checkin/checkin.module';
 import { GateModule } from './modules/gate/gate.module';
-import { WorkerModule } from './worker/worker.module';
 import { RateLimitModule } from './modules/rate-limit/rate-limit.module';
 import { UploadsModule } from './modules/uploads/uploads.module';
 import { AdminModule } from './modules/admin/admin.module';
@@ -52,7 +51,8 @@ import { SeatmapModule } from './modules/seatmap/seatmap.module';
     NotificationModule,
     CheckinModule,
     GateModule,
-    WorkerModule,
+    // Worker processors run only in the dedicated worker process (worker/main.ts).
+    // Do not import WorkerModule here — dual consumers would duplicate emails (AC-05).
     RateLimitModule,
     BullModule.forRootAsync({
       imports: [ConfigModule],

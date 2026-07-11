@@ -19,21 +19,45 @@ export class EmailService {
       'http://localhost:3000',
     );
 
+    // Prefer namespaced email.* (registerAs), fall back to flat EMAIL_* env.
+    // Missing host previously made nodemailer default to 127.0.0.1 (breaks in Docker).
+    const host =
+      this.configService.get<string>('email.host') ||
+      this.configService.get<string>('EMAIL_HOST') ||
+      'smtp.ethereal.email';
+    const port = Number(
+      this.configService.get<number | string>('email.port') ??
+        this.configService.get<number | string>('EMAIL_PORT') ??
+        587,
+    );
+    const secure =
+      this.configService.get<boolean>('email.secure') === true ||
+      this.configService.get<string>('EMAIL_SECURE') === 'true';
+    const user =
+      this.configService.get<string>('email.user') ||
+      this.configService.get<string>('EMAIL_USER') ||
+      '';
+    const pass =
+      this.configService.get<string>('email.pass') ||
+      this.configService.get<string>('EMAIL_PASS') ||
+      '';
+
     this.transporter = nodemailer.createTransport({
-      host: this.configService.get<string>('email.host'),
-      port: this.configService.get<number>('email.port'),
-      secure: this.configService.get<boolean>('email.secure'),
-      auth: {
-        user: this.configService.get<string>('email.user'),
-        pass: this.configService.get<string>('email.pass'),
-      },
+      host,
+      port,
+      secure,
+      ...(user && pass ? { auth: { user, pass } } : {}),
       tls: {
         rejectUnauthorized: false,
       },
       connectionTimeout: 10000, // 10s connection timeout
-      greetingTimeout: 10000,   // 10s greeting timeout
-      socketTimeout: 15000,    // 15s socket timeout
+      greetingTimeout: 10000, // 10s greeting timeout
+      socketTimeout: 15000, // 15s socket timeout
     });
+
+    this.logger.log(
+      `SMTP transporter ready host=${host} port=${port} secure=${secure} auth=${Boolean(user && pass)}`,
+    );
   }
 
   async sendOrderConfirmation(params: {
