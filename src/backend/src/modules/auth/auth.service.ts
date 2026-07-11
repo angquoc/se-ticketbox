@@ -203,9 +203,10 @@ export class AuthService {
         to: user.email,
         newPassword: generatedPassword,
       });
-    } catch (err: any) {
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : String(err);
       throw new InternalServerErrorException(
-        `Không thể gửi email khôi phục mật khẩu: ${err.message || err}. Vui lòng kiểm tra lại cấu hình các biến môi trường SMTP (EMAIL_HOST, EMAIL_PORT, EMAIL_USER, EMAIL_PASS, EMAIL_SECURE) trong cấu hình của Render.`
+        `Không thể gửi email khôi phục mật khẩu: ${errorMessage}. Vui lòng kiểm tra lại cấu hình các biến môi trường SMTP (EMAIL_HOST, EMAIL_PORT, EMAIL_USER, EMAIL_PASS, EMAIL_SECURE) trong cấu hình của Render.`
       );
     }
 
