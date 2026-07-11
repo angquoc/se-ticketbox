@@ -20,6 +20,9 @@ import {
   getUnsynced,
   markSynced,
   countUnsynced,
+  hasTicketBeenScanned,
+  markTicketScanned,
+  clearScannedTicket,
 } from '@/lib/idb';
 import { getStoredUser, getStoredGate } from '@/services/authService';
 
@@ -116,6 +119,26 @@ export function useOfflineCheckin() {
         await markSynced(syncedIds);
       }
 
+      // Backend authoritative on cross-device conflicts: if any record was
+      // rejected because the ticket was already checked in elsewhere, drop
+      // the local duplicate-guard entry so a later re-scan on this device
+      // is not misleadingly blocked.
+      const conflictResults = response.results.filter(
+        (r) => r.conflict && !r.success,
+      );
+      for (const conflict of conflictResults) {
+        const matched = unsynced.find(
+          (u) => u.offlineEventId === conflict.offlineEventId,
+        );
+        if (matched) {
+          try {
+            await clearScannedTicket(matched.ticketId);
+          } catch (err) {
+            console.error('IDB cleanup failed', err);
+          }
+        }
+      }
+
       setSyncResults((prev) => [...response.results, ...prev]);
       await refreshPendingCount();
     } catch {
@@ -209,8 +232,41 @@ export function useOfflineCheckin() {
       }
 
       // ── OFFLINE path ──────────────────────────────────────────────────
+      const offlineEventId = uuidv4();
+
+      // Local duplicate guard: if this device already recorded a scan for
+      // this ticket in the current offline session, refuse and surface the
+      // reason as a screen-level error so the staff can react before letting
+      // the holder into the gate. Backend sync remains the final authority
+      // for cross-device conflicts.
+      try {
+        const alreadyScanned = await hasTicketBeenScanned(parsed.ticketId);
+        if (alreadyScanned) {
+          const dupResult: ScanResult = {
+            id: parsed.ticketId,
+            gate,
+            time: timeStr,
+            status: 'invalid',
+            errorMsg: 'VÉ ĐÃ ĐƯỢC CHECK-IN TRƯỚC ĐÓ',
+            isOffline: true,
+          };
+          addLog({
+            id: parsed.ticketId,
+            time: timeStr,
+            type: 'Offline',
+            status: 'error',
+            isOffline: true,
+          });
+          return dupResult;
+        }
+      } catch (err) {
+        // If the duplicate check itself fails, fall through and let the scan
+        // be queued — better a duplicate queue entry than a lost offline scan.
+        console.error('IDB duplicate check failed', err);
+      }
+
       const offlineRecord = {
-        offlineEventId: uuidv4(),
+        offlineEventId,
         ticketId: parsed.ticketId,
         token: parsed.token,
         deviceId,
@@ -222,6 +278,12 @@ export function useOfflineCheckin() {
 
       try {
         await saveCheckinLog(offlineRecord);
+        await markTicketScanned({
+          ticketId: parsed.ticketId,
+          gateId: gate ?? null,
+          scannedAt: now.toISOString(),
+          offlineEventId,
+        });
         await refreshPendingCount();
       } catch (err) {
         console.error('IDB write failed', err);
