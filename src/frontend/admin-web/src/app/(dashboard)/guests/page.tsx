@@ -392,7 +392,7 @@ export default function GuestsPage() {
         {/* Column headers */}
         <div style={{
           display: 'grid',
-          gridTemplateColumns: '48px 1.5fr 2fr 1.5fr 140px 140px',
+          gridTemplateColumns: '48px minmax(0, 1.5fr) minmax(0, 2fr) minmax(0, 1.5fr) 140px 140px',
           gap: '16px',
           padding: '10px 20px',
           borderBottom: '1px solid #C3C5D7',
@@ -422,7 +422,7 @@ export default function GuestsPage() {
               key={guest.row}
               style={{
                 display: 'grid',
-                gridTemplateColumns: '48px 1.5fr 2fr 1.5fr 140px 140px',
+                gridTemplateColumns: '48px minmax(0, 1.5fr) minmax(0, 2fr) minmax(0, 1.5fr) 140px 140px',
                 gap: '16px',
                 padding: '12px 20px',
                 borderBottom: i < guests.length - 1 ? '1px solid #C3C5D7' : 'none',
@@ -433,13 +433,13 @@ export default function GuestsPage() {
               <span style={{ fontSize: '13px', color: (guest.status !== 'Valid' && guest.status !== 'Checked In') ? '#991B1B' : '#434654', fontWeight: (guest.status !== 'Valid' && guest.status !== 'Checked In') ? 600 : 400 }}>
                 {guest.row}
               </span>
-              <span style={{ fontSize: '13px', fontWeight: 500, color: '#191B23' }}>{guest.name}</span>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                <span style={{ fontSize: '13px', color: guest.emailError ? '#991B1B' : '#434654', fontFamily: 'var(--font-mono)' }}>{guest.email}</span>
+              <span style={{ fontSize: '13px', fontWeight: 500, color: '#191B23', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={guest.name}>{guest.name}</span>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', minWidth: 0 }}>
+                <span style={{ fontSize: '13px', color: guest.emailError ? '#991B1B' : '#434654', fontFamily: 'var(--font-mono)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={guest.email}>{guest.email}</span>
                 {guest.emailError && <WarnIcon />}
               </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                <span style={{ fontSize: '13px', color: guest.phoneError ? '#991B1B' : '#434654', fontFamily: 'var(--font-mono)' }}>{guest.phone}</span>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', minWidth: 0 }}>
+                <span style={{ fontSize: '13px', color: guest.phoneError ? '#991B1B' : '#434654', fontFamily: 'var(--font-mono)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={guest.phone}>{guest.phone}</span>
                 {guest.phoneError && <WarnIcon />}
               </div>
               <div><TicketBadge type={guest.ticketType} /></div>

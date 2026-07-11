@@ -21,7 +21,7 @@ export default function EventsPage() {
   } = useEventsData();
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '24px', height: '100%' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '24px', flex: 1, minHeight: 0 }}>
 
       {/* ── Page Header ── */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
@@ -59,7 +59,7 @@ export default function EventsPage() {
       </div>
 
       {/* ── Content: Table + Config Panel ── */}
-      <div style={{ display: 'flex', gap: '24px', alignItems: 'flex-start', flex: 1, minHeight: 0 }}>
+      <div style={{ display: 'flex', gap: '24px', alignItems: 'stretch', flex: 1, minHeight: 0 }}>
 
         {/* Event Roster Table */}
         <div style={{
@@ -90,7 +90,7 @@ export default function EventsPage() {
           {/* Column headers */}
           <div style={{
             display: 'grid',
-            gridTemplateColumns: '2fr 1.2fr 1.4fr 0.9fr 0.7fr',
+            gridTemplateColumns: 'minmax(0, 2fr) minmax(0, 1.2fr) minmax(0, 1.4fr) minmax(0, 0.9fr) minmax(0, 0.7fr)',
             padding: '10px 20px',
             borderBottom: '1px solid #C3C5D7',
             background: '#FAFAFA',
@@ -124,7 +124,7 @@ export default function EventsPage() {
                     key={event.id}
                     style={{
                       display: 'grid',
-                      gridTemplateColumns: '2fr 1.2fr 1.4fr 0.9fr 0.7fr',
+                      gridTemplateColumns: 'minmax(0, 2fr) minmax(0, 1.2fr) minmax(0, 1.4fr) minmax(0, 0.9fr) minmax(0, 0.7fr)',
                       padding: '14px 20px',
                       borderBottom: '1px solid #C3C5D7',
                       alignItems: 'center',
@@ -135,16 +135,16 @@ export default function EventsPage() {
                     }}
                   >
                     {/* Event Name */}
-                    <div style={{ justifySelf: 'start', textAlign: 'left' }}>
-                      <p style={{ fontWeight: 600, fontSize: '14px', color: '#191B23', margin: 0 }}>{event.title}</p>
-                      <p style={{ fontSize: '12px', color: '#434654', margin: '2px 0 0' }}>{event.organizer?.fullName || 'TicketBox'}</p>
+                    <div style={{ justifySelf: 'start', textAlign: 'left', width: '100%', overflow: 'hidden' }}>
+                      <p style={{ fontWeight: 600, fontSize: '14px', color: '#191B23', margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={event.title}>{event.title}</p>
+                      <p style={{ fontSize: '12px', color: '#434654', margin: '2px 0 0', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={event.organizer?.fullName || 'TicketBox'}>{event.organizer?.fullName || 'TicketBox'}</p>
                     </div>
 
                     {/* Date */}
-                    <span style={{ fontSize: '13px', color: '#434654' }}>{formatDate(event.startsAt)}</span>
+                    <span style={{ fontSize: '13px', color: '#434654', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', width: '100%' }}>{formatDate(event.startsAt)}</span>
 
                     {/* Venue */}
-                    <span style={{ fontSize: '13px', color: '#434654' }}>{event.venue}</span>
+                    <span style={{ fontSize: '13px', color: '#434654', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', width: '100%' }} title={event.venue}>{event.venue}</span>
 
                     {/* Status */}
                     <ConcertStatusBadge status={event.status} />

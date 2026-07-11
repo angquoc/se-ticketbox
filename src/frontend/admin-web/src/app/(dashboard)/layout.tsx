@@ -51,15 +51,18 @@ export default function DashboardLayout({
   }
 
   return (
-    <div style={{ display: 'flex', minHeight: '100vh', background: 'var(--color-bg-page)' }}>
+    <div style={{ display: 'flex', height: '100vh', background: 'var(--color-bg-page)', overflow: 'hidden' }}>
       <AdminSidebar />
-      <div style={{ marginLeft: '260px', flex: 1, display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
+      <div style={{ marginLeft: '260px', flex: 1, display: 'flex', flexDirection: 'column', height: '100vh', minHeight: 0 }}>
         <AdminHeader />
         <main style={{
           flex: 1,
+          display: 'flex',
+          flexDirection: 'column',
           background: 'var(--color-bg-canvas)',
           padding: '32px',
           overflowY: 'auto',
+          minHeight: 0,
         }}>
           {children}
         </main>
