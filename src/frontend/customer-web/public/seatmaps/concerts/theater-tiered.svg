@@ -32,4 +32,14 @@
 
   <line x1="400" y1="120" x2="400" y2="744" stroke="#cbd5e1" stroke-width="1" stroke-dasharray="6 8"/>
   <text x="400" y="770" text-anchor="middle" fill="#64748b" font-size="11" font-family="system-ui,sans-serif">Trục giữa sân khấu</text>
+
+  <g id="zones" style="cursor: pointer;">
+    <rect id="svip-left" data-zone="svip-left" data-ticket-type="SVIP" data-status="AVAILABLE" data-selected="false" data-hovered="false" x="52" y="126" width="318" height="102" rx="8" />
+    <rect id="svip-right" data-zone="svip-right" data-ticket-type="SVIP" data-status="AVAILABLE" data-selected="false" data-hovered="false" x="430" y="126" width="318" height="102" rx="8" />
+    <rect id="vip" data-zone="vip" data-ticket-type="VIP" data-status="AVAILABLE" data-selected="false" data-hovered="false" x="190" y="248" width="420" height="116" rx="8" />
+    <rect id="cat1-left" data-zone="cat1-left" data-ticket-type="CAT1" data-status="AVAILABLE" data-selected="false" data-hovered="false" x="64" y="386" width="316" height="116" rx="8" />
+    <rect id="cat1-right" data-zone="cat1-right" data-ticket-type="CAT1" data-status="AVAILABLE" data-selected="false" data-hovered="false" x="420" y="386" width="316" height="116" rx="8" />
+    <rect id="cat2" data-zone="cat2" data-ticket-type="CAT2" data-status="AVAILABLE" data-selected="false" data-hovered="false" x="66" y="524" width="668" height="96" rx="8" />
+    <rect id="ga" data-zone="ga" data-ticket-type="GA" data-status="AVAILABLE" data-selected="false" data-hovered="false" x="46" y="632" width="708" height="124" rx="8" />
+  </g>
 </svg>

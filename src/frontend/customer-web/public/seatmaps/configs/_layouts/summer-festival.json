@@ -1,0 +1,37 @@
+{
+  "slug": "summer-festival",
+  "background": "summer-festival.svg",
+  "title": "Outdoor Summer Festival Layout",
+  "zones": [
+    {
+      "zoneId": "svip",
+      "zoneName": "SVIP",
+      "ticketTypeName": "SVIP",
+      "rect": { "x": 275, "y": 115, "width": 250, "height": 120, "rx": 8 }
+    },
+    {
+      "zoneId": "vip",
+      "zoneName": "VIP",
+      "ticketTypeName": "VIP",
+      "rect": { "x": 95, "y": 260, "width": 290, "height": 150, "rx": 8 }
+    },
+    {
+      "zoneId": "cat1",
+      "zoneName": "CAT1",
+      "ticketTypeName": "CAT1",
+      "rect": { "x": 415, "y": 260, "width": 290, "height": 150, "rx": 8 }
+    },
+    {
+      "zoneId": "cat2",
+      "zoneName": "CAT2",
+      "ticketTypeName": "CAT2",
+      "rect": { "x": 130, "y": 425, "width": 540, "height": 120, "rx": 8 }
+    },
+    {
+      "zoneId": "ga",
+      "zoneName": "GA",
+      "ticketTypeName": "GA",
+      "rect": { "x": 46, "y": 565, "width": 708, "height": 190, "rx": 8 }
+    }
+  ]
+}

@@ -224,7 +224,7 @@ export async function seedTestData(prisma: PrismaClient) {
       startsAt: farFutureDate,
       saleStartsAt: pastDate,
       status: ConcertStatus.SALE_OPEN,
-      seatMapUrl: '/seatmaps/concerts/demo.svg',
+      seatMapUrl: '/seatmaps/concerts/theater-tiered.svg',
     },
   });
   const tTypeMomo1 = await prisma.ticketType.create({
@@ -278,7 +278,7 @@ export async function seedTestData(prisma: PrismaClient) {
       startsAt: farFutureDate,
       saleStartsAt: pastDate,
       status: ConcertStatus.SALE_OPEN,
-      seatMapUrl: '/seatmaps/concerts/demo.svg',
+      seatMapUrl: '/seatmaps/concerts/theater-tiered.svg',
     },
   });
   await prisma.ticketType.create({
@@ -320,7 +320,7 @@ export async function seedTestData(prisma: PrismaClient) {
       startsAt: farFutureDate,
       saleStartsAt: pastDate,
       status: ConcertStatus.SALE_CLOSED,
-      seatMapUrl: '/seatmaps/concerts/demo.svg',
+      seatMapUrl: '/seatmaps/concerts/theater-tiered.svg',
     },
   });
   await prisma.ticketType.create({
@@ -362,7 +362,7 @@ export async function seedTestData(prisma: PrismaClient) {
       startsAt: farFutureDate,
       saleStartsAt: pastDate,
       status: ConcertStatus.SALE_OPEN,
-      seatMapUrl: '/seatmaps/concerts/demo.svg',
+      seatMapUrl: '/seatmaps/concerts/theater-tiered.svg',
     },
   });
   await prisma.ticketType.create({
@@ -392,7 +392,7 @@ export async function seedTestData(prisma: PrismaClient) {
       startsAt: nearFutureDate,
       saleStartsAt: pastDate,
       status: ConcertStatus.SALE_OPEN,
-      seatMapUrl: '/seatmaps/concerts/demo.svg',
+      seatMapUrl: '/seatmaps/concerts/theater-tiered.svg',
     },
   });
   const tTypeCheckinOnline = await prisma.ticketType.create({
@@ -509,7 +509,7 @@ export async function seedTestData(prisma: PrismaClient) {
       startsAt: pastDate,
       saleStartsAt: pastDate,
       status: ConcertStatus.COMPLETED,
-      seatMapUrl: '/seatmaps/concerts/demo.svg',
+      seatMapUrl: '/seatmaps/concerts/theater-tiered.svg',
     },
   });
   const tTypeCheckinOffline = await prisma.ticketType.create({
@@ -576,7 +576,7 @@ export async function seedTestData(prisma: PrismaClient) {
       startsAt: nearFutureDate,
       saleStartsAt: pastDate,
       status: ConcertStatus.SALE_OPEN,
-      seatMapUrl: '/seatmaps/concerts/demo.svg',
+      seatMapUrl: '/seatmaps/concerts/theater-tiered.svg',
     },
   });
   const tTypeCheckinGates = await prisma.ticketType.create({
@@ -673,7 +673,7 @@ export async function seedTestData(prisma: PrismaClient) {
       startsAt: farFutureDate,
       saleStartsAt: pastDate,
       status: ConcertStatus.SALE_OPEN,
-      seatMapUrl: '/seatmaps/concerts/demo.svg',
+      seatMapUrl: '/seatmaps/concerts/theater-tiered.svg',
     },
   });
   await prisma.ticketType.create({
@@ -703,7 +703,7 @@ export async function seedTestData(prisma: PrismaClient) {
       startsAt: farFutureDate,
       saleStartsAt: pastDate,
       status: ConcertStatus.SALE_OPEN,
-      seatMapUrl: '/seatmaps/concerts/demo.svg',
+      seatMapUrl: '/seatmaps/concerts/theater-tiered.svg',
     },
   });
   await prisma.ticketType.create({
@@ -733,7 +733,7 @@ export async function seedTestData(prisma: PrismaClient) {
       startsAt: farFutureDate,
       saleStartsAt: pastDate,
       status: ConcertStatus.SALE_OPEN,
-      seatMapUrl: '/seatmaps/concerts/demo.svg',
+      seatMapUrl: '/seatmaps/concerts/theater-tiered.svg',
     },
   });
   await prisma.ticketType.create({
@@ -775,7 +775,7 @@ export async function seedTestData(prisma: PrismaClient) {
       startsAt: farFutureDate,
       saleStartsAt: pastDate,
       status: ConcertStatus.SALE_OPEN,
-      seatMapUrl: '/seatmaps/concerts/demo.svg',
+      seatMapUrl: '/seatmaps/concerts/theater-tiered.svg',
     },
   });
   await prisma.ticketType.create({
@@ -806,7 +806,7 @@ export async function seedTestData(prisma: PrismaClient) {
       startsAt: startsSoonDate,
       saleStartsAt: pastDate,
       status: ConcertStatus.SALE_OPEN,
-      seatMapUrl: '/seatmaps/concerts/demo.svg',
+      seatMapUrl: '/seatmaps/concerts/theater-tiered.svg',
     },
   });
   const tTypeNftNotif = await prisma.ticketType.create({

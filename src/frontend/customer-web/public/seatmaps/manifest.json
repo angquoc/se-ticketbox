@@ -1,13 +1,8 @@
 {
   "version": 3,
-  "description": "Mỗi concert có layout thiết kế tại configs/_layouts/{slug}.json. Chạy npm run seatmap:sync để sinh SVG + config.",
-  "configs": [
-    "2026-kangin-fan-meeting-in-ho-chi-minh",
-    "concert-nft-concurrency",
-    "jessica-reflections-2026",
-    "summer-music-festival-2026",
-    "tgc-vietnam-2026"
-  ],
-  "layouts": "_layouts",
-  "backgrounds": "backgrounds"
+  "description": "Các sơ đồ phòng vé dùng chung cho các sự kiện",
+  "layouts": [
+    "theater-tiered",
+    "summer-festival"
+  ]
 }

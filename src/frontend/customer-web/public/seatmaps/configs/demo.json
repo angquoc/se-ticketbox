@@ -1,4 +1,5 @@
 {
   "slug": "demo",
-  "seatMapUrl": "/seatmaps/concerts/demo.svg"
+  "title": "Demo Concert Stage",
+  "seatMapUrl": "/seatmaps/concerts/theater-tiered.svg"
 }
