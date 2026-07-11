@@ -1,0 +1,91 @@
+{
+  "slug": "concert-nft-concurrency",
+  "background": "theater-tiered.svg",
+  "zones": [
+    {
+      "zoneId": "svip-1",
+      "zoneName": "SVIP-1",
+      "ticketTypeName": "SVIP",
+      "rect": {
+        "x": 52,
+        "y": 126,
+        "width": 318,
+        "height": 102,
+        "rx": 8
+      }
+    },
+    {
+      "zoneId": "svip-2",
+      "zoneName": "SVIP-2",
+      "ticketTypeName": "SVIP",
+      "rect": {
+        "x": 430,
+        "y": 126,
+        "width": 318,
+        "height": 102,
+        "rx": 8
+      }
+    },
+    {
+      "zoneId": "vip",
+      "zoneName": "VIP",
+      "ticketTypeName": "VIP",
+      "rect": {
+        "x": 190,
+        "y": 248,
+        "width": 420,
+        "height": 116,
+        "rx": 8
+      }
+    },
+    {
+      "zoneId": "pre",
+      "zoneName": "SVIP",
+      "ticketTypeName": "SVIP",
+      "rect": {
+        "x": 64,
+        "y": 386,
+        "width": 672,
+        "height": 116,
+        "rx": 8
+      }
+    },
+    {
+      "zoneId": "cat1",
+      "zoneName": "VIP",
+      "ticketTypeName": "VIP",
+      "rect": {
+        "x": 66,
+        "y": 524,
+        "width": 668,
+        "height": 96,
+        "rx": 8
+      }
+    },
+    {
+      "zoneId": "cat2",
+      "zoneName": "SVIP",
+      "ticketTypeName": "SVIP",
+      "rect": {
+        "x": 46,
+        "y": 632,
+        "width": 708,
+        "height": 62,
+        "rx": 8
+      }
+    },
+    {
+      "zoneId": "cat3",
+      "zoneName": "VIP",
+      "ticketTypeName": "VIP",
+      "rect": {
+        "x": 46,
+        "y": 694,
+        "width": 708,
+        "height": 62,
+        "rx": 8
+      }
+    }
+  ],
+  "title": "Concert Test NFT Concurrency"
+}

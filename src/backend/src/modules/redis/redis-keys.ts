@@ -47,3 +47,34 @@ export const REDIS_KEY_USER_LIMIT = (
  */
 export const REDIS_KEY_RESERVATION = (orderId: string): string =>
   `reservation:${orderId}`;
+
+/**
+ * cache:concert:list
+ *
+ * Cache-aside payload for the public concert list (default query).
+ * TTL: REDIS_TTL_CONCERT_CACHE seconds.
+ */
+export const REDIS_KEY_CONCERT_LIST = 'cache:concert:list';
+
+/**
+ * cache:concert:list:{status}:{page}:{limit}
+ *
+ * Variant list keys for non-default pagination / status filters.
+ */
+export const REDIS_KEY_CONCERT_LIST_QUERY = (
+  status: string,
+  page: number,
+  limit: number,
+): string => `cache:concert:list:${status}:${page}:${limit}`;
+
+/**
+ * cache:concert:detail:{concertId}
+ *
+ * Cache-aside payload for a single public concert detail (incl. ticket types).
+ * TTL: REDIS_TTL_CONCERT_CACHE seconds.
+ */
+export const REDIS_KEY_CONCERT_DETAIL = (concertId: string): string =>
+  `cache:concert:detail:${concertId}`;
+
+/** TTL for concert list/detail cache (design.md §7.4). */
+export const REDIS_TTL_CONCERT_CACHE = 60;
