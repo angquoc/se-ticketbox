@@ -2,6 +2,7 @@ import { JwtService } from '@nestjs/jwt';
 import { Test, TestingModule } from '@nestjs/testing';
 import { PrismaService } from '../../database/prisma.service';
 import { AuthService } from './auth.service';
+import { EmailService } from '../notification/services/email.service';
 
 describe('AuthService', () => {
   let service: AuthService;
@@ -18,6 +19,10 @@ describe('AuthService', () => {
     signAsync: jest.fn(),
   };
 
+  const emailServiceMock = {
+    sendForgotPasswordEmail: jest.fn(),
+  };
+
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -29,6 +34,10 @@ describe('AuthService', () => {
         {
           provide: JwtService,
           useValue: jwtServiceMock,
+        },
+        {
+          provide: EmailService,
+          useValue: emailServiceMock,
         },
       ],
     }).compile();

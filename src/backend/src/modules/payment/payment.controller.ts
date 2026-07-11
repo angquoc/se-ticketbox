@@ -93,17 +93,17 @@ export class PaymentController {
           <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
           <style>
             :root {
-              --bg-primary: #0b0f19;
-              --bg-card: #161c2a;
-              --text-primary: #f3f4f6;
-              --text-secondary: #9ca3af;
-              --color-success: #10b981;
-              --color-success-hover: #059669;
-              --color-danger: #f43f5e;
-              --color-danger-hover: #e11d48;
-              --color-warning: #f59e0b;
-              --color-warning-hover: #d97706;
-              --border-color: #243049;
+              --bg-primary: #f8fafc;
+              --bg-card: #ffffff;
+              --text-primary: #0f172a;
+              --text-secondary: #475569;
+              --color-success: #059669;
+              --color-success-hover: #047857;
+              --color-danger: #e11d48;
+              --color-danger-hover: #be123c;
+              --color-warning: #d97706;
+              --color-warning-hover: #b45309;
+              --border-color: #e2e8f0;
             }
             * {
               box-sizing: border-box;
@@ -119,20 +119,15 @@ export class PaymentController {
               align-items: center;
               justify-content: center;
               padding: 20px;
-              background-image: 
-                radial-gradient(circle at 10% 20%, rgba(99, 102, 241, 0.15) 0%, transparent 40%),
-                radial-gradient(circle at 90% 80%, rgba(244, 63, 94, 0.1) 0%, transparent 45%);
             }
             .card {
               background-color: var(--bg-card);
               border: 1px solid var(--border-color);
-              border-radius: 24px;
+              border-radius: 16px;
               padding: 40px;
               width: 100%;
               max-width: 480px;
-              box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
-              backdrop-filter: blur(10px);
-              transition: transform 0.3s ease, box-shadow 0.3s ease;
+              box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -2px rgba(0, 0, 0, 0.05);
             }
             .header {
               text-align: center;
@@ -141,24 +136,20 @@ export class PaymentController {
             .logo-icon {
               width: 56px;
               height: 56px;
-              background: linear-gradient(135deg, #6366f1 0%, #a855f7 100%);
-              border-radius: 16px;
+              background: linear-gradient(135deg, #4f46e5 0%, #6366f1 100%);
+              border-radius: 12px;
               margin: 0 auto 16px;
               display: flex;
               align-items: center;
               justify-content: center;
               font-size: 24px;
-              font-weight: 700;
               color: white;
-              box-shadow: 0 8px 16px rgba(99, 102, 241, 0.3);
             }
             .title {
               font-size: 22px;
               font-weight: 700;
               letter-spacing: -0.5px;
-              background: linear-gradient(to right, #f3f4f6, #d1d5db);
-              -webkit-background-clip: text;
-              -webkit-text-fill-color: transparent;
+              color: var(--text-primary);
             }
             .subtitle {
               font-size: 14px;
@@ -166,9 +157,9 @@ export class PaymentController {
               margin-top: 4px;
             }
             .info-section {
-              background-color: rgba(36, 48, 73, 0.4);
+              background-color: #f1f5f9;
               border: 1px solid var(--border-color);
-              border-radius: 16px;
+              border-radius: 12px;
               padding: 20px;
               margin-bottom: 32px;
             }
@@ -194,7 +185,7 @@ export class PaymentController {
             .info-value.amount {
               font-size: 18px;
               font-weight: 700;
-              color: #818cf8;
+              color: #4f46e5;
             }
             .button-group {
               display: flex;
@@ -206,7 +197,7 @@ export class PaymentController {
               width: 100%;
               padding: 16px;
               border: none;
-              border-radius: 14px;
+              border-radius: 12px;
               font-size: 15px;
               font-weight: 600;
               cursor: pointer;
@@ -230,26 +221,24 @@ export class PaymentController {
             }
             .btn-success:hover {
               background-color: var(--color-success-hover);
-              box-shadow: 0 4px 12px rgba(16, 185, 129, 0.2);
+              box-shadow: 0 4px 12px rgba(5, 150, 105, 0.15);
             }
             .btn-danger {
               background-color: var(--color-danger);
             }
             .btn-danger:hover {
               background-color: var(--color-danger-hover);
-              box-shadow: 0 4px 12px rgba(244, 63, 94, 0.2);
+              box-shadow: 0 4px 12px rgba(225, 29, 72, 0.15);
             }
             .btn-warning {
-              background-color: #374151;
-              color: #d1d5db;
-              border: 1px solid var(--border-color);
+              background-color: var(--color-warning);
             }
             .btn-warning:hover {
-              background-color: #4b5563;
-              color: white;
+              background-color: var(--color-warning-hover);
+              box-shadow: 0 4px 12px rgba(217, 119, 6, 0.15);
             }
             .result-container {
-              border-radius: 14px;
+              border-radius: 12px;
               font-size: 14px;
               max-height: 0;
               overflow: hidden;
@@ -261,7 +250,7 @@ export class PaymentController {
               padding: 16px;
               margin-top: 16px;
               border: 1px solid var(--border-color);
-              background-color: rgba(17, 24, 39, 0.6);
+              background-color: #f8fafc;
             }
             .spinner {
               width: 20px;

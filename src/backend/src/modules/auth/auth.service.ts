@@ -2,6 +2,7 @@ import {
   Injectable,
   UnauthorizedException,
   ConflictException,
+  NotFoundException,
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { PrismaService } from '../../database/prisma.service';
@@ -10,17 +11,20 @@ import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
 import { ChangePasswordDto } from './dto/change-password.dto';
 import { UpdateProfileDto } from './dto/update-profile.dto';
+import { EmailService } from '../notification/services/email.service';
 
 @Injectable()
 export class AuthService {
   constructor(
     private prisma: PrismaService,
     private jwtService: JwtService,
+    private emailService: EmailService,
   ) {}
 
   async register(data: RegisterDto) {
+    const email = data.email.trim().toLowerCase();
     const existingUser = await this.prisma.user.findUnique({
-      where: { email: data.email },
+      where: { email },
     });
 
     if (existingUser) {
@@ -32,7 +36,7 @@ export class AuthService {
 
     const user = await this.prisma.user.create({
       data: {
-        email: data.email,
+        email,
         passwordHash,
         fullName: data.fullName,
         role: 'CUSTOMER',
@@ -55,8 +59,9 @@ export class AuthService {
   }
 
   async login(data: LoginDto) {
+    const email = data.email.trim().toLowerCase();
     const user = await this.prisma.user.findUnique({
-      where: { email: data.email },
+      where: { email },
     });
 
     if (!user) {
@@ -169,6 +174,36 @@ export class AuthService {
 
     return {
       message: 'Mật khẩu đã được thay đổi thành công',
+    };
+  }
+
+  async forgotPassword(email: string) {
+    const normalizedEmail = email.trim().toLowerCase();
+    const user = await this.prisma.user.findUnique({
+      where: { email: normalizedEmail },
+    });
+    if (!user) {
+      throw new NotFoundException('Không tìm thấy tài khoản với email này');
+    }
+
+    // Tạo mật khẩu ngẫu nhiên dài 8 ký tự
+    const generatedPassword = Math.random().toString(36).substring(2, 10);
+    const salt = await bcrypt.genSalt(10);
+    const passwordHash = await bcrypt.hash(generatedPassword, salt);
+
+    await this.prisma.user.update({
+      where: { id: user.id },
+      data: { passwordHash },
+    });
+
+    // Gửi email mật khẩu mới
+    await this.emailService.sendForgotPasswordEmail({
+      to: user.email,
+      newPassword: generatedPassword,
+    });
+
+    return {
+      message: 'Mật khẩu mới đã được gửi về email của bạn',
     };
   }
 }

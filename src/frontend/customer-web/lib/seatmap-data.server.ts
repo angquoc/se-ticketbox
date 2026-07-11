@@ -31,10 +31,14 @@ function buildZone(
   };
 }
 
-function groupSvgZonesByTicketType(zones: ParsedSvgZone[]): Map<string, ParsedSvgZone> {
-  const grouped = new Map<string, ParsedSvgZone>();
+function groupSvgZonesByTicketType(zones: ParsedSvgZone[]): Map<string, ParsedSvgZone[]> {
+  const grouped = new Map<string, ParsedSvgZone[]>();
   for (const zone of zones) {
-    grouped.set(normalizeName(zone.ticketTypeName), zone);
+    const name = normalizeName(zone.ticketTypeName);
+    if (!grouped.has(name)) {
+      grouped.set(name, []);
+    }
+    grouped.get(name)!.push(zone);
   }
   return grouped;
 }
@@ -51,8 +55,16 @@ export async function buildSeatMapData(
   const ticketTypes: TicketType[] = [];
 
   for (const ticketType of options.ticketTypes) {
-    const parsedZone = svgZonesByTicketType.get(normalizeName(ticketType.name)) ?? null;
-    const zone = buildZone(ticketType, parsedZone);
+    const parsedZones = svgZonesByTicketType.get(normalizeName(ticketType.name)) ?? [];
+    
+    const zonesList: Zone[] = [];
+    if (parsedZones.length > 0) {
+      for (const pz of parsedZones) {
+        zonesList.push(buildZone(ticketType, pz));
+      }
+    } else {
+      zonesList.push(buildZone(ticketType, null));
+    }
 
     ticketTypes.push({
       id: ticketType.id,
@@ -62,7 +74,7 @@ export async function buildSeatMapData(
       totalQty: ticketType.totalQty,
       soldQty: ticketType.soldQty,
       reservedQty: ticketType.reservedQty,
-      zones: [zone],
+      zones: zonesList,
     });
   }
 
