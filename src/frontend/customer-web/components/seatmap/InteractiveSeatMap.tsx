@@ -280,11 +280,10 @@ export default function InteractiveSeatMap({
       }
 
       const ticketTypeName = zoneElement?.getAttribute('data-ticket-type')?.trim().toLowerCase();
-      const entry = Array.from(zoneByKeyRef.current.values()).find(
-        (item) =>
-          item.zone.zoneId === zoneId ||
-          item.ticketType.name.trim().toLowerCase() === ticketTypeName,
-      );
+      const entry = Array.from(zoneByKeyRef.current.values()).find((item) => item.zone.zoneId === zoneId) ??
+        Array.from(zoneByKeyRef.current.values()).find(
+          (item) => item.ticketType.name.trim().toLowerCase() === ticketTypeName,
+        );
       if (!entry) {
         setHoveredZoneKey(null, clientX, clientY);
         return;
@@ -327,11 +326,10 @@ export default function InteractiveSeatMap({
       if (!zoneId) return;
 
       const ticketTypeName = zoneElement.getAttribute('data-ticket-type')?.trim().toLowerCase();
-      const entry = Array.from(zoneByKeyRef.current.values()).find(
-        (item) =>
-          item.zone.zoneId === zoneId ||
-          item.ticketType.name.trim().toLowerCase() === ticketTypeName,
-      );
+      const entry = Array.from(zoneByKeyRef.current.values()).find((item) => item.zone.zoneId === zoneId) ??
+        Array.from(zoneByKeyRef.current.values()).find(
+          (item) => item.ticketType.name.trim().toLowerCase() === ticketTypeName,
+        );
       if (!entry || !visibleZoneKeysRef.current.has(zoneKey(entry.ticketType.id, entry.zone.zoneId))) {
         return;
       }
@@ -369,11 +367,10 @@ export default function InteractiveSeatMap({
       if (!zoneId) return;
 
       const ticketTypeName = element.getAttribute('data-ticket-type')?.trim().toLowerCase();
-      const entry = zones.find(
-        (item) =>
-          item.zone.zoneId === zoneId ||
-          item.ticketType.name.trim().toLowerCase() === ticketTypeName,
-      );
+      const entry = zones.find((item) => item.zone.zoneId === zoneId) ??
+        zones.find(
+          (item) => item.ticketType.name.trim().toLowerCase() === ticketTypeName,
+        );
       if (!entry) return;
 
       elementMap.set(zoneKey(entry.ticketType.id, entry.zone.zoneId), element);
