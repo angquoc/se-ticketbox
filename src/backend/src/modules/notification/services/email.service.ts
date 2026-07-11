@@ -5,6 +5,10 @@ import * as nodemailer from 'nodemailer';
 interface TicketInfo {
   ticketId: string;
   ticketTypeName: string;
+  concertVenue?: string;
+  concertStartsAt?: Date;
+  gateId?: string | null;
+  status?: string;
 }
 
 @Injectable()
@@ -60,108 +64,279 @@ export class EmailService {
     );
   }
 
+  private getFrom(): string {
+    return (
+      this.configService.get<string>('email.from') ||
+      this.configService.get<string>('EMAIL_FROM') ||
+      '"TicketBox" <noreply@ticketbox.com>'
+    );
+  }
+
+  private formatEventDate(date: Date): string {
+    return date.toLocaleString('vi-VN', {
+      weekday: 'long',
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+  }
+
+  private statusLabel(status?: string): string {
+    switch (status) {
+      case 'ISSUED':
+        return 'Hợp lệ';
+      case 'CHECKED_IN':
+        return 'Đã check-in';
+      case 'CANCELLED':
+        return 'Đã hủy';
+      case 'REFUNDED':
+        return 'Đã hoàn tiền';
+      default:
+        return 'Hợp lệ';
+    }
+  }
+
+  private statusBadgeStyle(status?: string): string {
+    switch (status) {
+      case 'CHECKED_IN':
+        return 'background:#e0e7ff;color:#3730a3;';
+      case 'CANCELLED':
+      case 'REFUNDED':
+        return 'background:#f1f5f9;color:#475569;';
+      case 'ISSUED':
+      default:
+        return 'background:#d1fae5;color:#065f46;';
+    }
+  }
+
+  /** E-ticket card HTML matching customer-web ETicketCard design. */
+  private renderTicketCard(
+    ticket: TicketInfo,
+    index: number,
+    total: number,
+    concertTitle: string,
+  ): string {
+    const shortId = ticket.ticketId.slice(0, 8).toUpperCase();
+    const venue = ticket.concertVenue ?? '';
+    const startsAt = ticket.concertStartsAt
+      ? this.formatEventDate(ticket.concertStartsAt)
+      : '';
+    const gateRow = ticket.gateId
+      ? `
+          <tr>
+            <td style="padding:0 0 12px 0;">
+              <div style="font-size:12px;color:#64748b;margin-bottom:2px;">Cổng vào (Gate)</div>
+              <div style="font-size:16px;font-weight:700;color:#4338ca;">${ticket.gateId}</div>
+            </td>
+          </tr>`
+      : '';
+
+    return `
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border:1px solid #e2e8f0;border-radius:16px;overflow:hidden;background:#ffffff;margin:0 0 16px 0;box-shadow:0 1px 2px rgba(15,23,42,0.06);">
+      <tr>
+        <td style="background:linear-gradient(90deg,#4f46e5,#7c3aed);background-color:#4f46e5;padding:16px 20px;">
+          <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+            <tr>
+              <td style="vertical-align:top;">
+                <div style="font-size:11px;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;color:#c7d2fe;">
+                  E-Ticket · ${index}/${total}
+                </div>
+                <div style="font-size:17px;font-weight:700;color:#ffffff;line-height:1.35;margin-top:4px;">
+                  ${concertTitle}
+                </div>
+              </td>
+              <td style="vertical-align:top;text-align:right;width:1%;white-space:nowrap;padding-left:12px;">
+                <span style="display:inline-block;border-radius:999px;padding:4px 10px;font-size:11px;font-weight:600;${this.statusBadgeStyle(ticket.status)}">
+                  ${this.statusLabel(ticket.status)}
+                </span>
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+      <tr>
+        <td style="padding:20px;">
+          <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+            <tr>
+              <td style="padding:0 0 12px 0;">
+                <div style="font-size:12px;color:#64748b;margin-bottom:2px;">Loại vé</div>
+                <div style="font-size:14px;font-weight:600;color:#0f172a;">${ticket.ticketTypeName}</div>
+              </td>
+            </tr>
+            ${
+              venue
+                ? `<tr>
+              <td style="padding:0 0 12px 0;">
+                <div style="font-size:12px;color:#64748b;margin-bottom:2px;">Địa điểm</div>
+                <div style="font-size:14px;font-weight:500;color:#0f172a;">${venue}</div>
+              </td>
+            </tr>`
+                : ''
+            }
+            ${
+              startsAt
+                ? `<tr>
+              <td style="padding:0 0 12px 0;">
+                <div style="font-size:12px;color:#64748b;margin-bottom:2px;">Thời gian</div>
+                <div style="font-size:14px;font-weight:500;color:#0f172a;">${startsAt}</div>
+              </td>
+            </tr>`
+                : ''
+            }
+            ${gateRow}
+            <tr>
+              <td style="padding:0;">
+                <div style="font-size:12px;color:#64748b;margin-bottom:2px;">Mã vé</div>
+                <div style="font-size:12px;font-family:Consolas,Monaco,monospace;color:#334155;">${shortId}</div>
+              </td>
+            </tr>
+          </table>
+          <div style="margin-top:16px;padding:12px;border-radius:12px;border:1px solid #e2e8f0;background:#f8fafc;text-align:center;">
+            <p style="margin:0;font-size:12px;color:#64748b;line-height:1.5;">
+              Mã QR chỉ hiển thị trên ứng dụng web sau khi đăng nhập.<br/>
+              Xuất trình mã QR tại cổng soát vé.
+            </p>
+          </div>
+        </td>
+      </tr>
+    </table>`;
+  }
+
   async sendOrderConfirmation(params: {
     to: string;
     orderId: string;
     concertTitle: string;
+    concertVenue?: string;
+    concertStartsAt?: Date;
     ticketCount: number;
     totalAmount: number;
     ticketInfos?: TicketInfo[];
   }): Promise<void> {
-    const ticketListHtml = (params.ticketInfos ?? [])
-      .map(
-        (t, index) => `
-      <div class="ticket-item">
-        <div class="ticket-number">Ticket ${index + 1}</div>
-        <div class="ticket-type">${t.ticketTypeName}</div>
-        <div class="ticket-id">ID: ${t.ticketId.slice(0, 8).toUpperCase()}</div>
-      </div>
-    `,
+    const tickets = params.ticketInfos ?? [];
+    const total = tickets.length || params.ticketCount;
+    const ticketCardsHtml = tickets
+      .map((t, index) =>
+        this.renderTicketCard(t, index + 1, total, params.concertTitle),
       )
-      .join(
-        '<hr style="border:none;border-top:1px solid #e0e0e0;margin:10px 0;"/>',
-      );
+      .join('');
+
+    const isGateUpdate = params.orderId === 'GATE-UPDATE';
+    const headline = isGateUpdate
+      ? 'Cổng vào vé của bạn đã được cập nhật'
+      : 'Vé của bạn đã được xác nhận!';
+    const intro = isGateUpdate
+      ? `Cổng vào cho sự kiện <strong>${params.concertTitle}</strong> đã được điều chỉnh. Vui lòng xem lại thông tin vé bên dưới.`
+      : `Cảm ơn bạn đã mua vé! Dưới đây là thông tin đơn hàng và vé điện tử của bạn.`;
+
+    const orderSummaryHtml = isGateUpdate
+      ? ''
+      : `
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;margin:0 0 24px 0;">
+      <tr>
+        <td style="padding:16px 20px;">
+          <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+            <tr>
+              <td style="padding:0 0 12px 0;">
+                <div style="font-size:11px;color:#64748b;text-transform:uppercase;letter-spacing:0.06em;">Mã đơn hàng</div>
+                <div style="font-size:14px;font-weight:700;color:#0f172a;font-family:Consolas,Monaco,monospace;margin-top:2px;">${params.orderId}</div>
+              </td>
+            </tr>
+            <tr>
+              <td style="padding:0 0 12px 0;">
+                <div style="font-size:11px;color:#64748b;text-transform:uppercase;letter-spacing:0.06em;">Sự kiện</div>
+                <div style="font-size:15px;font-weight:700;color:#0f172a;margin-top:2px;">${params.concertTitle}</div>
+              </td>
+            </tr>
+            <tr>
+              <td>
+                <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+                  <tr>
+                    <td width="50%" style="vertical-align:top;padding-right:8px;">
+                      <div style="font-size:11px;color:#64748b;text-transform:uppercase;letter-spacing:0.06em;">Số vé</div>
+                      <div style="font-size:15px;font-weight:700;color:#0f172a;margin-top:2px;">${params.ticketCount}</div>
+                    </td>
+                    <td width="50%" style="vertical-align:top;">
+                      <div style="font-size:11px;color:#64748b;text-transform:uppercase;letter-spacing:0.06em;">Tổng thanh toán</div>
+                      <div style="font-size:15px;font-weight:700;color:#0f172a;margin-top:2px;">${params.totalAmount.toLocaleString('vi-VN')} VND</div>
+                    </td>
+                  </tr>
+                </table>
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+    </table>`;
 
     const html = `
 <!DOCTYPE html>
-<html>
+<html lang="vi">
 <head>
   <meta charset="utf-8" />
-  <style>
-    body { font-family: Arial, sans-serif; background: #f5f5f5; margin: 0; padding: 20px; }
-    .container { background: white; border-radius: 8px; padding: 32px; max-width: 600px; margin: auto; }
-    h1 { color: #1a1a1a; font-size: 24px; }
-    .highlight { color: #2563eb; font-weight: bold; }
-    .ticket-card { background: #f0f7ff; border-radius: 6px; padding: 16px; margin: 16px 0; }
-    .ticket-item { margin-bottom: 8px; }
-    .ticket-number { color: #1a1a1a; font-size: 14px; font-weight: bold; }
-    .ticket-type { color: #444; font-size: 13px; }
-    .ticket-id { color: #888; font-size: 12px; font-family: monospace; }
-    .cta-button { display: inline-block; background: #2563eb; color: white !important; text-decoration: none; padding: 12px 24px; border-radius: 6px; font-weight: bold; font-size: 14px; margin: 16px 0; }
-    .footer { margin-top: 24px; font-size: 12px; color: #999; text-align: center; }
-  </style>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>${headline}</title>
 </head>
-<body>
-  <div class="container">
-    <h1>Your Tickets Are Confirmed!</h1>
-    <p>Thank you for your purchase! Here are your order details:</p>
+<body style="margin:0;padding:0;background:#f1f5f9;font-family:Arial,Helvetica,sans-serif;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f1f5f9;padding:24px 12px;">
+    <tr>
+      <td align="center">
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:600px;background:#ffffff;border-radius:16px;overflow:hidden;border:1px solid #e2e8f0;">
+          <tr>
+            <td style="background:linear-gradient(90deg,#4f46e5,#7c3aed);background-color:#4f46e5;padding:24px 28px;">
+              <div style="font-size:12px;font-weight:600;letter-spacing:0.1em;text-transform:uppercase;color:#c7d2fe;">TicketBox</div>
+              <h1 style="margin:8px 0 0 0;font-size:22px;font-weight:700;color:#ffffff;line-height:1.3;">${headline}</h1>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding:28px;">
+              <p style="margin:0 0 20px 0;font-size:14px;color:#334155;line-height:1.6;">${intro}</p>
 
-    <div class="ticket-card">
-      <div style="color:#666;font-size:12px;text-transform:uppercase;">Order ID</div>
-      <div style="font-size:16px;font-weight:bold;color:#1a1a1a;">${params.orderId}</div>
-    </div>
+              ${orderSummaryHtml}
 
-    <div class="ticket-card">
-      <div style="color:#666;font-size:12px;text-transform:uppercase;">Event</div>
-      <div style="font-size:16px;font-weight:bold;color:#1a1a1a;">${params.concertTitle}</div>
-    </div>
+              ${
+                ticketCardsHtml
+                  ? `<div style="font-size:13px;font-weight:700;color:#0f172a;margin:0 0 12px 0;text-transform:uppercase;letter-spacing:0.04em;">Vé điện tử của bạn</div>${ticketCardsHtml}`
+                  : ''
+              }
 
-    <div class="ticket-card">
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
-        <div>
-          <div style="color:#666;font-size:12px;text-transform:uppercase;">Tickets</div>
-          <div style="font-size:16px;font-weight:bold;color:#1a1a1a;">${params.ticketCount}</div>
-        </div>
-        <div>
-          <div style="color:#666;font-size:12px;text-transform:uppercase;">Total Paid</div>
-          <div style="font-size:16px;font-weight:bold;color:#1a1a1a;">${params.totalAmount.toLocaleString('vi-VN')} VND</div>
-        </div>
-      </div>
-    </div>
+              <table role="presentation" cellpadding="0" cellspacing="0" style="margin:8px 0 20px 0;">
+                <tr>
+                  <td style="border-radius:8px;background:#4f46e5;">
+                    <a href="${this.baseUrl}/my-tickets" style="display:inline-block;padding:12px 24px;font-size:14px;font-weight:700;color:#ffffff;text-decoration:none;">
+                      Xem vé &amp; mã QR
+                    </a>
+                  </td>
+                </tr>
+              </table>
 
-    ${
-      ticketListHtml
-        ? `
-    <div class="ticket-card">
-      <div style="color:#666;font-size:12px;text-transform:uppercase;margin-bottom:8px;">Your E-Tickets</div>
-      ${ticketListHtml}
-    </div>
-    `
-        : ''
-    }
-
-    <p>
-      <a class="cta-button" href="${this.baseUrl}/my-tickets">View My E-Tickets</a>
-    </p>
-
-    <p style="color:#555;font-size:13px;line-height:1.6;">
-      Your QR codes are available on the <span class="highlight">My Tickets</span> page.
-      Sign in to your account and present the QR code on your mobile device at the venue entrance.
-    </p>
-
-    <div class="footer">
-      <p>TicketBox — Your event ticketing platform</p>
-      <p style="font-size:11px;color:#bbb;">Do not share this email. Your QR codes are personal and tied to your account.</p>
-    </div>
-  </div>
+              <p style="margin:0;font-size:13px;color:#64748b;line-height:1.6;">
+                Mã QR chỉ có trên trang <strong style="color:#4f46e5;">Vé của tôi</strong> sau khi đăng nhập.
+                Vui lòng xuất trình mã QR trên điện thoại tại cổng vào sự kiện.
+              </p>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding:16px 28px 24px 28px;border-top:1px solid #f1f5f9;text-align:center;">
+              <p style="margin:0 0 4px 0;font-size:12px;color:#94a3b8;">TicketBox — Nền tảng bán vé sự kiện</p>
+              <p style="margin:0;font-size:11px;color:#cbd5e1;">Không chia sẻ email này. Mã QR gắn với tài khoản của bạn và chỉ dùng một lần.</p>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
 </body>
 </html>`;
 
     try {
       await this.transporter.sendMail({
-        from: this.configService.get<string>('email.from'),
+        from: this.getFrom(),
         to: params.to,
-        subject: `Your tickets for ${params.concertTitle} are confirmed!`,
+        subject: isGateUpdate
+          ? `[TicketBox] Cổng vào đã cập nhật — ${params.concertTitle}`
+          : `[TicketBox] Xác nhận vé — ${params.concertTitle}`,
         html,
       });
 
@@ -186,32 +361,51 @@ export class EmailService {
   }): Promise<void> {
     const html = `
 <!DOCTYPE html>
-<html>
+<html lang="vi">
 <head>
   <meta charset="utf-8" />
-  <style>
-    body { font-family: Arial, sans-serif; background: #f5f5f5; margin: 0; padding: 20px; }
-    .container { background: white; border-radius: 8px; padding: 32px; max-width: 600px; margin: auto; }
-    h1 { color: #cc3300; }
-    p { color: #333; }
-    .footer { margin-top: 24px; font-size: 12px; color: #999; text-align: center; }
-  </style>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 </head>
-<body>
-  <div class="container">
-    <h1>Your Order Has Expired</h1>
-    <p>Your order <strong>${params.orderId}</strong> for <strong>${params.concertTitle}</strong> has expired because payment was not received before ${params.expiresAt.toLocaleString('vi-VN')}.</p>
-    <p>You may try to purchase tickets again if they are still available.</p>
-    <div class="footer"><p>TicketBox</p></div>
-  </div>
+<body style="margin:0;padding:0;background:#f1f5f9;font-family:Arial,Helvetica,sans-serif;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f1f5f9;padding:24px 12px;">
+    <tr>
+      <td align="center">
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:600px;background:#ffffff;border-radius:16px;overflow:hidden;border:1px solid #e2e8f0;">
+          <tr>
+            <td style="background:#dc2626;padding:24px 28px;">
+              <div style="font-size:12px;font-weight:600;letter-spacing:0.1em;text-transform:uppercase;color:#fecaca;">TicketBox</div>
+              <h1 style="margin:8px 0 0 0;font-size:22px;font-weight:700;color:#ffffff;">Đơn hàng đã hết hạn</h1>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding:28px;">
+              <p style="margin:0 0 16px 0;font-size:14px;color:#334155;line-height:1.6;">
+                Đơn hàng <strong>${params.orderId}</strong> cho sự kiện <strong>${params.concertTitle}</strong>
+                đã hết hạn vì thanh toán không hoàn tất trước
+                <strong>${params.expiresAt.toLocaleString('vi-VN')}</strong>.
+              </p>
+              <p style="margin:0;font-size:14px;color:#334155;line-height:1.6;">
+                Bạn có thể thử mua lại vé nếu còn chỗ trống.
+              </p>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding:16px 28px 24px 28px;border-top:1px solid #f1f5f9;text-align:center;">
+              <p style="margin:0;font-size:12px;color:#94a3b8;">TicketBox — Nền tảng bán vé sự kiện</p>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
 </body>
 </html>`;
 
     try {
       await this.transporter.sendMail({
-        from: this.configService.get<string>('email.from'),
+        from: this.getFrom(),
         to: params.to,
-        subject: `Your order for ${params.concertTitle} has expired`,
+        subject: `[TicketBox] Đơn hàng hết hạn — ${params.concertTitle}`,
         html,
       });
 
@@ -235,77 +429,91 @@ export class EmailService {
     concertStartsAt: Date;
     ticketCount: number;
   }): Promise<void> {
-    const formattedDate = params.concertStartsAt.toLocaleString('vi-VN', {
-      weekday: 'long',
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-    });
+    const formattedDate = this.formatEventDate(params.concertStartsAt);
 
     const html = `
 <!DOCTYPE html>
-<html>
+<html lang="vi">
 <head>
   <meta charset="utf-8" />
-  <style>
-    body { font-family: Arial, sans-serif; background: #f5f5f5; margin: 0; padding: 20px; }
-    .container { background: white; border-radius: 8px; padding: 32px; max-width: 600px; margin: auto; }
-    h1 { color: #1a1a1a; font-size: 24px; }
-    .highlight { color: #2563eb; font-weight: bold; }
-    .info-card { background: #f0f7ff; border-radius: 6px; padding: 16px; margin: 16px 0; }
-    .footer { margin-top: 24px; font-size: 12px; color: #999; text-align: center; }
-    .cta-button { display: inline-block; background: #2563eb; color: white !important; text-decoration: none; padding: 12px 24px; border-radius: 6px; font-weight: bold; font-size: 14px; margin: 16px 0; }
-  </style>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 </head>
-<body>
-  <div class="container">
-    <h1>Your event is tomorrow!</h1>
-    <p>We're excited to see you at <strong>${params.concertTitle}</strong>! Here are your event details:</p>
+<body style="margin:0;padding:0;background:#f1f5f9;font-family:Arial,Helvetica,sans-serif;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f1f5f9;padding:24px 12px;">
+    <tr>
+      <td align="center">
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:600px;background:#ffffff;border-radius:16px;overflow:hidden;border:1px solid #e2e8f0;">
+          <tr>
+            <td style="background:linear-gradient(90deg,#4f46e5,#7c3aed);background-color:#4f46e5;padding:24px 28px;">
+              <div style="font-size:12px;font-weight:600;letter-spacing:0.1em;text-transform:uppercase;color:#c7d2fe;">TicketBox</div>
+              <h1 style="margin:8px 0 0 0;font-size:22px;font-weight:700;color:#ffffff;">Sự kiện của bạn diễn ra vào ngày mai!</h1>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding:28px;">
+              <p style="margin:0 0 20px 0;font-size:14px;color:#334155;line-height:1.6;">
+                Chúng tôi rất mong được gặp bạn tại <strong>${params.concertTitle}</strong>. Dưới đây là thông tin sự kiện:
+              </p>
 
-    <div class="info-card">
-      <div style="color:#666;font-size:12px;text-transform:uppercase;">Event</div>
-      <div style="font-size:16px;font-weight:bold;color:#1a1a1a;">${params.concertTitle}</div>
-    </div>
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border:1px solid #e2e8f0;border-radius:16px;overflow:hidden;margin:0 0 20px 0;">
+                <tr>
+                  <td style="background:linear-gradient(90deg,#4f46e5,#7c3aed);background-color:#4f46e5;padding:16px 20px;">
+                    <div style="font-size:11px;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;color:#c7d2fe;">E-Ticket</div>
+                    <div style="font-size:17px;font-weight:700;color:#ffffff;margin-top:4px;">${params.concertTitle}</div>
+                  </td>
+                </tr>
+                <tr>
+                  <td style="padding:20px;">
+                    <div style="margin-bottom:12px;">
+                      <div style="font-size:12px;color:#64748b;margin-bottom:2px;">Địa điểm</div>
+                      <div style="font-size:14px;font-weight:500;color:#0f172a;">${params.concertVenue}</div>
+                    </div>
+                    <div style="margin-bottom:12px;">
+                      <div style="font-size:12px;color:#64748b;margin-bottom:2px;">Thời gian</div>
+                      <div style="font-size:14px;font-weight:500;color:#0f172a;">${formattedDate}</div>
+                    </div>
+                    <div>
+                      <div style="font-size:12px;color:#64748b;margin-bottom:2px;">Số vé của bạn</div>
+                      <div style="font-size:14px;font-weight:600;color:#0f172a;">${params.ticketCount} vé</div>
+                    </div>
+                  </td>
+                </tr>
+              </table>
 
-    <div class="info-card">
-      <div style="color:#666;font-size:12px;text-transform:uppercase;">Venue</div>
-      <div style="font-size:16px;font-weight:bold;color:#1a1a1a;">${params.concertVenue}</div>
-    </div>
+              <table role="presentation" cellpadding="0" cellspacing="0" style="margin:0 0 20px 0;">
+                <tr>
+                  <td style="border-radius:8px;background:#4f46e5;">
+                    <a href="${this.baseUrl}/my-tickets" style="display:inline-block;padding:12px 24px;font-size:14px;font-weight:700;color:#ffffff;text-decoration:none;">
+                      Xem vé &amp; mã QR
+                    </a>
+                  </td>
+                </tr>
+              </table>
 
-    <div class="info-card">
-      <div style="color:#666;font-size:12px;text-transform:uppercase;">Date & Time</div>
-      <div style="font-size:16px;font-weight:bold;color:#1a1a1a;">${formattedDate}</div>
-    </div>
-
-    <div class="info-card">
-      <div style="color:#666;font-size:12px;text-transform:uppercase;">Your Tickets</div>
-      <div style="font-size:16px;font-weight:bold;color:#1a1a1a;">${params.ticketCount} ticket${params.ticketCount > 1 ? 's' : ''}</div>
-    </div>
-
-    <p>
-      <a class="cta-button" href="${this.baseUrl}/my-tickets">View My E-Tickets</a>
-    </p>
-
-    <p style="color:#555;font-size:13px;line-height:1.6;">
-      Please arrive at least <span class="highlight">30 minutes early</span> with your QR code ready for check-in.
-      Don't forget to bring a valid ID.
-    </p>
-
-    <div class="footer">
-      <p>TicketBox — Your event ticketing platform</p>
-      <p style="font-size:11px;color:#bbb;">Do not share your QR codes. Each QR code is tied to your account and can only be used once.</p>
-    </div>
-  </div>
+              <p style="margin:0;font-size:13px;color:#64748b;line-height:1.6;">
+                Vui lòng đến sớm ít nhất <strong style="color:#4f46e5;">30 phút</strong> và chuẩn bị sẵn mã QR để check-in.
+                Đừng quên mang theo giấy tờ tùy thân hợp lệ.
+              </p>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding:16px 28px 24px 28px;border-top:1px solid #f1f5f9;text-align:center;">
+              <p style="margin:0 0 4px 0;font-size:12px;color:#94a3b8;">TicketBox — Nền tảng bán vé sự kiện</p>
+              <p style="margin:0;font-size:11px;color:#cbd5e1;">Không chia sẻ mã QR. Mỗi mã gắn với tài khoản của bạn và chỉ dùng một lần.</p>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
 </body>
 </html>`;
 
     try {
       await this.transporter.sendMail({
-        from: this.configService.get<string>('email.from'),
+        from: this.getFrom(),
         to: params.to,
-        subject: `Reminder: ${params.concertTitle} is tomorrow!`,
+        subject: `[TicketBox] Nhắc lịch — ${params.concertTitle} diễn ra vào ngày mai`,
         html,
       });
 
@@ -328,42 +536,62 @@ export class EmailService {
   }): Promise<void> {
     const html = `
 <!DOCTYPE html>
-<html>
+<html lang="vi">
 <head>
   <meta charset="utf-8" />
-  <style>
-    body { font-family: Arial, sans-serif; background: #f5f5f5; margin: 0; padding: 20px; }
-    .container { background: white; border-radius: 8px; padding: 32px; max-width: 600px; margin: auto; }
-    h1 { color: #1a1a1a; font-size: 24px; }
-    .highlight { color: #2563eb; font-weight: bold; font-size: 18px; letter-spacing: 1px; }
-    .card { background: #f0f7ff; border-radius: 6px; padding: 16px; margin: 16px 0; text-align: center; }
-    .footer { margin-top: 24px; font-size: 12px; color: #999; text-align: center; }
-  </style>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 </head>
-<body>
-  <div class="container">
-    <h1>Khôi phục mật khẩu tài khoản</h1>
-    <p>Chào bạn,</p>
-    <p>Chúng tôi nhận được yêu cầu khôi phục mật khẩu cho tài khoản TicketBox của bạn. Dưới đây là mật khẩu mới được cấp lại:</p>
+<body style="margin:0;padding:0;background:#f1f5f9;font-family:Arial,Helvetica,sans-serif;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f1f5f9;padding:24px 12px;">
+    <tr>
+      <td align="center">
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:600px;background:#ffffff;border-radius:16px;overflow:hidden;border:1px solid #e2e8f0;">
+          <tr>
+            <td style="background:linear-gradient(90deg,#4f46e5,#7c3aed);background-color:#4f46e5;padding:24px 28px;">
+              <div style="font-size:12px;font-weight:600;letter-spacing:0.1em;text-transform:uppercase;color:#c7d2fe;">TicketBox</div>
+              <h1 style="margin:8px 0 0 0;font-size:22px;font-weight:700;color:#ffffff;">Khôi phục mật khẩu tài khoản</h1>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding:28px;">
+              <p style="margin:0 0 12px 0;font-size:14px;color:#334155;line-height:1.6;">Chào bạn,</p>
+              <p style="margin:0 0 20px 0;font-size:14px;color:#334155;line-height:1.6;">
+                Chúng tôi nhận được yêu cầu khôi phục mật khẩu cho tài khoản TicketBox của bạn.
+                Dưới đây là mật khẩu mới được cấp lại:
+              </p>
 
-    <div class="card">
-      <div style="color:#666;font-size:12px;text-transform:uppercase;margin-bottom:8px;">Mật khẩu mới của bạn</div>
-      <div class="highlight">${params.newPassword}</div>
-    </div>
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;margin:0 0 20px 0;">
+                <tr>
+                  <td style="padding:20px;text-align:center;">
+                    <div style="font-size:11px;color:#64748b;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:8px;">Mật khẩu mới của bạn</div>
+                    <div style="font-size:18px;font-weight:700;color:#4f46e5;letter-spacing:1px;">${params.newPassword}</div>
+                  </td>
+                </tr>
+              </table>
 
-    <p style="color:#cc3300;font-size:13px;font-weight:bold;">Vì lý do bảo mật, vui lòng đăng nhập và đổi lại mật khẩu ngay sau khi truy cập hệ thống.</p>
-    <p>Nếu bạn không gửi yêu cầu này, vui lòng bỏ qua email này hoặc liên hệ hỗ trợ.</p>
-
-    <div class="footer">
-      <p>TicketBox — Nền tảng bán vé sự kiện hàng đầu</p>
-    </div>
-  </div>
+              <p style="margin:0 0 12px 0;font-size:13px;font-weight:700;color:#dc2626;line-height:1.6;">
+                Vì lý do bảo mật, vui lòng đăng nhập và đổi lại mật khẩu ngay sau khi truy cập hệ thống.
+              </p>
+              <p style="margin:0;font-size:13px;color:#64748b;line-height:1.6;">
+                Nếu bạn không gửi yêu cầu này, vui lòng bỏ qua email này hoặc liên hệ hỗ trợ.
+              </p>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding:16px 28px 24px 28px;border-top:1px solid #f1f5f9;text-align:center;">
+              <p style="margin:0;font-size:12px;color:#94a3b8;">TicketBox — Nền tảng bán vé sự kiện</p>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
 </body>
 </html>`;
 
     try {
       await this.transporter.sendMail({
-        from: this.configService.get<string>('email.from'),
+        from: this.getFrom(),
         to: params.to,
         subject: `[TicketBox] Cấp lại mật khẩu tài khoản`,
         html,

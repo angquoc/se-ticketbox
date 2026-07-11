@@ -338,7 +338,9 @@ export class GateService {
         totalAmount: 0,
         ticketInfos: params.ticketQrData.map((t) => ({
           ticketId: t.id,
-          ticketTypeName: `Cổng: ${t.gateId}`,
+          ticketTypeName: 'Vé đã cập nhật cổng',
+          gateId: t.gateId,
+          status: 'ISSUED',
         })),
       });
     } catch (err) {
