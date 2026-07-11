@@ -97,6 +97,12 @@ export const authApi = {
       body: JSON.stringify(payload),
     });
   },
+  forgotPassword(email: string) {
+    return clientFetch<{ message: string }>('/api/auth/forgot-password', {
+      method: 'POST',
+      body: JSON.stringify({ email }),
+    });
+  },
 };
 
 interface OrderListResponse {

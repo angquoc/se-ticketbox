@@ -291,4 +291,62 @@ export class EmailService {
       throw err;
     }
   }
+
+  async sendForgotPasswordEmail(params: {
+    to: string;
+    newPassword: string;
+  }): Promise<void> {
+    const html = `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <style>
+    body { font-family: Arial, sans-serif; background: #f5f5f5; margin: 0; padding: 20px; }
+    .container { background: white; border-radius: 8px; padding: 32px; max-width: 600px; margin: auto; }
+    h1 { color: #1a1a1a; font-size: 24px; }
+    .highlight { color: #2563eb; font-weight: bold; font-size: 18px; letter-spacing: 1px; }
+    .card { background: #f0f7ff; border-radius: 6px; padding: 16px; margin: 16px 0; text-align: center; }
+    .footer { margin-top: 24px; font-size: 12px; color: #999; text-align: center; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Khôi phục mật khẩu tài khoản</h1>
+    <p>Chào bạn,</p>
+    <p>Chúng tôi nhận được yêu cầu khôi phục mật khẩu cho tài khoản TicketBox của bạn. Dưới đây là mật khẩu mới được cấp lại:</p>
+
+    <div class="card">
+      <div style="color:#666;font-size:12px;text-transform:uppercase;margin-bottom:8px;">Mật khẩu mới của bạn</div>
+      <div class="highlight">${params.newPassword}</div>
+    </div>
+
+    <p style="color:#cc3300;font-size:13px;font-weight:bold;">Vì lý do bảo mật, vui lòng đăng nhập và đổi lại mật khẩu ngay sau khi truy cập hệ thống.</p>
+    <p>Nếu bạn không gửi yêu cầu này, vui lòng bỏ qua email này hoặc liên hệ hỗ trợ.</p>
+
+    <div class="footer">
+      <p>TicketBox — Nền tảng bán vé sự kiện hàng đầu</p>
+    </div>
+  </div>
+</body>
+</html>`;
+
+    try {
+      await this.transporter.sendMail({
+        from: this.configService.get<string>('email.from'),
+        to: params.to,
+        subject: `[TicketBox] Cấp lại mật khẩu tài khoản`,
+        html,
+      });
+
+      this.logger.log(`Forgot password email sent successfully to ${params.to}`);
+    } catch (err) {
+      this.logger.error(
+        `Failed to send forgot password email to ${params.to}: ${
+          err instanceof Error ? err.message : String(err)
+        }`,
+      );
+      throw err;
+    }
+  }
 }
