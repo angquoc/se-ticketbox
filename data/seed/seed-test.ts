@@ -324,7 +324,7 @@ export async function seedTestData(prisma: PrismaClient) {
       venue: 'Nhà thi đấu Phú Thọ, TP.HCM',
       startsAt: farFutureDate,
       saleStartsAt: pastDate,
-      status: ConcertStatus.SALE_OPEN,
+      status: ConcertStatus.SALE_CLOSED,
       seatMapUrl: '/seatmaps/concerts/demo.svg',
     },
   });
@@ -511,9 +511,9 @@ export async function seedTestData(prisma: PrismaClient) {
       slug: 'concert-checkin-offline',
       description: 'Concert for offline scanning.',
       venue: 'Nhà thi đấu Phú Thọ, TP.HCM',
-      startsAt: nearFutureDate,
+      startsAt: pastDate,
       saleStartsAt: pastDate,
-      status: ConcertStatus.SALE_OPEN,
+      status: ConcertStatus.COMPLETED,
       seatMapUrl: '/seatmaps/concerts/demo.svg',
     },
   });

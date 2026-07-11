@@ -559,6 +559,102 @@ async function main() {
     'GATE-D',
     'GATE-E',
   ]);
+
+  // Concert 5: Autumn K-Pop Wave 2026 (SALE_CLOSED - Đã bán hết / Đóng bán)
+  const autumnConcert = await prisma.concert.create({
+    data: {
+      organizerId: organizer2.id,
+      title: 'AUTUMN K-POP WAVE VIETNAM 2026',
+      slug: 'autumn-kpop-wave-2026',
+      description:
+        'The ultimate Autumn gathering for K-Pop fans in Vietnam. Ticket sales are closed as all seats are sold out.',
+      artistBio: 'Featuring performances from major K-Pop group line-ups.',
+      venue: 'Quan Ngua Sports Palace, Ha Noi, Vietnam',
+      startsAt: new Date('2026-10-15T19:00:00'),
+      saleStartsAt: new Date('2026-06-01T09:00:00'),
+      saleEndsAt: new Date('2026-06-15T17:00:00'),
+      status: ConcertStatus.SALE_CLOSED,
+      seatMapUrl: '/seatmaps/concerts/demo.svg',
+      coverImageUrl: 'https://ticketbox.vn/autumn-kpop-wave-2026.jpg',
+    },
+  });
+
+  const autumnTicketTypes = await Promise.all([
+    prisma.ticketType.create({
+      data: {
+        concertId: autumnConcert.id,
+        name: 'SVIP',
+        price: 6000000,
+        totalQty: 50,
+        soldQty: 50,
+        reservedQty: 0,
+        maxPerUser: 2,
+        saleStartsAt: new Date('2026-06-01T09:00:00'),
+        saleEndsAt: new Date('2026-06-15T17:00:00'),
+        status: TicketTypeStatus.SOLD_OUT,
+      },
+    }),
+    prisma.ticketType.create({
+      data: {
+        concertId: autumnConcert.id,
+        name: 'VIP',
+        price: 4000000,
+        totalQty: 100,
+        soldQty: 100,
+        reservedQty: 0,
+        maxPerUser: 4,
+        saleStartsAt: new Date('2026-06-01T09:00:00'),
+        saleEndsAt: new Date('2026-06-15T17:00:00'),
+        status: TicketTypeStatus.SOLD_OUT,
+      },
+    }),
+    prisma.ticketType.create({
+      data: {
+        concertId: autumnConcert.id,
+        name: 'CAT1',
+        price: 3000000,
+        totalQty: 150,
+        soldQty: 150,
+        reservedQty: 0,
+        maxPerUser: 4,
+        saleStartsAt: new Date('2026-06-01T09:00:00'),
+        saleEndsAt: new Date('2026-06-15T17:00:00'),
+        status: TicketTypeStatus.SOLD_OUT,
+      },
+    }),
+    prisma.ticketType.create({
+      data: {
+        concertId: autumnConcert.id,
+        name: 'CAT2',
+        price: 2000000,
+        totalQty: 200,
+        soldQty: 200,
+        reservedQty: 0,
+        maxPerUser: 4,
+        saleStartsAt: new Date('2026-06-01T09:00:00'),
+        saleEndsAt: new Date('2026-06-15T17:00:00'),
+        status: TicketTypeStatus.SOLD_OUT,
+      },
+    }),
+    prisma.ticketType.create({
+      data: {
+        concertId: autumnConcert.id,
+        name: 'GA',
+        price: 1200000,
+        totalQty: 300,
+        soldQty: 300,
+        reservedQty: 0,
+        maxPerUser: 6,
+        saleStartsAt: new Date('2026-06-01T09:00:00'),
+        saleEndsAt: new Date('2026-06-15T17:00:00'),
+        status: TicketTypeStatus.SOLD_OUT,
+      },
+    }),
+  ]);
+
+  await createGatesForConcert(prisma, autumnConcert.id, ['GATE-A', 'GATE-B']);
+
+  console.log('Created Autumn K-Pop Wave concert and ticket types');
   console.log('Created gates for all concerts');
 
   // Order 1: Customer 1 bought TGC tickets

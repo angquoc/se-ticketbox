@@ -36,7 +36,7 @@ export default function SeatSummaryBar({
               <div className="mt-2 flex items-center gap-3">
                 <span className="text-sm text-slate-600">Số lượng:</span>
                 <span className="text-sm font-semibold text-slate-900">
-                  {selection.quantity} vé (Tự động cập nhật theo số ghế chọn)
+                  {selection.quantity} vé
                 </span>
               </div>
               <p className="mt-1 text-lg font-bold text-indigo-600">
