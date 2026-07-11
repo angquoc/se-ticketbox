@@ -235,7 +235,9 @@ const createMockDetails = (): Record<string, Concert> => {
       saleStartsAt: '2026-01-01T00:00:00.000Z',
       saleEndsAt: isClosed ? '2026-06-15T17:00:00.000Z' : '2026-12-30T17:00:00.000Z',
       status: c.status as any,
-      seatMapUrl: '/seatmaps/concerts/demo.svg',
+      seatMapUrl: c.id === 'summer-music-festival-2026'
+        ? '/seatmaps/concerts/summer-festival.svg'
+        : '/seatmaps/concerts/theater-tiered.svg',
       coverImageUrl: null,
       organizerId: 'mock-organizer',
       organizerName: 'TicketBox Vietnam',
