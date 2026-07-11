@@ -1,5 +1,13 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
+import {
+  appConfig,
+  authConfig,
+  databaseConfig,
+  emailConfig,
+  envValidationSchema,
+  redisConfig,
+} from '../config';
 import { QueueModule } from '../modules/queue/queue.module';
 import { PrismaModule } from '../database/prisma.module';
 import { StorageModule } from '../modules/storage/storage.module';
@@ -14,7 +22,13 @@ import { CsvParseService } from './services/csv-parse.service';
 
 @Module({
   imports: [
-    ConfigModule.forRoot({ isGlobal: true }),
+    // Must load emailConfig — otherwise EmailService gets undefined host and
+    // nodemailer falls back to 127.0.0.1:587 (ECONNREFUSED inside Docker).
+    ConfigModule.forRoot({
+      isGlobal: true,
+      load: [appConfig, authConfig, databaseConfig, redisConfig, emailConfig],
+      validationSchema: envValidationSchema,
+    }),
     QueueModule,
     PrismaModule,
     NotificationModule,

@@ -66,7 +66,8 @@ export class ReminderService {
       { concertId },
       {
         delay,
-        jobId: `reminder:${concertId}`,
+        // BullMQ custom jobId cannot contain ':' (used as Redis key separator)
+        jobId: `reminder-${concertId}`,
         attempts: 3,
         backoff: { type: 'exponential', delay: 5000 },
         removeOnComplete: true,
