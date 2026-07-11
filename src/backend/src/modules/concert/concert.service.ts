@@ -21,6 +21,7 @@ import {
   ConcertListResponseDto,
 } from './dto/concert-response.dto';
 import { ReminderService } from '../notification/reminder.service';
+import { RedisService } from '../redis/redis.service';
 
 // Định nghĩa payload
 type ConcertPayload = Concert & {
@@ -34,7 +35,18 @@ export class ConcertService {
   constructor(
     private prisma: PrismaService,
     @Inject(ReminderService) private reminderService: ReminderService,
+    private readonly redis: RedisService,
   ) {}
+
+  /**
+   * Invalidate cached concert detail/list after inventory or metadata changes.
+   */
+  async invalidateCache(concertId: string): Promise<void> {
+    await Promise.all([
+      this.redis.del(`cache:concert:detail:${concertId}`),
+      this.redis.del('cache:concert:list'),
+    ]);
+  }
 
   /**
    * Transform raw concert data from Prisma into a structured response DTO.
