@@ -1,0 +1,39 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 780" role="img" aria-label="Separated summer festival seat map">
+  <rect width="800" height="780" fill="#f8fafc"/>
+
+  <rect x="240" y="20" width="320" height="56" rx="10" fill="#1e293b"/>
+  <text x="400" y="53" text-anchor="middle" fill="white" font-size="16" font-weight="700" font-family="system-ui,sans-serif">SÂN KHẤU CHÍNH</text>
+  <line x1="80" y1="92" x2="720" y2="92" stroke="#94a3b8" stroke-width="2" stroke-dasharray="8 8"/>
+  <text x="400" y="112" text-anchor="middle" fill="#64748b" font-size="12" font-weight="600" font-family="system-ui,sans-serif">Khu vực kiểm soát an ninh</text>
+
+  <!-- SVIP -->
+  <rect x="275" y="115" width="250" height="120" rx="8" fill="#FEF3C7" opacity="0.68" stroke="#F59E0B" stroke-width="1.5"/>
+  <text x="400" y="180" text-anchor="middle" fill="#92400e" font-size="14" font-weight="700" font-family="system-ui,sans-serif">SVIP</text>
+
+  <!-- VIP -->
+  <rect x="95" y="260" width="290" height="150" rx="8" fill="#FFEDD5" opacity="0.68" stroke="#F97316" stroke-width="1.5"/>
+  <text x="240" y="345" text-anchor="middle" fill="#9a3412" font-size="14" font-weight="700" font-family="system-ui,sans-serif">VIP</text>
+
+  <!-- CAT1 -->
+  <rect x="415" y="260" width="290" height="150" rx="8" fill="#DBEAFE" opacity="0.68" stroke="#3B82F6" stroke-width="1.5"/>
+  <text x="560" y="345" text-anchor="middle" fill="#1d4ed8" font-size="14" font-weight="700" font-family="system-ui,sans-serif">CAT1</text>
+
+  <!-- CAT2 -->
+  <rect x="130" y="425" width="540" height="120" rx="8" fill="#E0E7FF" opacity="0.68" stroke="#6366F1" stroke-width="1.5"/>
+  <text x="400" y="490" text-anchor="middle" fill="#3730a3" font-size="14" font-weight="700" font-family="system-ui,sans-serif">CAT2</text>
+
+  <!-- GA -->
+  <rect x="46" y="565" width="708" height="190" rx="8" fill="#DCFCE7" opacity="0.68" stroke="#22C55E" stroke-width="1.5"/>
+  <text x="400" y="670" text-anchor="middle" fill="#166534" font-size="14" font-weight="700" font-family="system-ui,sans-serif">GA / GENERAL ADMISSION</text>
+
+  <line x1="400" y1="100" x2="400" y2="760" stroke="#cbd5e1" stroke-width="1" stroke-dasharray="6 8"/>
+  <text x="400" y="770" text-anchor="middle" fill="#64748b" font-size="11" font-family="system-ui,sans-serif">Trục giữa sân khấu</text>
+
+  <g id="zones" style="cursor: pointer;">
+    <rect id="svip" data-zone="svip" data-ticket-type="SVIP" data-status="AVAILABLE" data-selected="false" data-hovered="false" x="275" y="115" width="250" height="120" rx="8" />
+    <rect id="vip" data-zone="vip" data-ticket-type="VIP" data-status="AVAILABLE" data-selected="false" data-hovered="false" x="95" y="260" width="290" height="150" rx="8" />
+    <rect id="cat1" data-zone="cat1" data-ticket-type="CAT1" data-status="AVAILABLE" data-selected="false" data-hovered="false" x="415" y="260" width="290" height="150" rx="8" />
+    <rect id="cat2" data-zone="cat2" data-ticket-type="CAT2" data-status="AVAILABLE" data-selected="false" data-hovered="false" x="130" y="425" width="540" height="120" rx="8" />
+    <rect id="ga" data-zone="ga" data-ticket-type="GA" data-status="AVAILABLE" data-selected="false" data-hovered="false" x="46" y="565" width="708" height="190" rx="8" />
+  </g>
+</svg>

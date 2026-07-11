@@ -22,10 +22,10 @@
     "worker:dev": "ts-node -r tsconfig-paths/register src/worker/main.ts",
     "worker:prod": "node dist/src/worker/main",
     "db:migrate": "prisma migrate deploy",
-    "db:seed": "ts-node -T --project tsconfig.json -r tsconfig-paths/register ../../data/seed/seed.ts",
-    "db:seed-test": "ts-node -T --project tsconfig.json -r tsconfig-paths/register ../../data/seed/seed-test.ts",
+    "db:seed": "ts-node -T --project tsconfig.json -r tsconfig-paths/register prisma/seed.ts",
+    "db:seed-test": "ts-node -T --project tsconfig.json -r tsconfig-paths/register prisma/seed-test.ts",
     "db:reset": "prisma migrate reset --force",
-    "db:init": "prisma migrate deploy && ts-node -T --project tsconfig.json -r tsconfig-paths/register ../../data/seed/seed.ts"
+    "db:init": "prisma migrate deploy && ts-node -T --project tsconfig.json -r tsconfig-paths/register prisma/seed.ts"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1063.0",
@@ -121,6 +121,6 @@
     "testEnvironment": "node"
   },
   "prisma": {
-    "seed": "ts-node -T --project tsconfig.json -r tsconfig-paths/register ../data/seed/seed.ts"
+    "seed": "ts-node -T --project tsconfig.json -r tsconfig-paths/register prisma/seed.ts"
   }
 }

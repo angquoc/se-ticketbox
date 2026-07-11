@@ -35,8 +35,9 @@ export default function ZoneDetailPanel({
   const getSeatStatus = (rowIndex: number, seatNum: number) => {
     const flatIndex = rowIndex * seatsPerRow + (seatNum - 1);
     if (flatIndex >= totalSeats) return 'empty_slot';
-    const isOccupied = flatIndex < (zone.soldCount + zone.reservedCount);
-    return isOccupied ? 'occupied' : 'available';
+    if (flatIndex < zone.soldCount) return 'sold';
+    if (flatIndex < zone.soldCount + zone.reservedCount) return 'reserved';
+    return 'available';
   };
 
   return (
@@ -97,12 +98,16 @@ export default function ZoneDetailPanel({
             <span className="text-slate-600">Còn trống</span>
           </div>
           <div className="flex items-center gap-1.5">
-            <div className="h-4 w-4 rounded border border-indigo-600 bg-indigo-600" />
-            <span className="text-slate-600">Đang chọn</span>
+            <div className="h-4 w-4 rounded border border-amber-300 bg-amber-100 flex items-center justify-center text-[10px] text-amber-700 font-bold">R</div>
+            <span className="text-slate-600">Đang giữ chỗ</span>
           </div>
           <div className="flex items-center gap-1.5">
-            <div className="h-4 w-4 rounded border border-slate-200 bg-slate-200 flex items-center justify-center text-[10px] text-slate-400 font-bold">X</div>
-            <span className="text-slate-600">Đã bán / Giữ chỗ</span>
+            <div className="h-4 w-4 rounded border border-slate-200 bg-slate-100 flex items-center justify-center text-[10px] text-slate-400 font-bold">X</div>
+            <span className="text-slate-600">Hết vé</span>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <div className="h-4 w-4 rounded border border-indigo-600 bg-indigo-600" />
+            <span className="text-slate-600">Đã chọn</span>
           </div>
         </div>
 
@@ -125,12 +130,15 @@ export default function ZoneDetailPanel({
                         return <div key={seatIdx} className="h-8 w-8 flex-1" />;
                       }
 
-                      const isOccupied = status === 'occupied';
+                      const isSold = status === 'sold';
+                      const isReserved = status === 'reserved';
                       const isSelected = selectedSeats?.includes(seatName) || false;
 
                       let btnClass = "h-8 w-8 rounded text-xs font-semibold flex items-center justify-center transition-colors border ";
-                      if (isOccupied) {
-                        btnClass += "bg-slate-200 text-slate-400 border-slate-200 cursor-not-allowed";
+                      if (isSold) {
+                        btnClass += "bg-slate-100 text-slate-400 border-slate-200 cursor-not-allowed";
+                      } else if (isReserved) {
+                        btnClass += "bg-amber-100 text-amber-700 border-amber-300 cursor-not-allowed";
                       } else if (isSelected) {
                         btnClass += "bg-indigo-600 text-white border-indigo-600 shadow-sm";
                       } else {
@@ -141,13 +149,13 @@ export default function ZoneDetailPanel({
                         <button
                           key={seatName}
                           type="button"
-                          disabled={isOccupied || disabled}
+                          disabled={isSold || isReserved || disabled}
                           onClick={() => onSelectSeat?.(seatName)}
                           className={btnClass}
-                          title={isOccupied ? `Ghế ${seatName} đã được bán/giữ` : `Ghế ${seatName}`}
+                          title={isSold ? `Ghế ${seatName} đã bán` : isReserved ? `Ghế ${seatName} đang giữ chỗ` : `Ghế ${seatName}`}
                           aria-label={`Ghế ${seatName}`}
                         >
-                          {isOccupied ? 'X' : seatNum}
+                          {isSold ? 'X' : isReserved ? 'R' : seatNum}
                         </button>
                       );
                     })}

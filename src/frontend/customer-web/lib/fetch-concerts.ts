@@ -1,7 +1,7 @@
 import { backendFetch } from '@/lib/api/backend-fetch';
 import type { Concert, ConcertListResponse, ConcertStatus } from '@/types/concert';
 
-const LIST_STATUSES: ConcertStatus[] = ['SALE_OPEN', 'PUBLISHED', 'COMPLETED'];
+const LIST_STATUSES: ConcertStatus[] = ['SALE_OPEN', 'PUBLISHED', 'COMPLETED', 'SALE_CLOSED', 'CANCELLED'];
 
 export async function fetchConcertsFromBackend(): Promise<Concert[]> {
   const responses = await Promise.allSettled(
