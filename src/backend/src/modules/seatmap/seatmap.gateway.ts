@@ -12,6 +12,21 @@ import { Server, Socket } from 'socket.io';
 import { Logger } from '@nestjs/common';
 import { SeatmapService, ZoneUpdatePayload } from './seatmap.service';
 
+interface SocketServerWithAdapter {
+  adapter?: {
+    rooms?: {
+      get(key: string): { size: number } | undefined;
+    };
+  };
+  sockets?: {
+    adapter?: {
+      rooms?: {
+        get(key: string): { size: number } | undefined;
+      };
+    };
+  };
+}
+
 @WebSocketGateway({
   namespace: 'concerts',
   cors: { origin: '*' },
@@ -49,8 +64,12 @@ export class SeatmapGateway
   ) {
     const room = `concert:${data.concertId}:seatmap`;
     void client.join(room);
+    const serverRef = this.server as unknown as SocketServerWithAdapter;
+    const adapter = serverRef.adapter || serverRef.sockets?.adapter;
+    const roomInfo = adapter?.rooms?.get(room);
+    const size = roomInfo ? roomInfo.size : 0;
     this.logger.debug(
-      `Client ${client.id} joined room ${room} (total in room: ${this.server.sockets.adapter.rooms.get(room)?.size ?? 0})`,
+      `Client ${client.id} joined room ${room} (total in room: ${size})`,
     );
     return { event: 'subscribed', data: { concertId: data.concertId } };
   }
