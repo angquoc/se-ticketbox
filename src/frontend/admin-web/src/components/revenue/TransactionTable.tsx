@@ -15,7 +15,7 @@ interface Props {
   loading?: boolean;
 }
 
-const COL_WIDTHS = '180px 1.6fr 1fr 130px 1.3fr 110px';
+const COL_WIDTHS = '180px minmax(0, 1.6fr) minmax(0, 1fr) 130px minmax(0, 1.3fr) 110px';
 
 function ColHeader({ children }: { children: React.ReactNode }) {
   return (
@@ -172,12 +172,12 @@ export default function TransactionTable({
             </div>
 
             {/* Event */}
-            <span style={{ fontSize: '13px', fontWeight: 600, color: '#191B23' }}>
+            <span style={{ fontSize: '13px', fontWeight: 600, color: '#191B23', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={tx.event}>
               {tx.event}
             </span>
 
             {/* Customer */}
-            <span style={{ fontSize: '13px', color: '#434654', fontFamily: 'var(--font-mono)' }}>
+            <span style={{ fontSize: '13px', color: '#434654', fontFamily: 'var(--font-mono)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={'customer' in tx ? (tx as any).customer : undefined}>
               {'customer' in tx ? (tx as any).customer : '—'}
             </span>
 
