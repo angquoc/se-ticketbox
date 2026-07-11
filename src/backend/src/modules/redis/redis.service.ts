@@ -79,9 +79,8 @@ export class RedisService implements OnModuleDestroy, OnModuleInit {
         redisUrl.startsWith('rediss://') || redisUrl.includes('upstash');
       const isUpstash = redisUrl.includes('upstash');
       const redis = new Redis(redisUrl, {
-        maxRetriesPerRequest: 1,
-        enableOfflineQueue: false,
-        enableReadyCheck: true,
+        enableOfflineQueue: true,
+        enableReadyCheck: !isUpstash,
         family: isUpstash ? 0 : 4,
         ...(isTls ? { tls: { rejectUnauthorized: false } } : {}),
       });

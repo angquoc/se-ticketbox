@@ -80,7 +80,7 @@ export class HealthController {
   @Post('reset')
   @HttpCode(HttpStatus.OK)
   async resetDatabase() {
-    if (process.env.NODE_ENV === 'production') {
+    if (process.env.NODE_ENV === 'production' && process.env.ALLOW_RESET !== 'true') {
       throw new ForbiddenException(
         'Không được phép reset DB ở môi trường production',
       );
