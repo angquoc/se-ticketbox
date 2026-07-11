@@ -174,7 +174,7 @@ async function main() {
       saleStartsAt: new Date('2026-02-09T09:00:00'),
       saleEndsAt: new Date('2026-03-29T17:00:00'),
       status: ConcertStatus.COMPLETED,
-      seatMapUrl: '/seatmaps/concerts/demo.svg',
+      seatMapUrl: '/seatmaps/concerts/theater-tiered.svg',
       coverImageUrl: 'https://popsww.com/tgc-vietnam-2026.jpg',
     },
   });
@@ -274,7 +274,7 @@ async function main() {
       saleStartsAt: new Date('2025-11-20T09:00:00'),
       saleEndsAt: new Date('2026-01-24T18:00:00'),
       status: ConcertStatus.COMPLETED,
-      seatMapUrl: '/seatmaps/concerts/demo.svg',
+      seatMapUrl: '/seatmaps/concerts/theater-tiered.svg',
       coverImageUrl: 'https://kangintour-2026.com/poster.jpg',
     },
   });
@@ -371,7 +371,7 @@ async function main() {
       saleStartsAt: new Date('2026-02-24T09:00:00'),
       saleEndsAt: new Date('2026-04-18T17:00:00'),
       status: ConcertStatus.COMPLETED,
-      seatMapUrl: '/seatmaps/concerts/demo.svg',
+      seatMapUrl: '/seatmaps/concerts/theater-tiered.svg',
       coverImageUrl: 'https://ticketbox.vn/jessica-reflections-2026.jpg',
     },
   });
@@ -472,7 +472,7 @@ async function main() {
       saleStartsAt: new Date('2026-05-01T09:00:00'),
       saleEndsAt: new Date('2026-09-08T17:00:00'),
       status: ConcertStatus.SALE_OPEN,
-      seatMapUrl: '/seatmaps/concerts/demo.svg',
+      seatMapUrl: '/seatmaps/concerts/summer-festival.svg',
       coverImageUrl: 'https://ticketbox.vn/summer-festival-2026.jpg',
     },
   });
@@ -574,7 +574,7 @@ async function main() {
       saleStartsAt: new Date('2026-06-01T09:00:00'),
       saleEndsAt: new Date('2026-06-15T17:00:00'),
       status: ConcertStatus.SALE_CLOSED,
-      seatMapUrl: '/seatmaps/concerts/demo.svg',
+      seatMapUrl: '/seatmaps/concerts/theater-tiered.svg',
       coverImageUrl: 'https://ticketbox.vn/autumn-kpop-wave-2026.jpg',
     },
   });
