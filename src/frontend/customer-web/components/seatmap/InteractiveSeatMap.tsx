@@ -33,33 +33,92 @@ function resolveZoneElement(
 }
 
 const SEATMAP_HOST_STYLES = `
-.seatmap-host [data-zone] { transition: fill 0.15s ease, stroke 0.15s ease; cursor: pointer; }
+.seatmap-host [data-zone] {
+  cursor: pointer;
+  transition: opacity 0.15s ease;
+}
+.seatmap-host [data-zone] path,
+.seatmap-host [data-zone] polygon,
+.seatmap-host [data-zone] rect,
+.seatmap-host [data-zone] circle,
+.seatmap-host [data-zone] ellipse,
+.seatmap-host [data-zone] polyline {
+  transition: fill 0.15s ease, stroke 0.15s ease, stroke-width 0.15s ease;
+}
 .seatmap-host [data-zone][data-visible="false"] {
   opacity: 0.15;
   pointer-events: none;
 }
-.seatmap-host [data-zone][data-status="SOLD_OUT"] {
+.seatmap-host.has-selection [data-zone][data-selected="false"] {
+  opacity: 0.35;
+}
+.seatmap-host.has-selection [data-zone][data-selected="true"] {
+  opacity: 1.0;
+}
+.seatmap-host [data-zone][data-status="SOLD_OUT"] path,
+.seatmap-host [data-zone][data-status="SOLD_OUT"] polygon,
+.seatmap-host [data-zone][data-status="SOLD_OUT"] rect,
+.seatmap-host [data-zone][data-status="SOLD_OUT"] circle,
+.seatmap-host [data-zone][data-status="SOLD_OUT"] ellipse,
+.seatmap-host [data-zone][data-status="SOLD_OUT"] polyline {
   fill: ${ZONE_COLORS.soldOut} !important;
   stroke: #9e9e9e !important;
+}
+.seatmap-host [data-zone][data-status="SOLD_OUT"] {
   opacity: 0.85;
   cursor: not-allowed;
 }
-.seatmap-host [data-zone][data-status="RESERVED"] {
+.seatmap-host [data-zone][data-status="RESERVED"] path,
+.seatmap-host [data-zone][data-status="RESERVED"] polygon,
+.seatmap-host [data-zone][data-status="RESERVED"] rect,
+.seatmap-host [data-zone][data-status="RESERVED"] circle,
+.seatmap-host [data-zone][data-status="RESERVED"] ellipse,
+.seatmap-host [data-zone][data-status="RESERVED"] polyline {
   fill: ${ZONE_COLORS.reserved} !important;
   stroke: #f9a825 !important;
 }
-.seatmap-host [data-zone][data-status="AVAILABLE"][data-selected="false"][data-hovered="false"] {
+.seatmap-host [data-zone][data-status="AVAILABLE"][data-selected="false"][data-hovered="false"] path,
+.seatmap-host [data-zone][data-status="AVAILABLE"][data-selected="false"][data-hovered="false"] polygon,
+.seatmap-host [data-zone][data-status="AVAILABLE"][data-selected="false"][data-hovered="false"] rect,
+.seatmap-host [data-zone][data-status="AVAILABLE"][data-selected="false"][data-hovered="false"] circle,
+.seatmap-host [data-zone][data-status="AVAILABLE"][data-selected="false"][data-hovered="false"] ellipse,
+.seatmap-host [data-zone][data-status="AVAILABLE"][data-selected="false"][data-hovered="false"] polyline {
   fill: ${ZONE_COLORS.available} !important;
   stroke: #388e3c !important;
 }
-.seatmap-host [data-zone][data-status="AVAILABLE"][data-hovered="true"][data-selected="false"] {
+.seatmap-host [data-zone][data-status="AVAILABLE"][data-hovered="true"][data-selected="false"] path,
+.seatmap-host [data-zone][data-status="AVAILABLE"][data-hovered="true"][data-selected="false"] polygon,
+.seatmap-host [data-zone][data-status="AVAILABLE"][data-hovered="true"][data-selected="false"] rect,
+.seatmap-host [data-zone][data-status="AVAILABLE"][data-hovered="true"][data-selected="false"] circle,
+.seatmap-host [data-zone][data-status="AVAILABLE"][data-hovered="true"][data-selected="false"] ellipse,
+.seatmap-host [data-zone][data-status="AVAILABLE"][data-hovered="true"][data-selected="false"] polyline {
   fill: ${ZONE_COLORS.hover} !important;
   stroke: #ef6c00 !important;
 }
-.seatmap-host [data-zone][data-selected="true"] {
-  fill: ${ZONE_COLORS.selected} !important;
-  stroke: #1565C0 !important;
-  stroke-width: 3 !important;
+.seatmap-host [data-zone][data-selected="true"] path,
+.seatmap-host [data-zone][data-selected="true"] polygon,
+.seatmap-host [data-zone][data-selected="true"] rect,
+.seatmap-host [data-zone][data-selected="true"] circle,
+.seatmap-host [data-zone][data-selected="true"] ellipse,
+.seatmap-host [data-zone][data-selected="true"] polyline {
+  stroke: #2196F3 !important;
+  stroke-width: 4 !important;
+}
+.seatmap-host [data-zone][data-selected="true"][data-status="AVAILABLE"] path,
+.seatmap-host [data-zone][data-selected="true"][data-status="AVAILABLE"] polygon,
+.seatmap-host [data-zone][data-selected="true"][data-status="AVAILABLE"] rect,
+.seatmap-host [data-zone][data-selected="true"][data-status="AVAILABLE"] circle,
+.seatmap-host [data-zone][data-selected="true"][data-status="AVAILABLE"] ellipse,
+.seatmap-host [data-zone][data-selected="true"][data-status="AVAILABLE"] polyline {
+  fill: ${ZONE_COLORS.available} !important;
+}
+.seatmap-host [data-zone][data-selected="true"][data-status="RESERVED"] path,
+.seatmap-host [data-zone][data-selected="true"][data-status="RESERVED"] polygon,
+.seatmap-host [data-zone][data-selected="true"][data-status="RESERVED"] rect,
+.seatmap-host [data-zone][data-selected="true"][data-status="RESERVED"] circle,
+.seatmap-host [data-zone][data-selected="true"][data-status="RESERVED"] ellipse,
+.seatmap-host [data-zone][data-selected="true"][data-status="RESERVED"] polyline {
+  fill: ${ZONE_COLORS.reserved} !important;
 }
 `;
 
@@ -162,6 +221,16 @@ export default function InteractiveSeatMap({
     }
     return set;
   }, [zones, activeTicketTypeFilter, activeZoneFilter]);
+
+  const hasSelection = useMemo(() => {
+    if (activeTicketTypeFilter && activeTicketTypeFilter !== 'all') {
+      return true;
+    }
+    if (activeZoneFilter && activeZoneFilter !== 'all') {
+      return true;
+    }
+    return zones.some((entry) => isZoneSelected(entry.ticketType.id, entry.zone.zoneId));
+  }, [zones, isZoneSelected, activeTicketTypeFilter, activeZoneFilter]);
 
   useEffect(() => {
     zoneByKeyRef.current = zoneByKey;
@@ -497,7 +566,7 @@ export default function InteractiveSeatMap({
         }}
       >
         {svgLoaded ? (
-          <div className="seatmap-host mx-auto w-full max-w-4xl">
+          <div className={`seatmap-host mx-auto w-full max-w-4xl ${hasSelection ? 'has-selection' : ''}`}>
             <style>{SEATMAP_HOST_STYLES}</style>
             <div
               ref={svgHostRef}

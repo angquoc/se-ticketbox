@@ -82,9 +82,9 @@ services:
       EMAIL_HOST: smtp.ethereal.email
       EMAIL_PORT: "587"
       EMAIL_SECURE: "false"
-      EMAIL_USER: ""
-      EMAIL_PASS: ""
-      EMAIL_FROM: TicketBox <noreply@ticketbox.com>
+      EMAIL_USER: richard.schowalter@ethereal.email
+      EMAIL_PASS: r5T74ZSMrndVGNc1mZ
+      EMAIL_FROM: 'TicketBox <richard.schowalter@ethereal.email>'
     depends_on:
       postgres:
         condition: service_healthy
@@ -129,9 +129,9 @@ services:
       EMAIL_HOST: smtp.ethereal.email
       EMAIL_PORT: "587"
       EMAIL_SECURE: "false"
-      EMAIL_USER: ""
-      EMAIL_PASS: ""
-      EMAIL_FROM: TicketBox <noreply@ticketbox.com>
+      EMAIL_USER: richard.schowalter@ethereal.email
+      EMAIL_PASS: r5T74ZSMrndVGNc1mZ
+      EMAIL_FROM: 'TicketBox <richard.schowalter@ethereal.email>'
     depends_on:
       postgres:
         condition: service_healthy
