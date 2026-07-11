@@ -23,6 +23,7 @@ export interface OrderTicket {
   checkedInAt: string | null;
   createdAt: string;
   qrPayload: string;
+  gateId?: string;
 }
 
 export interface OrderItem {

@@ -15,6 +15,8 @@ interface ZoneEntry {
 interface InteractiveSeatMapProps {
   seatMapUrl: string;
   zones: ZoneEntry[];
+  activeTicketTypeFilter?: string;
+  activeZoneFilter?: string;
   isZoneSelected: (ticketTypeId: string, zoneId: string) => boolean;
   onSelectZone: (ticketTypeId: string, zoneId: string) => void;
   onBackgroundLoaded?: () => void;
@@ -77,6 +79,8 @@ function applyZoneDataset(
 export default function InteractiveSeatMap({
   seatMapUrl,
   zones,
+  activeTicketTypeFilter,
+  activeZoneFilter,
   isZoneSelected,
   onSelectZone,
   onBackgroundLoaded,
@@ -140,10 +144,24 @@ export default function InteractiveSeatMap({
     return map;
   }, [zones]);
 
-  const visibleZoneKeys = useMemo(
-    () => new Set(zones.map((entry) => zoneKey(entry.ticketType.id, entry.zone.zoneId))),
-    [zones],
-  );
+  const visibleZoneKeys = useMemo(() => {
+    const set = new Set<string>();
+    for (const entry of zones) {
+      const matchesTicketType =
+        !activeTicketTypeFilter ||
+        activeTicketTypeFilter === 'all' ||
+        entry.ticketType.id === activeTicketTypeFilter;
+      const matchesZone =
+        !activeZoneFilter ||
+        activeZoneFilter === 'all' ||
+        entry.zone.zoneId === activeZoneFilter;
+
+      if (matchesTicketType && matchesZone) {
+        set.add(zoneKey(entry.ticketType.id, entry.zone.zoneId));
+      }
+    }
+    return set;
+  }, [zones, activeTicketTypeFilter, activeZoneFilter]);
 
   useEffect(() => {
     zoneByKeyRef.current = zoneByKey;
@@ -187,7 +205,8 @@ export default function InteractiveSeatMap({
     const isVisible = Boolean(entry && visibleZoneKeysRef.current.has(key));
     const hovered = hoveredOverride ?? hoveredZoneKeyRef.current === key;
     const selected = entry
-      ? isZoneSelectedRef.current(entry.ticketType.id, entry.zone.zoneId)
+      ? isZoneSelectedRef.current(entry.ticketType.id, entry.zone.zoneId) ||
+        (activeTicketTypeFilter !== undefined && activeTicketTypeFilter !== 'all' && entry.ticketType.id === activeTicketTypeFilter)
       : false;
 
     if (!entry || !isVisible) {
@@ -198,7 +217,7 @@ export default function InteractiveSeatMap({
     }
 
     applyZoneDataset(element, entry.zone, { isVisible, selected, hovered });
-  }, []);
+  }, [activeTicketTypeFilter]);
 
   const syncAllZones = useCallback(() => {
     for (const key of zoneElementsRef.current.keys()) {
@@ -379,11 +398,11 @@ export default function InteractiveSeatMap({
     syncAllZones();
   }, [svgLoaded, zones, syncAllZones]);
 
-  // Sync styling when zone selections change
+  // Sync styling when zone selections or visibility filters change
   useEffect(() => {
     if (!svgLoaded || zoneElementsRef.current.size === 0) return;
     syncAllZones();
-  }, [svgLoaded, isZoneSelected, syncAllZones]);
+  }, [svgLoaded, isZoneSelected, visibleZoneKeys, syncAllZones]);
 
   useEffect(() => {
     const container = containerRef.current;

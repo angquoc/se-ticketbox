@@ -32,6 +32,7 @@ export default function ConcertList() {
   const [loading, setLoading] = useState(true);
   const [source, setSource] = useState<'backend' | 'mock' | null>(null);
   const [backendError, setBackendError] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<'SALE_OPEN' | 'SOLD_OUT' | 'PAST'>('SALE_OPEN');
 
   useEffect(() => {
     let cancelled = false;
@@ -61,6 +62,18 @@ export default function ConcertList() {
     };
   }, []);
 
+  const filteredConcerts = concerts.filter((concert) => {
+    const isPast = new Date(concert.startsAt).getTime() < Date.now();
+    if (activeTab === 'PAST') {
+      return concert.status === 'COMPLETED' || concert.status === 'CANCELLED' || isPast;
+    }
+    if (activeTab === 'SOLD_OUT') {
+      return concert.status === 'SALE_CLOSED' && !isPast;
+    }
+    // activeTab === 'SALE_OPEN'
+    return (concert.status === 'SALE_OPEN' || concert.status === 'PUBLISHED') && !isPast;
+  });
+
   return (
     <div className="min-h-screen bg-slate-50">
       <CustomerHeader />
@@ -77,15 +90,49 @@ export default function ConcertList() {
           <BackendNotice backendError={backendError} source={source} />
         </div>
 
+        {/* Tab filters */}
+        <div className="mt-6 flex border-b border-slate-200 gap-2 overflow-x-auto">
+          <button
+            onClick={() => setActiveTab('SALE_OPEN')}
+            className={`pb-3 px-4 text-sm font-semibold transition-colors border-b-2 whitespace-nowrap ${
+              activeTab === 'SALE_OPEN'
+                ? 'border-indigo-600 text-indigo-600'
+                : 'border-transparent text-slate-500 hover:text-slate-700'
+            }`}
+          >
+            Đang mở bán
+          </button>
+          <button
+            onClick={() => setActiveTab('SOLD_OUT')}
+            className={`pb-3 px-4 text-sm font-semibold transition-colors border-b-2 whitespace-nowrap ${
+              activeTab === 'SOLD_OUT'
+                ? 'border-indigo-600 text-indigo-600'
+                : 'border-transparent text-slate-500 hover:text-slate-700'
+            }`}
+          >
+            Đã bán hết / Đóng bán
+          </button>
+          <button
+            onClick={() => setActiveTab('PAST')}
+            className={`pb-3 px-4 text-sm font-semibold transition-colors border-b-2 whitespace-nowrap ${
+              activeTab === 'PAST'
+                ? 'border-indigo-600 text-indigo-600'
+                : 'border-transparent text-slate-500 hover:text-slate-700'
+            }`}
+          >
+            Đã diễn ra
+          </button>
+        </div>
+
         {loading ? (
           <div className="mt-10 flex justify-center">
             <div className="h-10 w-10 animate-spin rounded-full border-4 border-indigo-200 border-t-indigo-600" />
           </div>
-        ) : concerts.length === 0 ? (
-          <p className="mt-10 text-center text-slate-600">Chưa có sự kiện nào.</p>
+        ) : filteredConcerts.length === 0 ? (
+          <p className="mt-10 text-center text-slate-600">Chưa có sự kiện nào trong mục này.</p>
         ) : (
           <div className="mt-8 grid gap-4 sm:grid-cols-2">
-            {concerts.map((concert) => (
+            {filteredConcerts.map((concert) => (
               <article
                 key={concert.id}
                 className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm transition-shadow hover:shadow-md"

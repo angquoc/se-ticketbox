@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { ALL_TICKET_TYPES, useSeatMap } from '@/hooks/useSeatMap';
@@ -65,11 +65,35 @@ export default function SeatMapPage({ concertId }: SeatMapPageProps) {
     zoneOptions,
     selectZone,
     setQuantity,
-    isZoneSelected,
+    isZoneSelected: isZoneSelectedFromHook,
     refreshAvailability,
   } = useSeatMap({ concertId });
 
   const [selectedSeats, setSelectedSeats] = useState<string[]>([]);
+
+  const allZones = useMemo(() => {
+    if (!data) return [];
+    const items: Array<{ ticketType: any; zone: any }> = [];
+    for (const ticketType of data.ticketTypes) {
+      for (const zone of ticketType.zones) {
+        items.push({ ticketType, zone });
+      }
+    }
+    return items;
+  }, [data]);
+
+  const isZoneSelected = useCallback(
+    (ticketTypeId: string, zoneId: string) => {
+      if (isZoneSelectedFromHook(ticketTypeId, zoneId)) {
+        return true;
+      }
+      if (ticketTypeFilter !== ALL_TICKET_TYPES && ticketTypeId === ticketTypeFilter) {
+        return true;
+      }
+      return false;
+    },
+    [isZoneSelectedFromHook, ticketTypeFilter],
+  );
   const [lastZoneKey, setLastZoneKey] = useState<string | null>(null);
 
   const saleInfo = data
@@ -276,8 +300,6 @@ export default function SeatMapPage({ concertId }: SeatMapPageProps) {
             zones={zoneOptions}
             zoneFilter={zoneFilter}
             onZoneChange={setZoneFilter}
-            availabilityFilter={availabilityFilter}
-            onAvailabilityChange={setAvailabilityFilter}
           />
         </div>
 
@@ -325,7 +347,9 @@ export default function SeatMapPage({ concertId }: SeatMapPageProps) {
         <div className={showTextFallback ? 'hidden' : 'mb-4'}>
           <InteractiveSeatMap
             seatMapUrl={data.seatMapUrl}
-            zones={filteredZones}
+            zones={allZones}
+            activeTicketTypeFilter={ticketTypeFilter}
+            activeZoneFilter={zoneFilter}
             isZoneSelected={isZoneSelected}
             onSelectZone={selectZone}
             onBackgroundLoaded={handleBackgroundLoaded}
