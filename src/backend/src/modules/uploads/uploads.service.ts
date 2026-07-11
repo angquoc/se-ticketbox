@@ -105,6 +105,7 @@ export class UploadsService {
       message: 'CSV uploaded successfully',
       jobStatus: uploadedFile.status,
       jobId: job.id,
+      uploadedFileId: uploadedFile.id,
     };
   }
 

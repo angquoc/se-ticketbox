@@ -16,7 +16,7 @@ export class ReminderService {
     @InjectQueue(NOTIFICATION_QUEUE)
     private readonly notificationQueue: Queue,
     private readonly prisma: PrismaService,
-  ) {}
+  ) { }
 
   /**
    * Schedule a 24h reminder delayed job for a concert.
@@ -66,7 +66,7 @@ export class ReminderService {
       { concertId },
       {
         delay,
-        // BullMQ custom jobId cannot contain ':' (used as Redis key separator)
+        // BullMQ custom jobId cannot contain '-' (used as Redis key separator)
         jobId: `reminder-${concertId}`,
         attempts: 3,
         backoff: { type: 'exponential', delay: 5000 },
