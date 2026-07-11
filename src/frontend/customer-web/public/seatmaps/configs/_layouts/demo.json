@@ -1,0 +1,48 @@
+{
+  "slug": "demo",
+  "background": "demo",
+  "zones": [
+    {
+      "zoneId": "svip",
+      "zoneName": "SVIP (Center Front)",
+      "ticketTypeName": "SVIP",
+      "rect": { "x": 280, "y": 130, "width": 240, "height": 110, "rx": 8 }
+    },
+    {
+      "zoneId": "vip-left",
+      "zoneName": "VIP (Left Wing)",
+      "ticketTypeName": "VIP",
+      "rect": { "x": 50, "y": 130, "width": 210, "height": 110, "rx": 8 }
+    },
+    {
+      "zoneId": "vip-right",
+      "zoneName": "VIP (Right Wing)",
+      "ticketTypeName": "VIP",
+      "rect": { "x": 540, "y": 130, "width": 210, "height": 110, "rx": 8 }
+    },
+    {
+      "zoneId": "cat1",
+      "zoneName": "CAT1 (Center Middle)",
+      "ticketTypeName": "CAT1",
+      "rect": { "x": 240, "y": 260, "width": 320, "height": 110, "rx": 8 }
+    },
+    {
+      "zoneId": "cat2-left",
+      "zoneName": "CAT2 (Left Middle)",
+      "ticketTypeName": "CAT2",
+      "rect": { "x": 50, "y": 260, "width": 170, "height": 110, "rx": 8 }
+    },
+    {
+      "zoneId": "cat2-right",
+      "zoneName": "CAT2 (Right Middle)",
+      "ticketTypeName": "CAT2",
+      "rect": { "x": 580, "y": 260, "width": 170, "height": 110, "rx": 8 }
+    },
+    {
+      "zoneId": "ga",
+      "zoneName": "GA (General Admission)",
+      "ticketTypeName": "GA",
+      "rect": { "x": 50, "y": 390, "width": 700, "height": 130, "rx": 8 }
+    }
+  ]
+}

@@ -83,6 +83,33 @@ export async function runSeeding() {
   console.log('Seeding completed successfully!');
 }
 
+async function fillMissingTicketTypes(prisma: PrismaClient, concertId: string, existingTypes: string[]) {
+  const allTypes = ['SVIP', 'VIP', 'CAT1', 'CAT2', 'GA'];
+  const missing = allTypes.filter(name => !existingTypes.includes(name));
+  const pastDate = new Date(Date.now() - 1 * 24 * 60 * 60 * 1000);
+  
+  for (const name of missing) {
+    let price = 1000000;
+    if (name === 'SVIP') price = 5000000;
+    else if (name === 'VIP') price = 3000000;
+    else if (name === 'CAT1') price = 2000000;
+    else if (name === 'CAT2') price = 1500000;
+    
+    await prisma.ticketType.create({
+      data: {
+        concertId,
+        name,
+        price,
+        totalQty: 500,
+        soldQty: 0,
+        maxPerUser: 4,
+        saleStartsAt: pastDate,
+        status: TicketTypeStatus.ACTIVE,
+      }
+    });
+  }
+}
+
 export async function seedTestData(prisma: PrismaClient) {
   // Create Users
   const admin = await prisma.user.create({
@@ -241,6 +268,7 @@ export async function seedTestData(prisma: PrismaClient) {
       status: TicketTypeStatus.ACTIVE,
     },
   });
+  await fillMissingTicketTypes(prisma, concertMomo.id, ['SVIP', 'VIP', 'GA']);
   await createGatesForConcert(prisma, concertMomo.id, ['GATE-A', 'GATE-B', 'GATE-C']);
 
   // 2. concert-purchase-vnpay
@@ -282,6 +310,7 @@ export async function seedTestData(prisma: PrismaClient) {
       status: TicketTypeStatus.ACTIVE,
     },
   });
+  await fillMissingTicketTypes(prisma, concertVnpay.id, ['SVIP', 'VIP']);
   await createGatesForConcert(prisma, concertVnpay.id, ['GATE-A', 'GATE-B']);
 
   // 3. concert-purchase-limits
@@ -296,6 +325,7 @@ export async function seedTestData(prisma: PrismaClient) {
       startsAt: farFutureDate,
       saleStartsAt: pastDate,
       status: ConcertStatus.SALE_OPEN,
+      seatMapUrl: '/seatmaps/concerts/demo.svg',
     },
   });
   await prisma.ticketType.create({
@@ -322,6 +352,7 @@ export async function seedTestData(prisma: PrismaClient) {
       status: TicketTypeStatus.ACTIVE,
     },
   });
+  await fillMissingTicketTypes(prisma, concertLimits.id, ['SVIP', 'GA']);
   await createGatesForConcert(prisma, concertLimits.id, ['GATE-A']);
 
   // 4. concert-purchase-idempotency
@@ -336,6 +367,7 @@ export async function seedTestData(prisma: PrismaClient) {
       startsAt: farFutureDate,
       saleStartsAt: pastDate,
       status: ConcertStatus.SALE_OPEN,
+      seatMapUrl: '/seatmaps/concerts/demo.svg',
     },
   });
   await prisma.ticketType.create({
@@ -350,6 +382,7 @@ export async function seedTestData(prisma: PrismaClient) {
       status: TicketTypeStatus.ACTIVE,
     },
   });
+  await fillMissingTicketTypes(prisma, concertIdemp.id, ['VIP']);
   await createGatesForConcert(prisma, concertIdemp.id, ['GATE-A']);
 
   // 5. concert-checkin-online
@@ -364,6 +397,7 @@ export async function seedTestData(prisma: PrismaClient) {
       startsAt: nearFutureDate,
       saleStartsAt: pastDate,
       status: ConcertStatus.SALE_OPEN,
+      seatMapUrl: '/seatmaps/concerts/demo.svg',
     },
   });
   const tTypeCheckinOnline = await prisma.ticketType.create({
@@ -378,6 +412,7 @@ export async function seedTestData(prisma: PrismaClient) {
       status: TicketTypeStatus.ACTIVE,
     },
   });
+  await fillMissingTicketTypes(prisma, concertCheckinOnline.id, ['VIP']);
   await createGatesForConcert(prisma, concertCheckinOnline.id, ['GATE-A', 'GATE-B']);
 
   // Create pre-purchased tickets for Tester 2 online test
@@ -479,6 +514,7 @@ export async function seedTestData(prisma: PrismaClient) {
       startsAt: nearFutureDate,
       saleStartsAt: pastDate,
       status: ConcertStatus.SALE_OPEN,
+      seatMapUrl: '/seatmaps/concerts/demo.svg',
     },
   });
   const tTypeCheckinOffline = await prisma.ticketType.create({
@@ -493,6 +529,7 @@ export async function seedTestData(prisma: PrismaClient) {
       status: TicketTypeStatus.ACTIVE,
     },
   });
+  await fillMissingTicketTypes(prisma, concertCheckinOffline.id, ['VIP']);
   await createGatesForConcert(prisma, concertCheckinOffline.id, ['GATE-A']);
 
   // Pre-purchased ticket for Customer 2-02 (offline verification check)
@@ -544,6 +581,7 @@ export async function seedTestData(prisma: PrismaClient) {
       startsAt: nearFutureDate,
       saleStartsAt: pastDate,
       status: ConcertStatus.SALE_OPEN,
+      seatMapUrl: '/seatmaps/concerts/demo.svg',
     },
   });
   const tTypeCheckinGates = await prisma.ticketType.create({
@@ -558,6 +596,7 @@ export async function seedTestData(prisma: PrismaClient) {
       status: TicketTypeStatus.ACTIVE,
     },
   });
+  await fillMissingTicketTypes(prisma, concertCheckinGates.id, ['VIP']);
   await createGatesForConcert(prisma, concertCheckinGates.id, ['GATE-A', 'GATE-B', 'GATE-C']);
 
   // Pre-purchased ticket for Customer 2-04 (Assigned to GATE-A, scan at GATE-B)
@@ -639,6 +678,7 @@ export async function seedTestData(prisma: PrismaClient) {
       startsAt: farFutureDate,
       saleStartsAt: pastDate,
       status: ConcertStatus.SALE_OPEN,
+      seatMapUrl: '/seatmaps/concerts/demo.svg',
     },
   });
   await prisma.ticketType.create({
@@ -653,6 +693,7 @@ export async function seedTestData(prisma: PrismaClient) {
       status: TicketTypeStatus.ACTIVE,
     },
   });
+  await fillMissingTicketTypes(prisma, concertAdminCsv.id, ['VIP']);
   await createGatesForConcert(prisma, concertAdminCsv.id, ['GATE-A', 'GATE-B']);
 
   // 11. concert-nft-cache
@@ -667,6 +708,7 @@ export async function seedTestData(prisma: PrismaClient) {
       startsAt: farFutureDate,
       saleStartsAt: pastDate,
       status: ConcertStatus.SALE_OPEN,
+      seatMapUrl: '/seatmaps/concerts/demo.svg',
     },
   });
   await prisma.ticketType.create({
@@ -681,6 +723,7 @@ export async function seedTestData(prisma: PrismaClient) {
       status: TicketTypeStatus.ACTIVE,
     },
   });
+  await fillMissingTicketTypes(prisma, concertNftCache.id, ['VIP']);
   await createGatesForConcert(prisma, concertNftCache.id, ['GATE-A']);
 
   // 12. concert-nft-concurrency (SVIP has only 2 tickets left)
@@ -695,6 +738,7 @@ export async function seedTestData(prisma: PrismaClient) {
       startsAt: farFutureDate,
       saleStartsAt: pastDate,
       status: ConcertStatus.SALE_OPEN,
+      seatMapUrl: '/seatmaps/concerts/demo.svg',
     },
   });
   await prisma.ticketType.create({
@@ -721,6 +765,7 @@ export async function seedTestData(prisma: PrismaClient) {
       status: TicketTypeStatus.ACTIVE,
     },
   });
+  await fillMissingTicketTypes(prisma, concertNftConcurrency.id, ['SVIP', 'VIP']);
   await createGatesForConcert(prisma, concertNftConcurrency.id, ['GATE-A']);
 
   // 13. concert-nft-cb
@@ -735,6 +780,7 @@ export async function seedTestData(prisma: PrismaClient) {
       startsAt: farFutureDate,
       saleStartsAt: pastDate,
       status: ConcertStatus.SALE_OPEN,
+      seatMapUrl: '/seatmaps/concerts/demo.svg',
     },
   });
   await prisma.ticketType.create({
@@ -749,6 +795,7 @@ export async function seedTestData(prisma: PrismaClient) {
       status: TicketTypeStatus.ACTIVE,
     },
   });
+  await fillMissingTicketTypes(prisma, concertNftCb.id, ['VIP']);
   await createGatesForConcert(prisma, concertNftCb.id, ['GATE-A']);
 
   // 14. concert-nft-notif (starts in 23h 50m - under 24h for reminder mail queue)
@@ -764,6 +811,7 @@ export async function seedTestData(prisma: PrismaClient) {
       startsAt: startsSoonDate,
       saleStartsAt: pastDate,
       status: ConcertStatus.SALE_OPEN,
+      seatMapUrl: '/seatmaps/concerts/demo.svg',
     },
   });
   const tTypeNftNotif = await prisma.ticketType.create({
@@ -778,6 +826,7 @@ export async function seedTestData(prisma: PrismaClient) {
       status: TicketTypeStatus.ACTIVE,
     },
   });
+  await fillMissingTicketTypes(prisma, concertNftNotif.id, ['VIP']);
   await createGatesForConcert(prisma, concertNftNotif.id, ['GATE-A']);
 
   // Pre-purchased ticket for Customer 4-01 (so they receive reminder emails)
