@@ -13,6 +13,7 @@ export interface Ticket {
   checkedInAt: string | null;
   qrPayload: string;
   createdAt: string;
+  gateId?: string;
 }
 
 /** Raw ticket shape from GET /tickets/me (before concert enrichment). */
@@ -26,6 +27,7 @@ export interface BackendTicket {
   checkedInAt: string | null;
   qrPayload?: string;
   createdAt: string;
+  gateId?: string;
 }
 
 export interface BackendTicketListResponse {

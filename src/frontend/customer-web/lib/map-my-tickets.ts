@@ -30,6 +30,7 @@ export function mapMyTicketsToList(
       checkedInAt: ticket.checkedInAt,
       qrPayload: ticket.qrPayload ?? '',
       createdAt: ticket.createdAt,
+      gateId: ticket.gateId,
     };
   });
 

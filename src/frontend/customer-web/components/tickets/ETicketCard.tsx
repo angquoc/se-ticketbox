@@ -85,6 +85,12 @@ export default function ETicketCard({ ticket, index, total }: ETicketCardProps) 
             <dt className="text-slate-500">Thời gian</dt>
             <dd className="font-medium text-slate-900">{formatEventDate(ticket.concertStartsAt)}</dd>
           </div>
+          {ticket.gateId && (
+            <div>
+              <dt className="text-slate-500">Cổng vào (Gate)</dt>
+              <dd className="font-bold text-indigo-700 text-base">{ticket.gateId}</dd>
+            </div>
+          )}
           <div>
             <dt className="text-slate-500">Mã vé</dt>
             <dd className="font-mono text-xs text-slate-700">{shortId}</dd>
