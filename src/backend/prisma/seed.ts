@@ -156,7 +156,7 @@ async function main() {
       saleStartsAt: new Date('2026-02-09T09:00:00'),
       saleEndsAt: new Date('2026-03-29T17:00:00'),
       status: ConcertStatus.COMPLETED,
-      seatMapUrl: '/seatmaps/concerts/tgc-vietnam-2026.svg',
+      seatMapUrl: '/seatmaps/concerts/demo.svg',
       coverImageUrl: 'https://popsww.com/tgc-vietnam-2026.jpg',
     },
   });
@@ -166,7 +166,7 @@ async function main() {
     prisma.ticketType.create({
       data: {
         concertId: tgcConcert.id,
-        name: 'SKY LOUNGE',
+        name: 'SVIP',
         price: 5000000,
         totalQty: 50,
         soldQty: 50,
@@ -180,7 +180,7 @@ async function main() {
     prisma.ticketType.create({
       data: {
         concertId: tgcConcert.id,
-        name: 'GINZA',
+        name: 'VIP',
         price: 2800000,
         totalQty: 100,
         soldQty: 100,
@@ -194,7 +194,7 @@ async function main() {
     prisma.ticketType.create({
       data: {
         concertId: tgcConcert.id,
-        name: 'VIP 1',
+        name: 'CAT1',
         price: 2200000,
         totalQty: 200,
         soldQty: 180,
@@ -208,7 +208,7 @@ async function main() {
     prisma.ticketType.create({
       data: {
         concertId: tgcConcert.id,
-        name: 'SHIBUYA 1',
+        name: 'CAT2',
         price: 990000,
         totalQty: 500,
         soldQty: 500,
@@ -222,21 +222,7 @@ async function main() {
     prisma.ticketType.create({
       data: {
         concertId: tgcConcert.id,
-        name: 'SHIBUYA 2',
-        price: 790000,
-        totalQty: 500,
-        soldQty: 450,
-        reservedQty: 0,
-        maxPerUser: 4,
-        saleStartsAt: new Date('2026-02-09T09:00:00'),
-        saleEndsAt: new Date('2026-03-29T17:00:00'),
-        status: TicketTypeStatus.ACTIVE,
-      },
-    }),
-    prisma.ticketType.create({
-      data: {
-        concertId: tgcConcert.id,
-        name: 'HARAJUKU 1',
+        name: 'GA',
         price: 550000,
         totalQty: 1000,
         soldQty: 800,
@@ -270,13 +256,27 @@ async function main() {
       saleStartsAt: new Date('2025-11-20T09:00:00'),
       saleEndsAt: new Date('2026-01-24T18:00:00'),
       status: ConcertStatus.COMPLETED,
-      seatMapUrl: '/seatmaps/concerts/2026-kangin-fan-meeting-in-ho-chi-minh.svg',
+      seatMapUrl: '/seatmaps/concerts/demo.svg',
       coverImageUrl: 'https://kangintour-2026.com/poster.jpg',
     },
   });
 
   // Ticket types for Kangin Fan Meeting
   const kanginTicketTypes = await Promise.all([
+    prisma.ticketType.create({
+      data: {
+        concertId: kanginConcert.id,
+        name: 'SVIP',
+        price: 4500000,
+        totalQty: 50,
+        soldQty: 50,
+        reservedQty: 0,
+        maxPerUser: 2,
+        saleStartsAt: new Date('2025-11-20T09:00:00'),
+        saleEndsAt: new Date('2026-01-24T18:00:00'),
+        status: TicketTypeStatus.SOLD_OUT,
+      },
+    }),
     prisma.ticketType.create({
       data: {
         concertId: kanginConcert.id,
@@ -294,7 +294,7 @@ async function main() {
     prisma.ticketType.create({
       data: {
         concertId: kanginConcert.id,
-        name: 'PATRON',
+        name: 'CAT1',
         price: 2500000,
         totalQty: 200,
         soldQty: 200,
@@ -308,7 +308,21 @@ async function main() {
     prisma.ticketType.create({
       data: {
         concertId: kanginConcert.id,
-        name: 'GEN AD',
+        name: 'CAT2',
+        price: 1800000,
+        totalQty: 200,
+        soldQty: 150,
+        reservedQty: 0,
+        maxPerUser: 4,
+        saleStartsAt: new Date('2025-11-20T09:00:00'),
+        saleEndsAt: new Date('2026-01-24T18:00:00'),
+        status: TicketTypeStatus.ACTIVE,
+      },
+    }),
+    prisma.ticketType.create({
+      data: {
+        concertId: kanginConcert.id,
+        name: 'GA',
         price: 1500000,
         totalQty: 300,
         soldQty: 280,
@@ -341,7 +355,7 @@ async function main() {
       saleStartsAt: new Date('2026-02-24T09:00:00'),
       saleEndsAt: new Date('2026-04-18T17:00:00'),
       status: ConcertStatus.COMPLETED,
-      seatMapUrl: '/seatmaps/concerts/jessica-reflections-2026.svg',
+      seatMapUrl: '/seatmaps/concerts/demo.svg',
       coverImageUrl: 'https://ticketbox.vn/jessica-reflections-2026.jpg',
     },
   });
@@ -351,21 +365,7 @@ async function main() {
     prisma.ticketType.create({
       data: {
         concertId: jessicaConcert.id,
-        name: 'SVIP-1',
-        price: 5000000,
-        totalQty: 100,
-        soldQty: 100,
-        reservedQty: 0,
-        maxPerUser: 2,
-        saleStartsAt: new Date('2026-02-24T09:00:00'),
-        saleEndsAt: new Date('2026-04-18T17:00:00'),
-        status: TicketTypeStatus.SOLD_OUT,
-      },
-    }),
-    prisma.ticketType.create({
-      data: {
-        concertId: jessicaConcert.id,
-        name: 'SVIP-2',
+        name: 'SVIP',
         price: 5000000,
         totalQty: 100,
         soldQty: 100,
@@ -393,7 +393,7 @@ async function main() {
     prisma.ticketType.create({
       data: {
         concertId: jessicaConcert.id,
-        name: 'PRE',
+        name: 'CAT1',
         price: 3500000,
         totalQty: 300,
         soldQty: 200,
@@ -407,7 +407,7 @@ async function main() {
     prisma.ticketType.create({
       data: {
         concertId: jessicaConcert.id,
-        name: 'CAT1',
+        name: 'CAT2',
         price: 2750000,
         totalQty: 500,
         soldQty: 350,
@@ -421,21 +421,7 @@ async function main() {
     prisma.ticketType.create({
       data: {
         concertId: jessicaConcert.id,
-        name: 'CAT2',
-        price: 2250000,
-        totalQty: 500,
-        soldQty: 300,
-        reservedQty: 0,
-        maxPerUser: 6,
-        saleStartsAt: new Date('2026-02-24T09:00:00'),
-        saleEndsAt: new Date('2026-04-18T17:00:00'),
-        status: TicketTypeStatus.ACTIVE,
-      },
-    }),
-    prisma.ticketType.create({
-      data: {
-        concertId: jessicaConcert.id,
-        name: 'CAT3',
+        name: 'GA',
         price: 1500000,
         totalQty: 500,
         soldQty: 500,
@@ -470,7 +456,7 @@ async function main() {
       saleStartsAt: new Date('2026-05-01T09:00:00'),
       saleEndsAt: new Date('2026-09-08T17:00:00'),
       status: ConcertStatus.SALE_OPEN,
-      seatMapUrl: '/seatmaps/concerts/summer-music-festival-2026.svg',
+      seatMapUrl: '/seatmaps/concerts/demo.svg',
       coverImageUrl: 'https://ticketbox.vn/summer-festival-2026.jpg',
     },
   });
@@ -480,7 +466,7 @@ async function main() {
     prisma.ticketType.create({
       data: {
         concertId: summerConcert.id,
-        name: 'PLATINUM PASS',
+        name: 'SVIP',
         price: 8500000,
         totalQty: 100,
         soldQty: 45,
@@ -494,7 +480,7 @@ async function main() {
     prisma.ticketType.create({
       data: {
         concertId: summerConcert.id,
-        name: 'GOLD PASS',
+        name: 'VIP',
         price: 5500000,
         totalQty: 300,
         soldQty: 180,
@@ -508,7 +494,7 @@ async function main() {
     prisma.ticketType.create({
       data: {
         concertId: summerConcert.id,
-        name: 'SILVER PASS',
+        name: 'CAT1',
         price: 3200000,
         totalQty: 500,
         soldQty: 320,
@@ -522,7 +508,21 @@ async function main() {
     prisma.ticketType.create({
       data: {
         concertId: summerConcert.id,
-        name: 'GENERAL ADMISSION',
+        name: 'CAT2',
+        price: 2200000,
+        totalQty: 500,
+        soldQty: 200,
+        reservedQty: 10,
+        maxPerUser: 4,
+        saleStartsAt: new Date('2026-05-01T09:00:00'),
+        saleEndsAt: new Date('2026-09-08T17:00:00'),
+        status: TicketTypeStatus.ACTIVE,
+      },
+    }),
+    prisma.ticketType.create({
+      data: {
+        concertId: summerConcert.id,
+        name: 'GA',
         price: 1500000,
         totalQty: 2000,
         soldQty: 1200,
@@ -760,7 +760,7 @@ async function main() {
       userId: customer1.id,
       concertId: jessicaConcert.id,
       status: OrderStatus.PENDING_PAYMENT,
-      totalAmountInVnd: 5000000,
+      totalAmountInVnd: 2750000,
       expiresAt: new Date(Date.now() + 15 * 60 * 1000), // 15 minutes from now
     },
   });
@@ -768,10 +768,10 @@ async function main() {
   const pendingOrderItem = await prisma.orderItem.create({
     data: {
       orderId: pendingOrder.id,
-      ticketTypeId: jessicaTicketTypes[3].id, // PRE
+      ticketTypeId: jessicaTicketTypes[3].id, // CAT2
       quantity: 1,
-      unitPrice: 3500000,
-      subtotal: 3500000,
+      unitPrice: 2750000,
+      subtotal: 2750000,
     },
   });
 
@@ -780,7 +780,7 @@ async function main() {
       orderId: pendingOrder.id,
       provider: PaymentProvider.MOCK,
       status: PaymentStatus.INITIATED,
-      amount: 5000000,
+      amount: 2750000,
     },
   });
 
