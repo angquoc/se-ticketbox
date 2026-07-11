@@ -49,8 +49,10 @@ export class SeatmapGateway
   ) {
     const room = `concert:${data.concertId}:seatmap`;
     void client.join(room);
+    const adapter = (this.server as any).adapter || (this.server as any).sockets?.adapter;
+    const size = adapter?.rooms?.get(room)?.size ?? 0;
     this.logger.debug(
-      `Client ${client.id} joined room ${room} (total in room: ${this.server.sockets.adapter.rooms.get(room)?.size ?? 0})`,
+      `Client ${client.id} joined room ${room} (total in room: ${size})`,
     );
     return { event: 'subscribed', data: { concertId: data.concertId } };
   }
