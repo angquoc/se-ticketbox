@@ -80,6 +80,7 @@ export class RedisService implements OnModuleDestroy, OnModuleInit {
       const isUpstash = redisUrl.includes('upstash');
       const redis = new Redis(redisUrl, {
         maxRetriesPerRequest: 1,
+        enableOfflineQueue: false,
         enableReadyCheck: true,
         family: isUpstash ? 0 : 4,
         ...(isTls ? { tls: { rejectUnauthorized: false } } : {}),
@@ -95,8 +96,15 @@ export class RedisService implements OnModuleDestroy, OnModuleInit {
   }
 
   async onModuleInit(): Promise<void> {
-    await this.ping();
-    await this.initScripts();
+    try {
+      await this.ping();
+      await this.initScripts();
+    } catch (err) {
+      this.logger.warn(
+        'Could not connect to Redis during initialization. Redis features will be disabled or fall back.',
+        err instanceof Error ? err.message : String(err),
+      );
+    }
   }
 
   // Script caches keyed by filename
