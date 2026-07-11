@@ -55,6 +55,7 @@ const SEATMAP_HOST_STYLES = `
 .seatmap-host.has-selection [data-zone][data-selected="true"] {
   opacity: 1.0;
 }
+.seatmap-host [data-zone][data-status="SOLD_OUT"],
 .seatmap-host [data-zone][data-status="SOLD_OUT"] path,
 .seatmap-host [data-zone][data-status="SOLD_OUT"] polygon,
 .seatmap-host [data-zone][data-status="SOLD_OUT"] rect,
@@ -63,11 +64,13 @@ const SEATMAP_HOST_STYLES = `
 .seatmap-host [data-zone][data-status="SOLD_OUT"] polyline {
   fill: ${ZONE_COLORS.soldOut} !important;
   stroke: #9e9e9e !important;
+  fill-opacity: 0.65 !important;
 }
 .seatmap-host [data-zone][data-status="SOLD_OUT"] {
   opacity: 0.85;
   cursor: not-allowed;
 }
+.seatmap-host [data-zone][data-status="RESERVED"],
 .seatmap-host [data-zone][data-status="RESERVED"] path,
 .seatmap-host [data-zone][data-status="RESERVED"] polygon,
 .seatmap-host [data-zone][data-status="RESERVED"] rect,
@@ -76,25 +79,142 @@ const SEATMAP_HOST_STYLES = `
 .seatmap-host [data-zone][data-status="RESERVED"] polyline {
   fill: ${ZONE_COLORS.reserved} !important;
   stroke: #f9a825 !important;
+  fill-opacity: 0.45 !important;
 }
+.seatmap-host [data-zone][data-status="AVAILABLE"][data-selected="false"][data-hovered="false"],
 .seatmap-host [data-zone][data-status="AVAILABLE"][data-selected="false"][data-hovered="false"] path,
 .seatmap-host [data-zone][data-status="AVAILABLE"][data-selected="false"][data-hovered="false"] polygon,
 .seatmap-host [data-zone][data-status="AVAILABLE"][data-selected="false"][data-hovered="false"] rect,
 .seatmap-host [data-zone][data-status="AVAILABLE"][data-selected="false"][data-hovered="false"] circle,
 .seatmap-host [data-zone][data-status="AVAILABLE"][data-selected="false"][data-hovered="false"] ellipse,
 .seatmap-host [data-zone][data-status="AVAILABLE"][data-selected="false"][data-hovered="false"] polyline {
-  fill: ${ZONE_COLORS.available} !important;
-  stroke: #388e3c !important;
+  fill: transparent !important;
+  stroke: transparent !important;
 }
+/* SVIP: Amber */
+.seatmap-host [data-zone][data-ticket-type="SVIP"][data-status="AVAILABLE"][data-hovered="true"][data-selected="false"],
+.seatmap-host [data-zone][data-ticket-type="SVIP"][data-status="AVAILABLE"][data-hovered="true"][data-selected="false"] rect,
+.seatmap-host [data-zone][data-ticket-type="SVIP"][data-status="AVAILABLE"][data-hovered="true"][data-selected="false"] path {
+  fill: #F59E0B !important;
+  fill-opacity: 0.12 !important;
+  stroke: #F59E0B !important;
+  stroke-width: 2.5 !important;
+}
+.seatmap-host [data-zone][data-ticket-type="SVIP"][data-selected="true"],
+.seatmap-host [data-zone][data-ticket-type="SVIP"][data-selected="true"] rect,
+.seatmap-host [data-zone][data-ticket-type="SVIP"][data-selected="true"] path {
+  stroke: #F59E0B !important;
+  stroke-width: 4 !important;
+}
+.seatmap-host [data-zone][data-ticket-type="SVIP"][data-selected="true"][data-status="AVAILABLE"],
+.seatmap-host [data-zone][data-ticket-type="SVIP"][data-selected="true"][data-status="AVAILABLE"] rect,
+.seatmap-host [data-zone][data-ticket-type="SVIP"][data-selected="true"][data-status="AVAILABLE"] path {
+  fill: #F59E0B !important;
+  fill-opacity: 0.22 !important;
+}
+
+/* VIP: Orange */
+.seatmap-host [data-zone][data-ticket-type="VIP"][data-status="AVAILABLE"][data-hovered="true"][data-selected="false"],
+.seatmap-host [data-zone][data-ticket-type="VIP"][data-status="AVAILABLE"][data-hovered="true"][data-selected="false"] rect,
+.seatmap-host [data-zone][data-ticket-type="VIP"][data-status="AVAILABLE"][data-hovered="true"][data-selected="false"] path {
+  fill: #F97316 !important;
+  fill-opacity: 0.12 !important;
+  stroke: #F97316 !important;
+  stroke-width: 2.5 !important;
+}
+.seatmap-host [data-zone][data-ticket-type="VIP"][data-selected="true"],
+.seatmap-host [data-zone][data-ticket-type="VIP"][data-selected="true"] rect,
+.seatmap-host [data-zone][data-ticket-type="VIP"][data-selected="true"] path {
+  stroke: #F97316 !important;
+  stroke-width: 4 !important;
+}
+.seatmap-host [data-zone][data-ticket-type="VIP"][data-selected="true"][data-status="AVAILABLE"],
+.seatmap-host [data-zone][data-ticket-type="VIP"][data-selected="true"][data-status="AVAILABLE"] rect,
+.seatmap-host [data-zone][data-ticket-type="VIP"][data-selected="true"][data-status="AVAILABLE"] path {
+  fill: #F97316 !important;
+  fill-opacity: 0.22 !important;
+}
+
+/* CAT1: Blue */
+.seatmap-host [data-zone][data-ticket-type="CAT1"][data-status="AVAILABLE"][data-hovered="true"][data-selected="false"],
+.seatmap-host [data-zone][data-ticket-type="CAT1"][data-status="AVAILABLE"][data-hovered="true"][data-selected="false"] rect,
+.seatmap-host [data-zone][data-ticket-type="CAT1"][data-status="AVAILABLE"][data-hovered="true"][data-selected="false"] path {
+  fill: #3B82F6 !important;
+  fill-opacity: 0.12 !important;
+  stroke: #3B82F6 !important;
+  stroke-width: 2.5 !important;
+}
+.seatmap-host [data-zone][data-ticket-type="CAT1"][data-selected="true"],
+.seatmap-host [data-zone][data-ticket-type="CAT1"][data-selected="true"] rect,
+.seatmap-host [data-zone][data-ticket-type="CAT1"][data-selected="true"] path {
+  stroke: #3B82F6 !important;
+  stroke-width: 4 !important;
+}
+.seatmap-host [data-zone][data-ticket-type="CAT1"][data-selected="true"][data-status="AVAILABLE"],
+.seatmap-host [data-zone][data-ticket-type="CAT1"][data-selected="true"][data-status="AVAILABLE"] rect,
+.seatmap-host [data-zone][data-ticket-type="CAT1"][data-selected="true"][data-status="AVAILABLE"] path {
+  fill: #3B82F6 !important;
+  fill-opacity: 0.22 !important;
+}
+
+/* CAT2: Indigo */
+.seatmap-host [data-zone][data-ticket-type="CAT2"][data-status="AVAILABLE"][data-hovered="true"][data-selected="false"],
+.seatmap-host [data-zone][data-ticket-type="CAT2"][data-status="AVAILABLE"][data-hovered="true"][data-selected="false"] rect,
+.seatmap-host [data-zone][data-ticket-type="CAT2"][data-status="AVAILABLE"][data-hovered="true"][data-selected="false"] path {
+  fill: #6366F1 !important;
+  fill-opacity: 0.12 !important;
+  stroke: #6366F1 !important;
+  stroke-width: 2.5 !important;
+}
+.seatmap-host [data-zone][data-ticket-type="CAT2"][data-selected="true"],
+.seatmap-host [data-zone][data-ticket-type="CAT2"][data-selected="true"] rect,
+.seatmap-host [data-zone][data-ticket-type="CAT2"][data-selected="true"] path {
+  stroke: #6366F1 !important;
+  stroke-width: 4 !important;
+}
+.seatmap-host [data-zone][data-ticket-type="CAT2"][data-selected="true"][data-status="AVAILABLE"],
+.seatmap-host [data-zone][data-ticket-type="CAT2"][data-selected="true"][data-status="AVAILABLE"] rect,
+.seatmap-host [data-zone][data-ticket-type="CAT2"][data-selected="true"][data-status="AVAILABLE"] path {
+  fill: #6366F1 !important;
+  fill-opacity: 0.22 !important;
+}
+
+/* GA: Green */
+.seatmap-host [data-zone][data-ticket-type="GA"][data-status="AVAILABLE"][data-hovered="true"][data-selected="false"],
+.seatmap-host [data-zone][data-ticket-type="GA"][data-status="AVAILABLE"][data-hovered="true"][data-selected="false"] rect,
+.seatmap-host [data-zone][data-ticket-type="GA"][data-status="AVAILABLE"][data-hovered="true"][data-selected="false"] path {
+  fill: #22C55E !important;
+  fill-opacity: 0.12 !important;
+  stroke: #22C55E !important;
+  stroke-width: 2.5 !important;
+}
+.seatmap-host [data-zone][data-ticket-type="GA"][data-selected="true"],
+.seatmap-host [data-zone][data-ticket-type="GA"][data-selected="true"] rect,
+.seatmap-host [data-zone][data-ticket-type="GA"][data-selected="true"] path {
+  stroke: #22C55E !important;
+  stroke-width: 4 !important;
+}
+.seatmap-host [data-zone][data-ticket-type="GA"][data-selected="true"][data-status="AVAILABLE"],
+.seatmap-host [data-zone][data-ticket-type="GA"][data-selected="true"][data-status="AVAILABLE"] rect,
+.seatmap-host [data-zone][data-ticket-type="GA"][data-selected="true"][data-status="AVAILABLE"] path {
+  fill: #22C55E !important;
+  fill-opacity: 0.22 !important;
+}
+
+/* Fallback default styles */
+.seatmap-host [data-zone][data-status="AVAILABLE"][data-hovered="true"][data-selected="false"],
 .seatmap-host [data-zone][data-status="AVAILABLE"][data-hovered="true"][data-selected="false"] path,
 .seatmap-host [data-zone][data-status="AVAILABLE"][data-hovered="true"][data-selected="false"] polygon,
 .seatmap-host [data-zone][data-status="AVAILABLE"][data-hovered="true"][data-selected="false"] rect,
 .seatmap-host [data-zone][data-status="AVAILABLE"][data-hovered="true"][data-selected="false"] circle,
 .seatmap-host [data-zone][data-status="AVAILABLE"][data-hovered="true"][data-selected="false"] ellipse,
 .seatmap-host [data-zone][data-status="AVAILABLE"][data-hovered="true"][data-selected="false"] polyline {
-  fill: ${ZONE_COLORS.hover} !important;
-  stroke: #ef6c00 !important;
+  fill: #2196F3 !important;
+  fill-opacity: 0.12 !important;
+  stroke: #2196F3 !important;
+  stroke-width: 2.5 !important;
 }
+.seatmap-host [data-zone][data-selected="true"],
 .seatmap-host [data-zone][data-selected="true"] path,
 .seatmap-host [data-zone][data-selected="true"] polygon,
 .seatmap-host [data-zone][data-selected="true"] rect,
@@ -104,14 +224,17 @@ const SEATMAP_HOST_STYLES = `
   stroke: #2196F3 !important;
   stroke-width: 4 !important;
 }
+.seatmap-host [data-zone][data-selected="true"][data-status="AVAILABLE"],
 .seatmap-host [data-zone][data-selected="true"][data-status="AVAILABLE"] path,
 .seatmap-host [data-zone][data-selected="true"][data-status="AVAILABLE"] polygon,
 .seatmap-host [data-zone][data-selected="true"][data-status="AVAILABLE"] rect,
 .seatmap-host [data-zone][data-selected="true"][data-status="AVAILABLE"] circle,
 .seatmap-host [data-zone][data-selected="true"][data-status="AVAILABLE"] ellipse,
 .seatmap-host [data-zone][data-selected="true"][data-status="AVAILABLE"] polyline {
-  fill: ${ZONE_COLORS.available} !important;
+  fill: #2196F3 !important;
+  fill-opacity: 0.18 !important;
 }
+.seatmap-host [data-zone][data-selected="true"][data-status="RESERVED"],
 .seatmap-host [data-zone][data-selected="true"][data-status="RESERVED"] path,
 .seatmap-host [data-zone][data-selected="true"][data-status="RESERVED"] polygon,
 .seatmap-host [data-zone][data-selected="true"][data-status="RESERVED"] rect,

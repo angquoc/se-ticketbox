@@ -3,6 +3,7 @@ import {
   UnauthorizedException,
   ConflictException,
   NotFoundException,
+  InternalServerErrorException,
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { PrismaService } from '../../database/prisma.service';
@@ -197,10 +198,16 @@ export class AuthService {
     });
 
     // Gửi email mật khẩu mới
-    await this.emailService.sendForgotPasswordEmail({
-      to: user.email,
-      newPassword: generatedPassword,
-    });
+    try {
+      await this.emailService.sendForgotPasswordEmail({
+        to: user.email,
+        newPassword: generatedPassword,
+      });
+    } catch (err: any) {
+      throw new InternalServerErrorException(
+        `Không thể gửi email khôi phục mật khẩu: ${err.message || err}. Vui lòng kiểm tra lại cấu hình các biến môi trường SMTP (EMAIL_HOST, EMAIL_PORT, EMAIL_USER, EMAIL_PASS, EMAIL_SECURE) trong cấu hình của Render.`
+      );
+    }
 
     return {
       message: 'Mật khẩu mới đã được gửi về email của bạn',

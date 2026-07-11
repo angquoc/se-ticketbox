@@ -13,7 +13,6 @@ import SeatFilters from './SeatFilters';
 import InteractiveSeatMap from './InteractiveSeatMap';
 import ZoneListFallback from './ZoneListFallback';
 import ZoneDetailPanel from './ZoneDetailPanel';
-import SeatLegend from './SeatLegend';
 import SeatSummaryBar from './SeatSummaryBar';
 import { saveZoneSelection, saveSelectedSeats } from '@/lib/checkout-storage';
 import { hasPurchaseIntent, setPurchaseIntent } from '@/lib/waiting-room-intent';
@@ -360,7 +359,6 @@ export default function SeatMapPage({ concertId }: SeatMapPageProps) {
           />
         </div>
 
-        <SeatLegend />
       </main>
 
       <SeatSummaryBar
