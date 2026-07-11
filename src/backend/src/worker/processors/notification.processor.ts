@@ -52,7 +52,9 @@ export class NotificationProcessor extends WorkerHost {
             ticketType: { select: { name: true } },
           },
         },
-        concert: { select: { title: true } },
+        concert: {
+          select: { title: true, venue: true, startsAt: true },
+        },
       },
     });
 
@@ -65,12 +67,18 @@ export class NotificationProcessor extends WorkerHost {
     const ticketInfos = order.tickets.map((ticket) => ({
       ticketId: ticket.id,
       ticketTypeName: ticket.ticketType.name,
+      concertVenue: order.concert.venue,
+      concertStartsAt: order.concert.startsAt,
+      gateId: ticket.gateId,
+      status: ticket.status,
     }));
 
     await this.emailService.sendOrderConfirmation({
       to: order.user.email,
       orderId,
       concertTitle: order.concert.title,
+      concertVenue: order.concert.venue,
+      concertStartsAt: order.concert.startsAt,
       ticketCount: order.tickets.length,
       totalAmount: order.totalAmountInVnd,
       ticketInfos,
