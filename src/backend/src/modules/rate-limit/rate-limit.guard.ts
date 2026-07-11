@@ -31,6 +31,12 @@ export class RateLimitGuard implements CanActivate {
       return true;
     }
 
+    // NFT / concurrency suites (e.g. TC-T4-05) need a burst of concurrent
+    // POST /orders from one IP; set RATE_LIMIT_DISABLED=true in that env.
+    if (process.env.RATE_LIMIT_DISABLED === 'true') {
+      return true;
+    }
+
     const request = context
       .switchToHttp()
       .getRequest<Request & { user?: AuthUser }>();

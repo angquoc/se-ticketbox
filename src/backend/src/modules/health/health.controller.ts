@@ -25,6 +25,21 @@ function findBackendDir(): string {
   return path.resolve(__dirname, '../../..');
 }
 
+function findSeedTestPath(backendDir: string): string {
+  const candidates = [
+    path.join(backendDir, '../../data/seed/seed-test.ts'), // local monorepo
+    path.join(backendDir, '../data/seed/seed-test.ts'), // docker-relative
+    '/data/seed/seed-test.ts', // docker volume mount
+  ];
+  const found = candidates.find((p) => fs.existsSync(p));
+  if (!found) {
+    throw new Error(
+      `seed-test.ts not found. Tried: ${candidates.join(', ')}`,
+    );
+  }
+  return found;
+}
+
 interface HealthStatusResponse {
   api?: 'ok';
   postgres?: 'ok';
@@ -80,7 +95,10 @@ export class HealthController {
   @Post('reset')
   @HttpCode(HttpStatus.OK)
   async resetDatabase() {
-    if (process.env.NODE_ENV === 'production' && process.env.ALLOW_RESET !== 'true') {
+    if (
+      process.env.NODE_ENV === 'production' &&
+      process.env.ALLOW_RESET !== 'true'
+    ) {
       throw new ForbiddenException(
         'Không được phép reset DB ở môi trường production',
       );
@@ -93,7 +111,38 @@ export class HealthController {
       const execAsync = promisify(exec);
 
       const backendDir = findBackendDir();
-      await execAsync('npm run db:seed-test', { cwd: backendDir });
+      const seedPath = findSeedTestPath(backendDir);
+      const nodePath = path.join(backendDir, 'node_modules');
+      await execAsync(
+        `npx ts-node -T --project tsconfig.json -r tsconfig-paths/register "${seedPath}"`,
+        {
+          cwd: backendDir,
+          env: {
+            ...process.env,
+            NODE_PATH: nodePath,
+          },
+        },
+      );
+
+      // Re-seed Redis stock after flush — design seeds stock at ticket-type create,
+      // but seed-test writes via Prisma only. Without this, lazy ensureRedisStock
+      // races under concurrent POST /orders (TC-T4-05).
+      const ticketTypes = await this.prismaService.ticketType.findMany({
+        select: {
+          id: true,
+          totalQty: true,
+          soldQty: true,
+          reservedQty: true,
+        },
+      });
+      await Promise.all(
+        ticketTypes.map((tt) =>
+          this.redisService.seedStock(
+            tt.id,
+            tt.totalQty - tt.soldQty - tt.reservedQty,
+          ),
+        ),
+      );
 
       return {
         status: 'success',

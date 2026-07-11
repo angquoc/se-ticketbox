@@ -272,21 +272,32 @@ export class OrderService {
     return { maxPerUser: ticketType.maxPerUser, unitPrice: ticketType.price };
   }
 
+  /**
+   * Lazy-seed Redis stock only if the key is missing.
+   * Uses SET NX so concurrent first-hits cannot overwrite a stock value that
+   * another request has already decremented (EXISTS+SET race → oversell).
+   * Prefer seeding at ticket-type create / health reset instead of this path.
+   */
   private async ensureRedisStock(ticketTypeId: string): Promise<void> {
     const key = `stock:${ticketTypeId}`;
-    const exists = await this.redis.exists(key);
-    if (!exists) {
-      const tt = await this.prisma.ticketType.findUnique({
-        where: { id: ticketTypeId },
-        select: { totalQty: true, soldQty: true, reservedQty: true },
-      });
-      if (tt) {
-        const available = tt.totalQty - tt.soldQty - tt.reservedQty;
-        await this.redis.set(key, String(Math.max(0, available)));
-        this.logger.debug(
-          `Seeded Redis stock for ${ticketTypeId}: ${available}`,
-        );
-      }
+    if (await this.redis.exists(key)) {
+      return;
+    }
+
+    const tt = await this.prisma.ticketType.findUnique({
+      where: { id: ticketTypeId },
+      select: { totalQty: true, soldQty: true, reservedQty: true },
+    });
+    if (!tt) {
+      return;
+    }
+
+    const available = Math.max(0, tt.totalQty - tt.soldQty - tt.reservedQty);
+    const seeded = await this.redis.setNx(key, String(available));
+    if (seeded) {
+      this.logger.debug(
+        `Seeded Redis stock for ${ticketTypeId}: ${available}`,
+      );
     }
   }
 
@@ -457,28 +468,64 @@ export class OrderService {
       );
     }
 
-    // Sync PostgreSQL inventory counters (source of truth for seatmap display)
-    await Promise.all([
-      ...ticketMeta.map((m) =>
-        this.prisma.ticketType.update({
-          where: { id: m.ticketTypeId },
-          data: { reservedQty: { increment: m.quantity } },
-        }),
-      ),
-      ...ticketMeta.map((m) =>
-        this.prisma.userTicketCounter.upsert({
-          where: {
-            userId_ticketTypeId: { userId, ticketTypeId: m.ticketTypeId },
-          },
-          create: {
-            userId,
+    // Sync PostgreSQL inventory counters (second defense against oversell:
+    // reject if reservedQty + soldQty + qty would exceed totalQty)
+    try {
+      await this.prisma.$transaction(async (tx) => {
+        for (const m of ticketMeta) {
+          const affected = await tx.$executeRaw`
+            UPDATE "TicketType"
+            SET "reservedQty" = "reservedQty" + ${m.quantity},
+                "updatedAt" = NOW()
+            WHERE "id" = ${m.ticketTypeId}
+              AND ("reservedQty" + "soldQty" + ${m.quantity}) <= "totalQty"
+          `;
+          if (Number(affected) === 0) {
+            throw new UnprocessableEntityException(
+              `Not enough tickets available for ticket type "${m.ticketTypeId}"`,
+            );
+          }
+
+          await tx.userTicketCounter.upsert({
+            where: {
+              userId_ticketTypeId: { userId, ticketTypeId: m.ticketTypeId },
+            },
+            create: {
+              userId,
+              ticketTypeId: m.ticketTypeId,
+              reservedQty: m.quantity,
+            },
+            update: { reservedQty: { increment: m.quantity } },
+          });
+        }
+      });
+    } catch (inventoryErr) {
+      this.logger.error(
+        `Failed to sync inventory for order ${orderId} — rolling back Redis + order`,
+        inventoryErr,
+      );
+
+      await Promise.all(
+        ticketMeta.map((m) =>
+          this.redis.releaseReservation({
             ticketTypeId: m.ticketTypeId,
-            reservedQty: m.quantity,
-          },
-          update: { reservedQty: { increment: m.quantity } },
-        }),
-      ),
-    ]);
+            userId,
+            orderId,
+            quantity: m.quantity,
+          }),
+        ),
+      );
+      await this.prisma.order
+        .delete({ where: { id: orderId } })
+        .catch(() => undefined);
+
+      if (inventoryErr instanceof UnprocessableEntityException) {
+        throw inventoryErr;
+      }
+      throw new BadRequestException(
+        'Failed to create order. Please try again.',
+      );
+    }
 
     // Create PaymentTransaction and get payment URL from gateway
     let paymentUrl: string;

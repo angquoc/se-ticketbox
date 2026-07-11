@@ -19,6 +19,7 @@ import {
   TicketTypeListResponseDto,
 } from './dto/ticket-type-response.dto';
 import { ConcertService } from '../concert/concert.service';
+import { RedisService } from '../redis/redis.service';
 
 type TicketTypeWithAvailability = TicketType & {
   availableQty?: number;
@@ -29,6 +30,7 @@ export class TicketTypeService {
   constructor(
     private prisma: PrismaService,
     private readonly concertService: ConcertService,
+    private readonly redis: RedisService,
   ) {}
 
   private toResponse(tt: TicketTypeWithAvailability): TicketTypeResponseDto {
@@ -187,6 +189,9 @@ export class TicketTypeService {
       },
     });
 
+    // Design: seed Redis stock:{ticketTypeId} = totalQty at create time
+    await this.redis.seedStock(ticketType.id, ticketType.totalQty);
+
     void this.concertService.invalidateCache(concertId);
 
     return this.toResponse(ticketType);
@@ -274,6 +279,17 @@ export class TicketTypeService {
       data: updateData,
     });
 
+    // Keep Redis stock in sync when inventory fields change
+    if (
+      dto.totalQty !== undefined ||
+      dto.soldQty !== undefined ||
+      dto.reservedQty !== undefined
+    ) {
+      const available =
+        ticketType.totalQty - ticketType.soldQty - ticketType.reservedQty;
+      await this.redis.seedStock(ticketType.id, available);
+    }
+
     // Auto-set SOLD_OUT status if available qty reaches 0
     if (
       ticketType.totalQty - ticketType.soldQty - ticketType.reservedQty === 0 &&
@@ -322,6 +338,8 @@ export class TicketTypeService {
     await this.prisma.ticketType.delete({
       where: { id },
     });
+
+    await this.redis.del(`stock:${id}`);
 
     void this.concertService.invalidateCache(ticketType.concertId);
 
