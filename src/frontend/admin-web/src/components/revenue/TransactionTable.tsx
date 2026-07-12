@@ -121,9 +121,22 @@ export default function TransactionTable({
             </div>
 
             {/* Event */}
-            <span style={{ fontSize: '13px', fontWeight: 600, color: '#191B23', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={tx.event}>
-              {tx.event}
-            </span>
+            <div style={{ justifySelf: 'start', minWidth: 0, width: '100%' }}>
+              <span
+                style={{
+                  display: 'block',
+                  fontSize: '13px',
+                  fontWeight: 600,
+                  color: '#191B23',
+                  whiteSpace: 'nowrap',
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis'
+                }}
+                title={tx.event}
+              >
+                {tx.event}
+              </span>
+            </div>
 
             {/* Customer */}
             <span style={{ fontSize: '13px', color: '#434654', fontFamily: 'var(--font-mono)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={'customer' in tx ? (tx as any).customer : undefined}>
@@ -158,7 +171,7 @@ export default function TransactionTable({
 
       {/* Footer: count + pagination */}
       {totalPages > 0 && (
-        <Pagination 
+        <Pagination
           currentPage={currentPage}
           totalPages={totalPages}
           totalCount={totalCount}

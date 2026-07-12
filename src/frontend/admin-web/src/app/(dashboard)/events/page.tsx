@@ -139,9 +139,25 @@ export default function EventsPage() {
                     }}
                   >
                     {/* Event Name */}
-                    <div style={{ justifySelf: 'start', textAlign: 'left', width: '100%', overflow: 'hidden' }}>
-                      <p style={{ fontWeight: 600, fontSize: '14px', color: '#191B23', margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={event.title}>{event.title}</p>
-                      <p style={{ fontSize: '12px', color: '#434654', margin: '2px 0 0', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={event.organizer?.fullName || 'TicketBox'}>{event.organizer?.fullName || 'TicketBox'}</p>
+                    <div style={{ justifySelf: 'start', textAlign: 'left', minWidth: 0, width: '100%' }}>
+                      <p
+                        style={{
+                          fontWeight: 600, fontSize: '14px', color: '#191B23', margin: 0,
+                          whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis'
+                        }}
+                        title={event.title}
+                      >
+                        {event.title}
+                      </p>
+                      <p
+                        style={{
+                          fontSize: '12px', color: '#434654', margin: '2px 0 0',
+                          whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis'
+                        }}
+                        title={event.organizer?.fullName || 'TicketBox'}
+                      >
+                        {event.organizer?.fullName || 'TicketBox'}
+                      </p>
                     </div>
 
                     {/* Date */}

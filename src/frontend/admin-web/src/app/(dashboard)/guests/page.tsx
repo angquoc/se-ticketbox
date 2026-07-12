@@ -43,14 +43,28 @@ export default function GuestsPage() {
     setLoadingGuests(true);
     try {
       const data = await getConcertGuests(concertId);
-      const mapped: Guest[] = data.map((g, idx) => ({
-        row: idx + 1,
-        name: g.fullName,
-        email: g.email || '—',
-        phone: g.phone || '—',
-        ticketType: g.sponsorName || 'GUEST',
-        status: g.checkedInAt ? 'Checked In' : 'Valid',
-      }));
+      const mapped: Guest[] = data.map((g, idx) => {
+        const isEmailInvalid = g.email ? !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(g.email) : false;
+        const isPhoneDuplicate = g.phone ? data.findIndex(x => x.phone === g.phone) !== idx : false;
+        
+        let statusText: any = 'Valid';
+        if (g.checkedInAt) {
+          statusText = 'Checked In';
+        } else if (isEmailInvalid || isPhoneDuplicate) {
+          statusText = 'Invalid';
+        }
+
+        return {
+          row: idx + 1,
+          name: g.fullName,
+          email: g.email || '—',
+          phone: g.phone || '—',
+          ticketType: g.sponsorName || 'GUEST',
+          status: statusText,
+          emailError: isEmailInvalid,
+          phoneError: isPhoneDuplicate,
+        };
+      });
       setGuests(mapped);
     } catch {
       setGuests([]);
