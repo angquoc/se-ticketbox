@@ -141,12 +141,12 @@ export default function UsersPage() {
                           borderRadius: '12px',
                           fontSize: '11px',
                           fontWeight: 600,
-                          background: user.role === 'ADMIN' ? '#FEE2E2' : 
-                                      user.role === 'ORGANIZER' ? '#E0E7FF' : 
-                                      user.role === 'STAFF' ? '#FEF3C7' : '#F3F4F6',
-                          color: user.role === 'ADMIN' ? '#991B1B' : 
-                                 user.role === 'ORGANIZER' ? '#3730A3' : 
-                                 user.role === 'STAFF' ? '#92400E' : '#374151',
+                          background: user.role === 'ADMIN' ? '#FEE2E2' :
+                            user.role === 'ORGANIZER' ? '#E0E7FF' :
+                              user.role === 'STAFF' ? '#FEF3C7' : '#F3F4F6',
+                          color: user.role === 'ADMIN' ? '#991B1B' :
+                            user.role === 'ORGANIZER' ? '#3730A3' :
+                              user.role === 'STAFF' ? '#92400E' : '#374151',
                         }}>
                           {user.role}
                         </span>

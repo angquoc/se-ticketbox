@@ -212,7 +212,7 @@ export default function LoginPage() {
         <span style={{ fontSize: '11px', fontWeight: 600, color: 'var(--color-brand)', letterSpacing: '0.3px', textTransform: 'uppercase' }}>
           Tài khoản dùng thử (Click để điền)
         </span>
-        
+
         <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
           <button
             type="button"
@@ -238,7 +238,7 @@ export default function LoginPage() {
 
           <button
             type="button"
-            onClick={() => handleAutofill('pops-organizer@ticketbox.vn', 'organizer123')}
+            onClick={() => handleAutofill('organizer-t3-01@ticketbox.vn', 'organizer123')}
             style={{
               textAlign: 'left',
               background: '#FFFFFF',
@@ -254,8 +254,52 @@ export default function LoginPage() {
             onMouseOver={(e) => (e.currentTarget.style.borderColor = 'var(--color-brand)')}
             onMouseOut={(e) => (e.currentTarget.style.borderColor = '#E7E7F3')}
           >
-            <span style={{ fontWeight: 600, color: '#191B23' }}>Vai trò: Organizer (POPS)</span>
-            <span style={{ color: '#6B7280', marginTop: '2px' }}>Email: pops-organizer@ticketbox.vn / Pass: organizer123</span>
+            <span style={{ fontWeight: 600, color: '#191B23' }}>Vai trò: Organizer 1</span>
+            <span style={{ color: '#6B7280', marginTop: '2px' }}>Email: organizer-t3-01@ticketbox.vn / Pass: organizer123</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => handleAutofill('organizer-t3-02@ticketbox.vn', 'organizer123')}
+            style={{
+              textAlign: 'left',
+              background: '#FFFFFF',
+              border: '1px solid #E7E7F3',
+              borderRadius: '4px',
+              padding: '8px 10px',
+              fontSize: '12px',
+              cursor: 'pointer',
+              display: 'flex',
+              flexDirection: 'column',
+              transition: 'border-color 0.2s',
+            }}
+            onMouseOver={(e) => (e.currentTarget.style.borderColor = 'var(--color-brand)')}
+            onMouseOut={(e) => (e.currentTarget.style.borderColor = '#E7E7F3')}
+          >
+            <span style={{ fontWeight: 600, color: '#191B23' }}>Vai trò: Organizer 2</span>
+            <span style={{ color: '#6B7280', marginTop: '2px' }}>Email: organizer-t3-02@ticketbox.vn / Pass: organizer123</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => handleAutofill('customer-t3-01@example.com', 'customer123')}
+            style={{
+              textAlign: 'left',
+              background: '#FFFFFF',
+              border: '1px solid #E7E7F3',
+              borderRadius: '4px',
+              padding: '8px 10px',
+              fontSize: '12px',
+              cursor: 'pointer',
+              display: 'flex',
+              flexDirection: 'column',
+              transition: 'border-color 0.2s',
+            }}
+            onMouseOver={(e) => (e.currentTarget.style.borderColor = 'var(--color-brand)')}
+            onMouseOut={(e) => (e.currentTarget.style.borderColor = '#E7E7F3')}
+          >
+            <span style={{ fontWeight: 600, color: '#191B23' }}>Vai trò: Customer (Test RBAC)</span>
+            <span style={{ color: '#6B7280', marginTop: '2px' }}>Email: customer-t3-01@example.com / Pass: customer123</span>
           </button>
         </div>
       </div>
