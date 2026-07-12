@@ -15,7 +15,6 @@ export default function UsersPage() {
     users,
     meta,
     loading,
-    page,
     search,
     role,
     setSearch,
