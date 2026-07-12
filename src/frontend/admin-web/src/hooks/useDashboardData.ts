@@ -1,9 +1,10 @@
 import { useState, useEffect, useMemo } from 'react';
-import { getConcerts, getConcertById } from '@/services/concertService';
+import { getAdminConcerts, getAdminConcertById } from '@/services/concertService';
 import { getAdminOrders, Order } from '@/services/orderService';
+import { getUsers } from '@/services/userService';
 import type { Concert } from '@/types/api';
 
-export function useDashboardData(activeRange: '30 Days' | '7 Days' | '24 Hours') {
+export function useDashboardData(activeRange: '30 Days' | '7 Days' | '24 Hours', isAdmin: boolean = false) {
   const [loading, setLoading] = useState(true);
   const [concerts, setConcerts] = useState<Concert[]>([]);
   const [orders, setOrders] = useState<Order[]>([]);
@@ -19,16 +20,27 @@ export function useDashboardData(activeRange: '30 Days' | '7 Days' | '24 Hours')
     async function loadDashboardData() {
       try {
         setLoading(true);
-        const response = await getConcerts(1, 100);
+        const [response, ordersResponse] = await Promise.all([
+          getAdminConcerts(1, 100),
+          getAdminOrders(1, 1000, 'PAID')
+        ]);
+
+        let newUsers = 0;
+        if (isAdmin) {
+          try {
+            const usersRes = await getUsers(1, 1);
+            newUsers = usersRes.meta.total;
+          } catch (e) {
+            console.error('Failed to load users:', e);
+          }
+        }
 
         const concertsData = await Promise.all(
-          response.data.map((c) => getConcertById(c.id).catch(() => null))
+          response.data.map((c) => getAdminConcertById(c.id).catch(() => null))
         );
 
         const validConcerts = concertsData.filter((c): c is Concert => c !== null);
         setConcerts(validConcerts);
-
-        const ordersResponse = await getAdminOrders(1, 1000, 'PAID');
         setOrders(ordersResponse.data);
 
         let totalRevenue = 0;
@@ -51,6 +63,7 @@ export function useDashboardData(activeRange: '30 Days' | '7 Days' | '24 Hours')
           totalRevenue,
           ticketsSold,
           activeEvents,
+          newUsers,
         }));
 
         const displayConcerts = validConcerts
@@ -165,7 +178,7 @@ export function useDashboardData(activeRange: '30 Days' | '7 Days' | '24 Hours')
 
     const evsChange = calculateChangePct(currentEventsCount, previousEventsCount);
 
-    const chartPoints: Array<{ day: string; value: number; [key: string]: any }> = [];
+    const chartPoints: Array<{ day: string; value: number;[key: string]: any }> = [];
 
     if (activeRange === '24 Hours') {
       for (let i = 23; i >= 0; i--) {

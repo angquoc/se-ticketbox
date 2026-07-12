@@ -489,11 +489,15 @@ export class ConcertService {
   /**
    * List all concerts for admins/organizers with optional status filter and pagination.
    */
-  async findAdminAll(query: ConcertQueryDto): Promise<ConcertListResponseDto> {
+  async findAdminAll(query: ConcertQueryDto, userId?: string, role?: Role): Promise<ConcertListResponseDto> {
     const { status, page = 1, limit = 20 } = query;
     const skip = (page - 1) * limit;
 
     const where: Prisma.ConcertWhereInput = status ? { status } : {};
+    
+    if (role === Role.ORGANIZER && userId) {
+      where.organizerId = userId;
+    }
 
     const [concerts, total] = await Promise.all([
       this.prisma.concert.findMany({

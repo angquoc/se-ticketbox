@@ -29,6 +29,7 @@ import { RateLimitModule } from './modules/rate-limit/rate-limit.module';
 import { UploadsModule } from './modules/uploads/uploads.module';
 import { AdminModule } from './modules/admin/admin.module';
 import { SeatmapModule } from './modules/seatmap/seatmap.module';
+import { UsersModule } from './modules/users/users.module';
 
 @Module({
   imports: [
@@ -76,8 +77,9 @@ import { SeatmapModule } from './modules/seatmap/seatmap.module';
     UploadsModule,
     AdminModule,
     SeatmapModule,
+    UsersModule,
   ],
   controllers: [AppController],
   providers: [AppService],
 })
-export class AppModule {}
+export class AppModule { }

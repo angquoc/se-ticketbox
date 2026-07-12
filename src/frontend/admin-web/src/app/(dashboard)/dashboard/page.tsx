@@ -4,6 +4,7 @@ import StatCard, { StatCardProps } from '@/components/dashboard/StatCard';
 import RevenueChart from '@/components/dashboard/RevenueChart';
 import UpcomingEvents from '@/components/dashboard/UpcomingEvents';
 import { useDashboardData } from '@/hooks/useDashboardData';
+import { useAuth } from '@/components/providers/AuthProvider';
 
 // Helper to format trend text based on range
 function getTrendText(change: number, rangeLabel: string) {
@@ -32,6 +33,7 @@ function getTrendColor(change: number): string {
 // ── Main Page ──────────────────────────────────────────────────────────
 export default function DashboardPage() {
   const [activeRange, setActiveRange] = useState<'30 Days' | '7 Days' | '24 Hours'>('30 Days');
+  const { isAdmin } = useAuth();
   
   const {
     loading,
@@ -41,7 +43,7 @@ export default function DashboardPage() {
     revenueChange,
     ticketsChange,
     eventsChange,
-  } = useDashboardData(activeRange);
+  } = useDashboardData(activeRange, isAdmin);
 
   // Format total revenue as VND
   const formattedRevenue = loading
@@ -99,12 +101,15 @@ export default function DashboardPage() {
         </svg>
       ),
     },
-    {
-      label: 'New Users',
+  ];
+
+  if (isAdmin) {
+    stats.push({
+      label: 'Total Users',
       value: formattedUsers,
-      trend: '-2.4% from last month',
-      trendColor: '#BA1A1A',
-      trendIcon: 'down',
+      trend: 'Total registered users',
+      trendColor: '#434654',
+      trendIcon: 'flat',
       icon: (
         <svg width="22" height="16" viewBox="0 0 24 18" fill="none" stroke="#003298" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
           <path d="M16 17v-1a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v1" />
@@ -115,8 +120,8 @@ export default function DashboardPage() {
           <line x1="21" y1="4" x2="21" y2="8" />
         </svg>
       ),
-    },
-  ];
+    });
+  }
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '32px', maxWidth: '1600px' }}>
@@ -131,14 +136,14 @@ export default function DashboardPage() {
             letterSpacing: '-0.6px',
             color: '#191B23',
             margin: 0,
-          }}>Dashboard Overview</h1>
+          }}>{isAdmin ? 'System Dashboard' : 'My Dashboard'}</h1>
           <p style={{
             fontWeight: 400,
             fontSize: '14px',
             lineHeight: '20px',
             color: '#434654',
             margin: '4px 0 0',
-          }}>Welcome back. Here is your summary for today.</p>
+          }}>{isAdmin ? 'Platform-wide overview.' : 'Overview of your events.'}</p>
         </div>
 
         {/* Date range pills */}

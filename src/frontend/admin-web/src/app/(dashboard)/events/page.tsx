@@ -4,9 +4,13 @@ import { ConcertStatusBadge } from '@/components/ui/Badge';
 import TicketConfigPanel from '@/components/events/TicketConfigPanel';
 import { useEventsData } from '@/hooks/useEventsData';
 import { formatDate } from '@/utils/format';
+import Pagination from '@/components/ui/Pagination';
+
+import { useAuth } from '@/components/providers/AuthProvider';
 
 // ── Main Page ─────────────────────────────────────────────────────────
 export default function EventsPage() {
+  const { isAdmin } = useAuth();
   const {
     concerts,
     total,
@@ -33,14 +37,14 @@ export default function EventsPage() {
             letterSpacing: '-0.6px',
             color: '#191B23',
             margin: 0,
-          }}>Events</h1>
+          }}>{isAdmin ? 'All Events' : 'My Events'}</h1>
           <p style={{
             fontWeight: 400,
             fontSize: '14px',
             lineHeight: '20px',
             color: '#434654',
             margin: '4px 0 0',
-          }}>Manage upcoming concerts, festivals, and venue configurations.</p>
+          }}>{isAdmin ? 'Manage all concerts and festivals.' : 'Manage your upcoming concerts and events.'}</p>
         </div>
 
         <div style={{ display: 'flex', gap: '8px' }}>
@@ -59,7 +63,7 @@ export default function EventsPage() {
       </div>
 
       {/* ── Content: Table + Config Panel ── */}
-      <div style={{ display: 'flex', gap: '24px', alignItems: 'stretch', flex: 1, minHeight: 0 }}>
+      <div style={{ display: 'flex', gap: '24px', alignItems: 'flex-start', flex: 1, minHeight: 0 }}>
 
         {/* Event Roster Table */}
         <div style={{
@@ -82,9 +86,6 @@ export default function EventsPage() {
             borderBottom: '1px solid #C3C5D7',
           }}>
             <span style={{ fontWeight: 600, fontSize: '15px', color: '#191B23' }}>Event Roster</span>
-            <span style={{ fontSize: '13px', color: '#434654' }}>
-              {loading ? 'Loading…' : `Showing 1-${concerts.length} of ${total}`}
-            </span>
           </div>
 
           {/* Column headers */}
@@ -111,7 +112,7 @@ export default function EventsPage() {
           </div>
 
           {/* Rows */}
-          <div style={{ flex: 1, overflowY: 'auto', minHeight: '300px' }}>
+          <div style={{ display: 'flex', flexDirection: 'column' }}>
             {loading ? (
               <div style={{ padding: '40px', textAlign: 'center', color: '#434654' }}>Loading events...</div>
             ) : concerts.length === 0 ? (
@@ -135,9 +136,25 @@ export default function EventsPage() {
                     }}
                   >
                     {/* Event Name */}
-                    <div style={{ justifySelf: 'start', textAlign: 'left', width: '100%', overflow: 'hidden' }}>
-                      <p style={{ fontWeight: 600, fontSize: '14px', color: '#191B23', margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={event.title}>{event.title}</p>
-                      <p style={{ fontSize: '12px', color: '#434654', margin: '2px 0 0', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={event.organizer?.fullName || 'TicketBox'}>{event.organizer?.fullName || 'TicketBox'}</p>
+                    <div style={{ justifySelf: 'start', textAlign: 'left', minWidth: 0, width: '100%' }}>
+                      <p
+                        style={{
+                          fontWeight: 600, fontSize: '14px', color: '#191B23', margin: 0,
+                          whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis'
+                        }}
+                        title={event.title}
+                      >
+                        {event.title}
+                      </p>
+                      <p
+                        style={{
+                          fontSize: '12px', color: '#434654', margin: '2px 0 0',
+                          whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis'
+                        }}
+                        title={event.organizer?.fullName || 'TicketBox'}
+                      >
+                        {event.organizer?.fullName || 'TicketBox'}
+                      </p>
                     </div>
 
                     {/* Date */}
@@ -197,42 +214,15 @@ export default function EventsPage() {
           </div>
 
           {/* Pagination */}
-          <div style={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            gap: '8px',
-            padding: '14px 20px',
-            borderTop: '1px solid #C3C5D7',
-          }}>
-            <button
-              onClick={() => handlePageChange(currentPage - 1)}
-              disabled={currentPage <= 1}
-              style={{
-                background: 'none', border: 'none', cursor: currentPage <= 1 ? 'default' : 'pointer',
-                color: currentPage <= 1 ? '#9CA3AF' : '#434654', display: 'flex', alignItems: 'center', padding: '4px',
-              }}
-            >
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-                <polyline points="15 18 9 12 15 6" />
-              </svg>
-            </button>
-            <span style={{ fontSize: '13px', color: '#434654' }}>
-              Page <strong style={{ color: '#191B23' }}>{currentPage}</strong> of {totalPages}
-            </span>
-            <button
-              onClick={() => handlePageChange(currentPage + 1)}
-              disabled={currentPage >= totalPages}
-              style={{
-                background: 'none', border: 'none', cursor: currentPage >= totalPages ? 'default' : 'pointer',
-                color: currentPage >= totalPages ? '#9CA3AF' : '#434654', display: 'flex', alignItems: 'center', padding: '4px',
-              }}
-            >
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-                <polyline points="9 18 15 12 9 6" />
-              </svg>
-            </button>
-          </div>
+          {totalPages > 0 && (
+            <Pagination
+              currentPage={currentPage}
+              totalPages={totalPages}
+              totalCount={total}
+              onPageChange={handlePageChange}
+              perPage={5}
+            />
+          )}
         </div>
 
         {/* Ticket Configuration Panel — hiện khi click Edit */}

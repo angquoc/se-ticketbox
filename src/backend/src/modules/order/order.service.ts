@@ -804,12 +804,16 @@ export class OrderService {
     limit = 20,
     status?: string,
     concertId?: string,
+    organizerId?: string,
   ): Promise<OrderListResponseDto> {
     const skip = (page - 1) * limit;
 
     const where: Prisma.OrderWhereInput = {};
     if (status) where.status = status as Prisma.OrderWhereInput['status'];
     if (concertId) where.concertId = concertId;
+    if (organizerId) {
+      where.concert = { organizerId };
+    }
 
     const [orders, total] = await Promise.all([
       this.prisma.order.findMany({

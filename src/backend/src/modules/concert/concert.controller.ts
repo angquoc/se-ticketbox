@@ -83,8 +83,8 @@ export class ConcertController {
   @Get('admin/concerts')
   @UseGuards(AuthGuard, RolesGuard)
   @Roles(Role.ADMIN, Role.ORGANIZER)
-  async findAdminAll(@Query() query: ConcertQueryDto) {
-    return this.concertService.findAdminAll(query);
+  async findAdminAll(@Query() query: ConcertQueryDto, @CurrentUser() user: AuthUser) {
+    return this.concertService.findAdminAll(query, user.sub, user.role);
   }
 
   /**
