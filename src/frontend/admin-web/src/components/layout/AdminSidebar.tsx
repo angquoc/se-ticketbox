@@ -1,8 +1,9 @@
 'use client';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { useAuth } from '@/components/providers/AuthProvider';
 
-const navItems = [
+const commonNavItems = [
   {
     href: '/dashboard',
     label: 'Dashboard',
@@ -51,6 +52,30 @@ const navItems = [
   },
 ];
 
+const adminNavItems = [
+  {
+    href: '/users',
+    label: 'Users',
+    icon: (
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+        <circle cx="9" cy="7" r="4"></circle>
+        <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+        <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+      </svg>
+    ),
+  },
+  {
+    href: '/system',
+    label: 'System Health',
+    icon: (
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+        <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline>
+      </svg>
+    ),
+  },
+];
+
 const bottomItems = [
   {
     href: '/settings',
@@ -77,6 +102,9 @@ const bottomItems = [
 
 export default function AdminSidebar() {
   const pathname = usePathname();
+  const { isAdmin } = useAuth();
+  
+  const navItems = isAdmin ? [...commonNavItems, ...adminNavItems] : commonNavItems;
 
   return (
     <aside style={{
@@ -107,13 +135,24 @@ export default function AdminSidebar() {
             color: 'var(--color-brand)',
             margin: 0,
           }}>TicketBox</h1>
-          <p style={{
-            fontWeight: 400,
-            fontSize: '13px',
-            lineHeight: '18px',
-            color: 'var(--color-text-secondary)',
-            margin: 0,
-          }}>Event Control Center</p>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '4px' }}>
+            <p style={{
+              fontWeight: 400,
+              fontSize: '13px',
+              lineHeight: '18px',
+              color: 'var(--color-text-secondary)',
+              margin: 0,
+            }}>{isAdmin ? 'System Admin' : 'Organizer Panel'}</p>
+            <span style={{
+              display: 'inline-block',
+              padding: '2px 6px',
+              borderRadius: '4px',
+              background: isAdmin ? '#FEE2E2' : '#E0E7FF',
+              color: isAdmin ? '#991B1B' : '#3730A3',
+              fontSize: '10px',
+              fontWeight: 700,
+            }}>{isAdmin ? 'ADMIN' : 'ORGANIZER'}</span>
+          </div>
         </div>
 
         {/* Nav links */}

@@ -4,9 +4,13 @@ import { ConcertStatusBadge } from '@/components/ui/Badge';
 import TicketConfigPanel from '@/components/events/TicketConfigPanel';
 import { useEventsData } from '@/hooks/useEventsData';
 import { formatDate } from '@/utils/format';
+import Pagination from '@/components/ui/Pagination';
+
+import { useAuth } from '@/components/providers/AuthProvider';
 
 // ── Main Page ─────────────────────────────────────────────────────────
 export default function EventsPage() {
+  const { isAdmin } = useAuth();
   const {
     concerts,
     total,
@@ -33,14 +37,14 @@ export default function EventsPage() {
             letterSpacing: '-0.6px',
             color: '#191B23',
             margin: 0,
-          }}>Events</h1>
+          }}>{isAdmin ? 'All Events' : 'My Events'}</h1>
           <p style={{
             fontWeight: 400,
             fontSize: '14px',
             lineHeight: '20px',
             color: '#434654',
             margin: '4px 0 0',
-          }}>Manage upcoming concerts, festivals, and venue configurations.</p>
+          }}>{isAdmin ? 'Manage all concerts and festivals.' : 'Manage your upcoming concerts and events.'}</p>
         </div>
 
         <div style={{ display: 'flex', gap: '8px' }}>
@@ -197,42 +201,15 @@ export default function EventsPage() {
           </div>
 
           {/* Pagination */}
-          <div style={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            gap: '8px',
-            padding: '14px 20px',
-            borderTop: '1px solid #C3C5D7',
-          }}>
-            <button
-              onClick={() => handlePageChange(currentPage - 1)}
-              disabled={currentPage <= 1}
-              style={{
-                background: 'none', border: 'none', cursor: currentPage <= 1 ? 'default' : 'pointer',
-                color: currentPage <= 1 ? '#9CA3AF' : '#434654', display: 'flex', alignItems: 'center', padding: '4px',
-              }}
-            >
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-                <polyline points="15 18 9 12 15 6" />
-              </svg>
-            </button>
-            <span style={{ fontSize: '13px', color: '#434654' }}>
-              Page <strong style={{ color: '#191B23' }}>{currentPage}</strong> of {totalPages}
-            </span>
-            <button
-              onClick={() => handlePageChange(currentPage + 1)}
-              disabled={currentPage >= totalPages}
-              style={{
-                background: 'none', border: 'none', cursor: currentPage >= totalPages ? 'default' : 'pointer',
-                color: currentPage >= totalPages ? '#9CA3AF' : '#434654', display: 'flex', alignItems: 'center', padding: '4px',
-              }}
-            >
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-                <polyline points="9 18 15 12 9 6" />
-              </svg>
-            </button>
-          </div>
+          {totalPages > 0 && (
+            <Pagination
+              currentPage={currentPage}
+              totalPages={totalPages}
+              totalCount={total}
+              onPageChange={handlePageChange}
+              perPage={5}
+            />
+          )}
         </div>
 
         {/* Ticket Configuration Panel — hiện khi click Edit */}
