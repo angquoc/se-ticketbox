@@ -105,8 +105,10 @@ export class OrderController {
     @Query('limit', new DefaultValuePipe(20), ParseIntPipe) limit: number,
     @Query('status') status?: string,
     @Query('concertId') concertId?: string,
+    @CurrentUser() user?: AuthUser,
   ) {
-    return this.orderService.getAllOrders(page, limit, status, concertId);
+    const organizerId = user?.role === Role.ORGANIZER ? user.sub : undefined;
+    return this.orderService.getAllOrders(page, limit, status, concertId, organizerId);
   }
 
   /**
