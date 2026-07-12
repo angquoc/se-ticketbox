@@ -10,12 +10,26 @@ export function useEventDetailData(id: string) {
   const [uploadingCsv, setUploadingCsv] = useState(false);
   const [updatingStatus, setUpdatingStatus] = useState(false);
 
+  const processConcertData = (data: Concert) => {
+    if (data.description) {
+      const endsAtMatch = data.description.match(/<!-- metadata:endsAt=(.*?) -->/);
+      if (endsAtMatch && endsAtMatch[1]) {
+        data.endsAt = endsAtMatch[1];
+        data.description = data.description.replace(endsAtMatch[0], '').trim();
+        if (data.description === '') {
+          data.description = null;
+        }
+      }
+    }
+    return data;
+  };
+
   const fetchConcert = useCallback(async () => {
     if (!id) return;
     try {
       setLoading(true);
       const data = await getAdminConcertById(id);
-      setConcert(data);
+      setConcert(processConcertData(data));
     } catch (err) {
       console.error('Failed to load concert details:', err);
     } finally {
@@ -34,7 +48,7 @@ export function useEventDetailData(id: string) {
       await uploadFile(concert.id, file, 'ARTIST_PRESS_KIT');
       // Refresh details to show new file
       const data = await getAdminConcertById(concert.id);
-      setConcert(data);
+      setConcert(processConcertData(data));
     } catch (err) {
       console.error('Failed to upload PDF press kit:', err);
     } finally {
@@ -49,7 +63,7 @@ export function useEventDetailData(id: string) {
       await uploadFile(concert.id, file, 'GUEST_LIST_CSV');
       // Refresh details
       const data = await getAdminConcertById(concert.id);
-      setConcert(data);
+      setConcert(processConcertData(data));
     } catch (err) {
       console.error('Failed to upload CSV guest list:', err);
     } finally {
@@ -63,7 +77,7 @@ export function useEventDetailData(id: string) {
     try {
       await updateConcert(concert.id, { status: newStatus });
       const data = await getAdminConcertById(concert.id);
-      setConcert(data);
+      setConcert(processConcertData(data));
     } catch (err) {
       console.error('Failed to update concert status:', err);
     } finally {

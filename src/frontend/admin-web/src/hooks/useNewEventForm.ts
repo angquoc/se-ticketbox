@@ -65,13 +65,16 @@ export function useNewEventForm() {
     setSubmitting(true);
     try {
       // 1. Create Concert DTO
+      const endsAtValue = toIso(eventDate, endTime);
+      const metadata = `\n<!-- metadata:endsAt=${endsAtValue} -->`;
+      
       const dto = {
         title,
         slug: slugify(title),
-        description: description || undefined,
+        description: description ? description + metadata : metadata,
         venue,
         startsAt: toIso(eventDate, startTime),
-        endsAt: toIso(eventDate, endTime),
+        endsAt: endsAtValue,
         saleStartsAt: saleDate ? toIso(saleDate, '00:00') : undefined,
         saleEndsAt: saleEndDate ? toIso(saleEndDate, '23:59') : undefined,
         coverImageUrl: coverImageUrl || undefined,

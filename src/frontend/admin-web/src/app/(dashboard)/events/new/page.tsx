@@ -217,8 +217,8 @@ export default function NewEventPage() {
           </Field>
           <p style={{ fontSize: '12px', color: '#6B7280', margin: 0 }}>
             {status === 'DRAFT'
-              ? '📝 Draft: Event is saved but hidden from customers.'
-              : '🌐 Published: Event will be visible on the customer site.'}
+              ? 'Draft: Event is saved but hidden from customers.'
+              : 'Published: Event will be visible on the customer site.'}
           </p>
         </FormSection>
 
