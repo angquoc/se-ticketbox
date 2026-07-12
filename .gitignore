@@ -28,3 +28,4 @@ dist/
 .cursor
 
 .env.docker
+*.tsbuildinfo
