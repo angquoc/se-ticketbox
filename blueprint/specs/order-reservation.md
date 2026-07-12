@@ -62,12 +62,11 @@ Mô tả chi tiết tại: [ticket-type-inventory.md](./ticket-type-inventory.md
 ### 2.2. Idempotency Key
 
 > **Lưu ý về storage:**
-> `POST /orders` sử dụng **PostgreSQL** (`IdempotencyKey` table) làm primary storage cho idempotency check trong `IdempotencyInterceptor`. Redis key `idem:{userId}:{idempotencyKey}` được `IdempotencyService` sử dụng cho riêng flow của `PaymentService` (tạo payment URL độc lập). Cả hai đều dùng `requestHash` (SHA-256 body) để detect body mismatch.
+> Cả `POST /orders` (thông qua `IdempotencyInterceptor`) và `PaymentService` (tạo payment URL độc lập) đều sử dụng **Redis** làm primary storage cho cơ chế idempotency check. Key lưu trữ dạng `idem:${userId}:${idempotencyKey}`.
 
 | Key | Kiểu | TTL | Ý nghĩa |
 |-----|------|-----|---------|
-| `IdempotencyKey` table (PostgreSQL) | Row | 15 phút | Primary storage cho `POST /orders`: lưu `PROCESSING` → `COMPLETED`, `requestHash`, `responseBody`, `orderId` |
-| `idem:{userId}:{idempotencyKey}` (Redis) | String | 15 phút | Dùng bởi `IdempotencyService` cho `PaymentService.createPayment()` |
+| `idem:{userId}:{idempotencyKey}` (Redis) | String | 15 phút | Dùng bởi `IdempotencyInterceptor` cho `POST /orders` và `IdempotencyService` cho `PaymentService.createPayment()` |
 
 ### 2.3. Rate Limiting Keys (toàn hệ thống)
 
@@ -123,11 +122,11 @@ Các bước xử lý:
 
 **Bước 4 — Kiểm tra Idempotency Key (IdempotencyInterceptor)**
 
-10. `IdempotencyInterceptor` kiểm tra PostgreSQL `IdempotencyKey` table: tìm row với `userId` và `key`.
+10. `IdempotencyInterceptor` kiểm tra Redis key `idem:${userId}:${idempotencyKey}`.
 11. Nếu key đã tồn tại và status = `COMPLETED` → trả lại `responseBody` đã cache (orderId, paymentUrl).
 12. Nếu key đã tồn tại và status = `PROCESSING` → trả `409 Conflict` "Request đang được xử lý".
-13. Nếu key đã tồn tại và status = `FAILED` → reset về `PROCESSING`, cho phép retry.
-14. Nếu key chưa tồn tại → INSERT row với status = `PROCESSING` và tiếp tục.
+13. Nếu key đã tồn tại và status = `FAILED` → xóa key và cho phép xử lý tiếp (retry).
+14. Nếu key chưa tồn tại → ghi key vào Redis với trạng thái `PROCESSING`, TTL 15 phút và tiếp tục.
 
 **Bước 5 — Validate nghiệp vụ**
 
@@ -596,7 +595,7 @@ return {ok = true, releasedQty = ARGV[4]}
 - Lua Script đảm bảo `stock` và `user-limit` được cập nhật nguyên tử, không có race condition.
 - `Order PENDING` là reservation record duy nhất trong PostgreSQL.
 - `expiresAt` trong PostgreSQL và TTL trong Redis phải khớp nhau.
-- Khi order chuyển `PAID`, `user-limit` phải giảm (chuyển từ `reservedQty` sang `paidQty` trong counter).
+- Khi order chuyển `PAID`, `user-limit` được giữ nguyên (chuyển từ `reservedQty` sang `paidQty`).
 - Khi order `EXPIRED` hoặc `CANCELLED`, cả `stock` và `user-limit` phải được hoàn lại.
 
 ### Ràng buộc bảo mật
@@ -630,7 +629,7 @@ Tóm tắt tại các thời điểm giao dịch:
 | Thời điểm | Redis `stock` | Redis `user-limit` | PostgreSQL `TicketType.reservedQty` | PostgreSQL `TicketType.soldQty` |
 |-----------|--------------|-------------------|-------------------------------------|--------------------------------|
 | Tạo order (PENDING) | DECR | INCR | `+= quantity` | — |
-| Thanh toán thành công (PAID) | DECR thêm 1 lần | Giữ nguyên (reserved → paid) | `-= quantity` | `+= quantity` |
+| Thanh toán thành công (PAID) | Giữ nguyên (đã trừ từ trước) | Giữ nguyên (reserved → paid) | `-= quantity` | `+= quantity` |
 | Order expired | INCR | DECR | `-= quantity` | — |
 | Order cancelled | INCR | DECR | `-= quantity` | — |
 | Order refunded | INCR | DECR | — | `-= quantity` |

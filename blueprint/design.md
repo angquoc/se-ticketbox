@@ -251,6 +251,7 @@ enum CheckinStatus {
   ALREADY_CHECKED_IN
   OFFLINE_PENDING
   REJECTED_CONFLICT
+  GATE_MISMATCH
 }
 
 
@@ -290,6 +291,7 @@ model Concert {
   status        ConcertStatus @default(DRAFT)
   seatMapUrl    String?
   coverImageUrl String?
+  reminderJobId String?
 
   organizer        User @relation("OrganizerConcerts", fields: [organizerId], references: [id])
   ticketTypes      TicketType[]
@@ -298,6 +300,7 @@ model Concert {
   checkinLogs      CheckinLog[]
   guestListEntries GuestListEntry[]
   uploadedFiles    UploadedFile[]
+  gates            Gate[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -334,6 +337,18 @@ model TicketType {
 
   @@unique([concertId, name])
   @@index([concertId, status])
+}
+
+model Gate {
+  id        String  @id @default(cuid())
+  name      String
+  concertId String
+  concert   Concert @relation(fields: [concertId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([concertId, name])
 }
 
 model Order {
@@ -419,6 +434,7 @@ model Ticket {
   concertId    String
   ticketTypeId String
   userId       String
+  gateId       String?
 
   order      Order      @relation(fields: [orderId], references: [id])
   orderItem  OrderItem  @relation(fields: [orderItemId], references: [id])
@@ -426,8 +442,9 @@ model Ticket {
   ticketType TicketType @relation(fields: [ticketTypeId], references: [id])
   user       User       @relation(fields: [userId], references: [id])
 
-  qrTokenHash String @unique
-  qrSignature String?
+  qrRawToken   String   @default("")
+  qrTokenHash  String   @unique
+  qrSignature  String?
 
   status      TicketStatus @default(ISSUED)
   checkedInAt DateTime?
@@ -1099,22 +1116,25 @@ Gợi ý ngưỡng:
 | Xem chi tiết concert  | 120 request/phút/IP   |
 | Tạo order/mua vé      | 5 request/phút/user   |
 | Login/Register        | 10 request/phút/IP    |
-| Check-in sync         | 30 request/phút/staff |
+| Check-in sync         | 10 request/phút/staff |
 
 Token Bucket phù hợp vì cho phép burst nhỏ khi người dùng thao tác nhanh, nhưng vẫn kiểm soát tốc độ trung bình. So với Sliding Window, nó tiết kiệm RAM hơn vì không cần lưu timestamp của từng request.
 
 #### Virtual Waiting Room
 
-Khi concert mở bán và số request vượt ngưỡng xử lý của backend, người dùng được chuyển vào phòng chờ ảo.
+Khi concert mở bán và số request vượt ngưỡng xử lý của backend, người dùng được chuyển vào phòng chờ ảo. 
 
 Luồng hoạt động:
 
 1. Người dùng vào trang mua vé.
-2. Backend cấp waiting room position hoặc waiting room token.
+2. Frontend API Route / Proxy cấp waiting room position hoặc waiting room token.
 3. Khi đến lượt, người dùng nhận token có TTL ngắn.
-4. Chỉ request có token hợp lệ mới được gọi API reserve/mua vé.
+4. Chỉ request có token hợp lệ mới được đi tiếp sang API tạo đơn hàng.
 
 Waiting Room giúp giảm áp lực lên API mua vé và tạo cảm giác công bằng hơn cho người dùng thật.
+
+> [!NOTE]
+> Cơ chế phòng chờ ảo hiện tại được thực thi tại Web Frontend và Next.js API Routes. Backend API nhận header `X-Waiting-Room-Token` nhưng chưa thực hiện kiểm tra giải mã token này để giảm tải tính toán CPU tại backend.
 
 #### Bot Protection
 
@@ -1200,7 +1220,7 @@ Ngưỡng đề xuất:
 * Nếu 50% request tạo payment URL thất bại trong 1 phút gần nhất, chuyển sang `Open`.
 * Circuit Breaker ở trạng thái `Open` trong 30 giây.
 * Sau 30 giây, chuyển sang `Half-Open`.
-* Nếu 3 request thử nghiệm thành công liên tiếp, chuyển về `Closed`.
+* Nếu 1 request thử nghiệm thành công (hoặc theo cấu hình mặc định của thư viện Opossum), chuyển về `Closed`.
 * Nếu request thử nghiệm tiếp tục lỗi, quay lại `Open`.
 
 #### Graceful Degradation
@@ -1263,6 +1283,9 @@ Luồng xử lý:
 
 Trường hợp request đầu đang xử lý mà request thứ hai đến cùng key, backend trả về trạng thái đang xử lý hoặc order hiện tại.
 
+> [!NOTE]
+> Bảng `IdempotencyKey` trong PostgreSQL database được khai báo trong schema nhằm mục đích tham khảo cấu trúc hoặc mở rộng khi cần lưu vết lâu dài. Ở runtime, `IdempotencyInterceptor` chỉ lưu và đọc từ Redis để tối ưu hóa hiệu năng và tốc độ phản hồi.
+
 #### Chống webhook trùng
 
 Webhook từ payment gateway có thể gửi lại nhiều lần. Vì vậy PostgreSQL cần unique constraint trên:
@@ -1298,10 +1321,8 @@ Backend không ghi mọi thay đổi đồng thời vào cache như Write-throug
 | Dữ liệu               | Key gợi ý                               |       TTL | Lý do                                              |
 | --------------------- | --------------------------------------- | --------: | -------------------------------------------------- |
 | Danh sách concert     | `cache:concert:list`                    |   60 giây | Đọc nhiều, thay đổi không quá thường xuyên         |
-| Chi tiết concert      | `cache:concert:detail:{concertId}`      |   60 giây | Đọc rất nhiều trong giờ mở bán                     |
-| Số vé còn lại         | `cache:ticket-availability:{concertId}` |  1–3 giây | Cần gần realtime nhưng không nên query DB liên tục |
-| Artist Bio            | `cache:artist-bio:{concertId}`          | 5–10 phút | Ít thay đổi                                        |
-| Seat map SVG metadata | `cache:seatmap:{concertId}`             | 5–10 phút | File/sơ đồ ít thay đổi                             |
+| Chi tiết concert      | `cache:concert:detail:{concertId}`      |   60 giây | Đọc rất nhiều trong giờ mở bán (gộp cả Artist Bio) |
+| Sơ đồ & Trạng thái chỗ| `seatmap:${concertId}:${ticketTypeId}:zones` |  30 giây | Trạng thái ghế trống theo loại vé                  |
 
 #### Invalidate cache
 
@@ -1309,13 +1330,11 @@ Khi Admin cập nhật concert:
 
 * Xóa `cache:concert:list`.
 * Xóa `cache:concert:detail:{concertId}`.
-* Xóa `cache:seatmap:{concertId}` nếu có thay đổi sơ đồ ghế.
-* Xóa `cache:artist-bio:{concertId}` nếu Artist Bio được sinh lại hoặc chỉnh sửa.
 
 Khi có giao dịch thanh toán thành công hoặc reservation thay đổi:
 
-* Xóa hoặc cập nhật `cache:ticket-availability:{concertId}`.
-* Với số vé còn lại, có thể dùng micro-cache TTL 1–3 giây để chấp nhận sai lệch nhỏ trong hiển thị, nhưng bước reserve vé vẫn phải kiểm tra bằng Redis Lua Script.
+* Xóa các cache seatmap liên quan (`seatmap:${concertId}:${ticketTypeId}:zones`).
+* Với số vé còn lại, có thể chấp nhận hiển thị sai lệch nhỏ ở giao diện, nhưng bước reserve vé vẫn bắt buộc kiểm tra realtime bằng Redis Lua Script.
 
 Lý do chấp nhận micro-cache:
 

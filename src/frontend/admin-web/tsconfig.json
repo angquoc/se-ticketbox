@@ -52,6 +52,7 @@
 
     /* ==================== Completeness ==================== */
     "skipLibCheck": true,
+    "typeRoots": ["./node_modules/@types"],
 
     /* ==================== Next.js Specific ==================== */
     "incremental": true,

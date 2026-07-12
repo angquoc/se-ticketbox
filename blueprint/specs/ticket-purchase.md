@@ -25,7 +25,7 @@ Frontend gửi POST /orders
 │  1. JwtAuthGuard → xác thực user     │
 │  2. RolesGuard → kiểm tra role       │
 │  3. IdempotencyInterceptor            │
-│     (PostgreSQL IdempotencyKey)       │
+│     (Redis Idempotency Check)         │
 │  4. Kiểm tra concert & ticket type   │
 │  5. Seed Redis stock (nếu chưa có)   │
 │  6. Lua Script reserve-ticket         │
@@ -56,7 +56,6 @@ PaymentService.handleMockWebhook()
                 ├─ update soldQty / reservedQty
                 ├─ update UserTicketCounter
                 ├─ delete Redis reservation
-                ├─ decrement Redis user-limit
                 └─ queue send-order-paid-email (chỉ orderId, không chứa rawToken)
         │
         ▼
@@ -83,7 +82,7 @@ Schema được mô tả chi tiết tại: [database-schema.md](./database-schem
 | `PaymentTransaction` | Giao dịch thanh toán: `INITIATED` → `SUCCESS` / `FAILED` / `TIMEOUT` |
 | `TicketType` | Cấu hình loại vé: `totalQty`, `soldQty`, `reservedQty`, `maxPerUser` |
 | `UserTicketCounter` | Bộ đếm per-user: `paidQty` + `reservedQty` theo từng ticket type |
-| `IdempotencyKey` | Chống double-click (PostgreSQL) |
+| `IdempotencyKey` | Chống double-click (Redis) |
 
 ---
 
@@ -96,15 +95,14 @@ Mô tả chi tiết tại: [ticket-type-inventory.md](./ticket-type-inventory.md
 | Key | Kiểu | TTL | Ý nghĩa |
 |-----|------|-----|---------|
 | `stock:{ticketTypeId}` | String (integer) | Không có | Số vé còn lại. Khởi tạo = `availableQty`. DECR khi reserve. |
-| `user-limit:{userId}:{ticketTypeId}` | String (integer) | Không có | Tổng vé đã mua + đang giữ. Kiểm tra `maxPerUser`. |
+| `user-limit:{userId}:{ticketTypeId}` | String (integer) | Không có | Tổng vé đã mua (đã thanh toán) + đang giữ. Kiểm tra `maxPerUser`. |
 | `reservation:{orderId}` | String (JSON) | `expiresAt - now()` | Thông tin giữ chỗ: `{order_id, user_id, ticket_type_id, quantity}`. Auto-delete khi TTL hết. |
 
 ### 3.2. Idempotency
 
 | Key | Storage | TTL | Ý nghĩa |
 |-----|---------|-----|---------|
-| `IdempotencyKey` table (PostgreSQL) | Row | 15 phút | Primary storage cho `POST /orders`: lưu `PROCESSING` → `COMPLETED`, `requestHash`, `responseBody`, `orderId` |
-| `idem:{userId}:{idempotencyKey}` (Redis) | String | 15 phút | Dùng bởi `IdempotencyService` cho `PaymentService.createPayment()` |
+| `idem:{userId}:{idempotencyKey}` (Redis) | String | 15 phút | Lưu trạng thái xử lý idempotency của request tạo order / thanh toán. |
 
 ### 3.3. Rate Limiting
 
@@ -216,16 +214,16 @@ Frontend sinh `Idempotency-Key` dạng UUID cho mỗi lần bấm mua.
 `JwtAuthGuard` kiểm tra JWT hợp lệ, trích xuất `userId`, `email`, `role`.
 `RolesGuard` kiểm tra role: `CUSTOMER`, `ORGANIZER` hoặc `ADMIN` mới được tạo order.
 
-**Bước 3 — IdempotencyInterceptor (PostgreSQL)**
+**Bước 3 — IdempotencyInterceptor (Redis)**
 
-Tìm row `IdempotencyKey` với `userId` + `key`:
+Tìm key `idem:${userId}:${idempotencyKey}` trên Redis:
 
 | Trạng thái key | Hành vi |
 |-----------------|---------|
-| Chưa tồn tại | INSERT với `status = PROCESSING`, tiếp tục xử lý |
+| Chưa tồn tại | Ghi key với `status = PROCESSING`, TTL 15 phút, tiếp tục xử lý |
 | `PROCESSING` | Trả `409 Conflict` "Request đang được xử lý, vui lòng chờ" |
 | `COMPLETED` | Trả `responseBody` đã cache (orderId, paymentUrl) |
-| `FAILED` | Reset về `PROCESSING`, cho retry |
+| `FAILED` | Xóa key, cho retry |
 
 **Bước 4 — Kiểm tra nghiệp vụ concert và ticket type**
 
@@ -275,9 +273,9 @@ Nếu PostgreSQL insert thất bại → rollback **tất cả** Redis reservati
 4. Tạo `PaymentTransaction` với `status = INITIATED`, lưu `paymentUrl`.
 5. Nếu gateway thất bại → Circuit Breaker mở, rollback order + Redis reservation + UserTicketCounter.
 
-**Bước 9 — Cập nhật IdempotencyKey**
+**Bước 9 — Cập nhật IdempotencyKey (Redis)**
 
-`IdempotencyInterceptor` cập nhật `IdempotencyKey` row:
+`IdempotencyInterceptor` cập nhật Redis key:
 - `status = COMPLETED`
 - `responseBody = { orderId, paymentUrl }`
 
@@ -380,7 +378,7 @@ Thực hiện trong một PostgreSQL `$transaction`:
 
 Sau transaction thành công:
 7. **Clean up Redis**: `DEL reservation:{orderId}`.
-8. **Decrement user-limit**: `decrementUserLimit()` cho từng ticket type.
+8. **Giữ nguyên user-limit** trong Redis (không decrement) để các vé đã thanh toán tiếp tục được tính vào giới hạn mua vé của user (maxPerUser).
 9. **Queue notification**: BullMQ job `send-order-paid-email` với `{ orderId, userId }` (không chứa token — processor tự query DB để lấy ticket info). Email gửi cho user link đến trang web `/my-tickets` thay vì chứa QR token.
 
 ---
@@ -418,7 +416,7 @@ Tại các thời điểm giao dịch:
 | Sự kiện | Redis `stock` | Redis `user-limit` | PostgreSQL `reservedQty` | PostgreSQL `soldQty` |
 |---------|---------------|-------------------|------------------------|---------------------|
 | Tạo order (PENDING) | DECR | INCR | `+= quantity` | — |
-| Thanh toán thành công (PAID) | DEL reservation | DECR (paid tickets no longer count) | `-= quantity` | `+= quantity` |
+| Thanh toán thành công (PAID) | DEL reservation | Giữ nguyên (chuyển reserved -> paid) | `-= quantity` | `+= quantity` |
 | Order expired | INCR | DECR | `-= quantity` | — |
 | Order cancelled | INCR | DECR | `-= quantity` | — |
 | Order payment failed | INCR | DECR | `-= quantity` | — |
@@ -798,7 +796,7 @@ Tại các thời điểm giao dịch:
 - Lua Script đảm bảo `stock` và `user-limit` được cập nhật nguyên tử — không race condition.
 - `Order PENDING` là reservation record duy nhất trong PostgreSQL.
 - `expiresAt` trong PostgreSQL và TTL của `reservation:{orderId}` trong Redis bằng nhau.
-- Khi order `PAID`, `user-limit` Redis phải được giảm (chuyển từ `reservedQty` → `paidQty`).
+- Khi order `PAID`, `user-limit` Redis được giữ nguyên (chuyển từ `reservedQty` → `paidQty`).
 - Khi order `EXPIRED` / `CANCELLED` / `PAYMENT_FAILED`, cả `stock` và `user-limit` phải được hoàn lại.
 
 ### 9.2. Ràng buộc bảo mật

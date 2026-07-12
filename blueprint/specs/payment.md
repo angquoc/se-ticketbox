@@ -466,10 +466,9 @@ for (let i = 0; i < quantity; i++) {
 Sau transaction PostgreSQL thành công, dọn dẹp Redis:
 
 ```typescript
+// Chỉ xóa reservation key, KHÔNG decrement user-limit để các vé đã thanh toán
+// tiếp tục được tính vào giới hạn mua vé của user (maxPerUser).
 await redis.del(`reservation:${orderId}`);
-for (const item of order.items) {
-  await redis.decrementUserLimit({ ticketTypeId, userId, quantity });
-}
 ```
 
 ### Bước I — Queue Notification (ngoài transaction)
