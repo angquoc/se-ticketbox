@@ -1,0 +1,21 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "esModuleInterop": true,
+    "strict": false,
+    "noImplicitAny": false,
+    "skipLibCheck": true,
+    "baseUrl": "../src/backend",
+    "typeRoots": [
+      "../src/backend/node_modules/@types"
+    ],
+    "paths": {
+      "*": ["node_modules/*"]
+    }
+  },
+  "include": [
+    "**/*.ts"
+  ]
+}

@@ -35,29 +35,9 @@ export default function SeatSummaryBar({
               </p>
               <div className="mt-2 flex items-center gap-3">
                 <span className="text-sm text-slate-600">Số lượng:</span>
-                <div className="flex items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={() => onQuantityChange(selection.quantity - 1)}
-                    disabled={selection.quantity <= 1}
-                    className="rounded-md border border-slate-300 px-2 py-1 text-sm disabled:opacity-40"
-                    aria-label="Giảm số lượng"
-                  >
-                    −
-                  </button>
-                  <span className="min-w-[2rem] text-center font-semibold text-slate-900">
-                    {selection.quantity}
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => onQuantityChange(selection.quantity + 1)}
-                    disabled={selection.quantity >= maxQuantity}
-                    className="rounded-md border border-slate-300 px-2 py-1 text-sm disabled:opacity-40"
-                    aria-label="Tăng số lượng"
-                  >
-                    +
-                  </button>
-                </div>
+                <span className="text-sm font-semibold text-slate-900">
+                  {selection.quantity} vé
+                </span>
               </div>
               <p className="mt-1 text-lg font-bold text-indigo-600">
                 Tổng: {formatVnd(totalPrice)}

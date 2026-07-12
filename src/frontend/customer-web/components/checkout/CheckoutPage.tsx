@@ -1,18 +1,28 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import CustomerHeader from '@/components/layout/CustomerHeader';
+import PendingOrderBanner from '@/components/payment/PendingOrderBanner';
+import TokenExpiryBanner from '@/components/waiting-room/TokenExpiryBanner';
 import { useAuth } from '@/hooks/useAuth';
-import { concertApi, orderApi } from '@/lib/api-client';
+import { usePurchaseAccess } from '@/hooks/usePurchaseAccess';
+import { concertApi } from '@/lib/api-client';
+import { getCheckoutErrorMessage, isWaitingRoomOrderError } from '@/lib/api-error';
+import { createOrderWithIdempotencyRetry } from '@/lib/create-order-retry';
 import {
   clearCheckoutIdempotencyKey,
   getCheckoutIdempotencyKey,
 } from '@/lib/idempotency';
 import {
+  readAdmittedToken,
+} from '@/lib/waiting-room-storage';
+import { abandonPurchaseFlow } from '@/lib/waiting-room-abandon';
+import {
   clearPendingOrder,
   clearZoneSelection,
+  readPendingOrder,
   readZoneSelection,
   savePendingOrder,
 } from '@/lib/checkout-storage';
@@ -23,6 +33,7 @@ import {
 import { getConcertName } from '@/lib/concert-names';
 import { formatVnd } from '@/lib/format';
 import type { Order } from '@/types/order';
+import type { ZoneSelection } from '@/types/seatmap';
 
 interface CheckoutPageProps {
   concertId: string;
@@ -36,10 +47,42 @@ export default function CheckoutPage({ concertId }: CheckoutPageProps) {
   const [step, setStep] = useState<CheckoutStep>('review');
   const [error, setError] = useState<string | null>(null);
   const [order, setOrder] = useState<Order | null>(null);
+  const checkoutLockRef = useRef(false);
 
-  const selection = useMemo(() => readZoneSelection(concertId), [concertId]);
+  const { accessChecked, accessError, tokenRemainingMs, redirectToWaiting } = usePurchaseAccess({
+    concertId,
+    requireToken: true,
+  });
+
+  const [selection, setSelection] = useState<ZoneSelection | null>(null);
+  const [selectionLoaded, setSelectionLoaded] = useState(false);
+  const [selectedSeats, setSelectedSeats] = useState<string[]>([]);
+
+  useEffect(() => {
+    const rawSeats = sessionStorage.getItem(`selected-seats:${concertId}`);
+    if (rawSeats) {
+      try {
+        setSelectedSeats(JSON.parse(rawSeats));
+      } catch {}
+    }
+  }, [concertId]);
+
   const concertName = getConcertName(concertId);
   const totalPrice = selection ? selection.unitPrice * selection.quantity : 0;
+
+  useEffect(() => {
+    const pendingOrderId = readPendingOrder(concertId);
+    if (pendingOrderId) {
+      router.replace(
+        `/orders/${pendingOrderId}/payment?concertId=${encodeURIComponent(concertId)}`,
+      );
+    }
+  }, [concertId, router]);
+
+  useEffect(() => {
+    setSelection(readZoneSelection(concertId));
+    setSelectionLoaded(true);
+  }, [concertId]);
 
   useEffect(() => {
     if (!authLoading && !isAuthenticated) {
@@ -48,14 +91,28 @@ export default function CheckoutPage({ concertId }: CheckoutPageProps) {
   }, [authLoading, isAuthenticated, concertId, router]);
 
   useEffect(() => {
-    if (!selection) {
+    if (selectionLoaded && !selection) {
       router.replace(`/concerts/${concertId}/seats`);
     }
-  }, [selection, concertId, router]);
+  }, [selectionLoaded, selection, concertId, router]);
 
-  async function handleCheckout() {
-    if (!selection) return;
+  useEffect(() => {
+    getCheckoutIdempotencyKey(concertId);
+  }, [concertId]);
 
+  async function handleCheckout(button?: HTMLButtonElement) {
+    if (!selection || checkoutLockRef.current) return;
+
+    const waitingRoomToken = readAdmittedToken(concertId);
+    if (!waitingRoomToken) {
+      redirectToWaiting();
+      return;
+    }
+
+    checkoutLockRef.current = true;
+    if (button) button.disabled = true;
+
+    const idempotencyKey = getCheckoutIdempotencyKey(concertId);
     setStep('processing');
     setError(null);
 
@@ -64,14 +121,13 @@ export default function CheckoutPage({ concertId }: CheckoutPageProps) {
       const ticketTypesResponse = await concertApi.getTicketTypes(concertId);
       const items = mapZoneSelectionToOrderItems(selection, ticketTypesResponse.data);
 
-      const idempotencyKey = getCheckoutIdempotencyKey(concertId);
-
-      const orderResponse = await orderApi.create(
+      const orderResponse = await createOrderWithIdempotencyRetry(
         {
           concertId: backendConcertId,
           items,
         },
         idempotencyKey,
+        waitingRoomToken,
       );
 
       const paymentUrl =
@@ -82,24 +138,43 @@ export default function CheckoutPage({ concertId }: CheckoutPageProps) {
 
       clearCheckoutIdempotencyKey(concertId);
       clearZoneSelection(concertId);
+      sessionStorage.removeItem(`selected-seats:${concertId}`);
+      abandonPurchaseFlow(concertId);
       savePendingOrder(concertId, orderResponse.order.id);
       setOrder(orderResponse.order);
 
-      router.push(
+      router.replace(
         `/orders/${orderResponse.order.id}/payment?concertId=${encodeURIComponent(concertId)}&paymentUrl=${encodeURIComponent(paymentUrl)}`,
       );
     } catch (err) {
+      checkoutLockRef.current = false;
+      if (button) button.disabled = false;
+
+      if (isWaitingRoomOrderError(err)) {
+        abandonPurchaseFlow(concertId);
+        redirectToWaiting();
+        return;
+      }
+
       setStep('error');
-      setError(err instanceof Error ? err.message : 'Không thể tạo đơn hàng');
+      setError(getCheckoutErrorMessage(err));
     }
   }
 
-  if (authLoading || !selection) {
+  const isCheckoutLocked = step === 'processing';
+
+  if (authLoading || !selectionLoaded || !selection || !accessChecked) {
     return (
       <div className="flex min-h-screen flex-col bg-slate-50">
         <CustomerHeader concertName={concertName} />
-        <main className="flex flex-1 items-center justify-center">
-          <div className="h-10 w-10 animate-spin rounded-full border-4 border-indigo-200 border-t-indigo-600" />
+        <main className="flex flex-1 items-center justify-center p-4">
+          {accessError ? (
+            <div className="max-w-md rounded-xl border border-red-200 bg-red-50 p-6 text-center">
+              <p className="text-red-700">{accessError}</p>
+            </div>
+          ) : (
+            <div className="h-10 w-10 animate-spin rounded-full border-4 border-indigo-200 border-t-indigo-600" />
+          )}
         </main>
       </div>
     );
@@ -113,16 +188,31 @@ export default function CheckoutPage({ concertId }: CheckoutPageProps) {
         <h1 className="text-2xl font-bold text-slate-900">Xác nhận đặt vé</h1>
         <p className="mt-1 text-slate-600">{concertName}</p>
 
+        <div className="mt-4">
+          <PendingOrderBanner concertId={concertId} />
+        </div>
+
+        <div className="mt-4">
+          <TokenExpiryBanner remainingMs={tokenRemainingMs} />
+        </div>
+
         <div className="mt-6 rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
           <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-500">
             Vé đã chọn
           </h2>
           <ul className="mt-3 space-y-2">
-            <li className="flex items-center justify-between text-sm text-slate-700">
-              <span>
-                {selection.ticketTypeName} · {selection.zoneName} · {selection.quantity} vé
-              </span>
-              <span className="font-medium">{formatVnd(totalPrice)}</span>
+            <li className="flex flex-col gap-1 text-sm text-slate-700">
+              <div className="flex items-center justify-between">
+                <span>
+                  {selection.ticketTypeName} · {selection.zoneName} · {selection.quantity} vé
+                </span>
+                <span className="font-medium">{formatVnd(totalPrice)}</span>
+              </div>
+              {selectedSeats.length > 0 && (
+                <div className="text-xs text-slate-500 font-medium">
+                  Ghế đã chọn: <span className="font-semibold text-slate-700">{selectedSeats.join(', ')}</span>
+                </div>
+              )}
             </li>
           </ul>
 
@@ -146,17 +236,22 @@ export default function CheckoutPage({ concertId }: CheckoutPageProps) {
         <div className="mt-6 flex flex-col gap-3 sm:flex-row">
           <Link
             href={`/concerts/${concertId}/seats`}
-            className="inline-flex items-center justify-center rounded-lg border border-slate-300 px-5 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50"
+            aria-disabled={isCheckoutLocked}
+            tabIndex={isCheckoutLocked ? -1 : undefined}
+            className={`inline-flex items-center justify-center rounded-lg border border-slate-300 px-5 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50 ${
+              isCheckoutLocked ? 'pointer-events-none opacity-50' : ''
+            }`}
           >
             Quay lại chọn khu vực
           </Link>
           <button
             type="button"
-            onClick={() => void handleCheckout()}
-            disabled={step === 'processing'}
-            className="inline-flex flex-1 items-center justify-center rounded-lg bg-indigo-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-indigo-700 disabled:bg-slate-300"
+            onClick={(event) => void handleCheckout(event.currentTarget)}
+            disabled={isCheckoutLocked}
+            aria-busy={isCheckoutLocked}
+            className="inline-flex flex-1 items-center justify-center rounded-lg bg-indigo-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-indigo-700 disabled:cursor-not-allowed disabled:bg-slate-300"
           >
-            {step === 'processing' ? 'Đang xử lý...' : 'Xác nhận và thanh toán'}
+            {isCheckoutLocked ? 'Đang xử lý...' : 'Xác nhận và thanh toán'}
           </button>
         </div>
 

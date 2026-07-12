@@ -72,6 +72,7 @@ enum CheckinStatus {
   ALREADY_CHECKED_IN
   OFFLINE_PENDING
   REJECTED_CONFLICT
+  GATE_MISMATCH
 }
 
 // Models
@@ -112,6 +113,7 @@ model Concert {
   status        ConcertStatus @default(DRAFT)
   seatMapUrl    String?
   coverImageUrl String?
+  reminderJobId String?
 
   organizer        User @relation("OrganizerConcerts", fields: [organizerId], references: [id])
   ticketTypes      TicketType[]
@@ -120,12 +122,25 @@ model Concert {
   checkinLogs      CheckinLog[]
   guestListEntries GuestListEntry[]
   uploadedFiles    UploadedFile[]
+  gates            Gate[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   @@index([status, startsAt])
   @@index([saleStartsAt, saleEndsAt])
+}
+
+model Gate {
+  id        String  @id @default(cuid())
+  name      String  // e.g. "GATE-A", "Cổng 1", "Entrance Main"
+  concertId String
+  concert   Concert @relation(fields: [concertId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([concertId, name])
 }
 
 model TicketType {
@@ -250,6 +265,12 @@ model Ticket {
   concertId    String
   ticketTypeId String
   userId       String
+  /**
+   * Gate name assigned at ticket issuance (e.g. "GATE-A", not Gate.id/cuid).
+   * Stored as Ticket.gateId = Gate.name (e.g. "GATE-A") for human-readable QR payload
+   * and device gate comparison. NOT a foreign key — use Gate.findMany + name match.
+   */
+  gateId       String?
 
   order      Order      @relation(fields: [orderId], references: [id])
   orderItem  OrderItem  @relation(fields: [orderItemId], references: [id])
@@ -258,11 +279,22 @@ model Ticket {
   user       User       @relation(fields: [userId], references: [id])
 
   /*
-    Do not store raw QR payload.
-    Backend hashes the token from QR and compares with qrTokenHash.
+    QR payload format (v2 with gate):
+      {ticketId}:{rawToken}:{gateId}
+    Example:  abc123:xxxx-xxxx:gate-a
+
+    QR token storage strategy (security by design):
+    - qrRawToken:  the raw UUID token — sent to frontend for QR rendering, stored encrypted in DB.
+    - qrTokenHash: SHA-256 of qrRawToken — stored in DB, used for verification.
+    - qrSignature: HMAC-SHA256 of {ticketId}:{qrTokenHash}:{gateId} — stored in DB,
+                   used for tamper detection. Signature is verified at check-in time.
+
+    Note: When gateId changes, qrSignature becomes invalid and a new QR must be reissued.
+    The raw token is NEVER transmitted via email (only via authenticated HTTPS on the web app).
   */
-  qrTokenHash String @unique
-  qrSignature String?
+  qrRawToken   String   @default("")
+  qrTokenHash  String   @unique
+  qrSignature  String?
 
   status      TicketStatus @default(ISSUED)
   checkedInAt DateTime?

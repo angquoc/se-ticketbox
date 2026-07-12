@@ -1,0 +1,49 @@
+{
+  "slug": "theater-tiered",
+  "background": "theater-tiered.svg",
+  "title": "Tiered Theater Layout",
+  "zones": [
+    {
+      "zoneId": "svip-left",
+      "zoneName": "SVIP (Left)",
+      "ticketTypeName": "SVIP",
+      "rect": { "x": 52, "y": 126, "width": 318, "height": 102, "rx": 8 }
+    },
+    {
+      "zoneId": "svip-right",
+      "zoneName": "SVIP (Right)",
+      "ticketTypeName": "SVIP",
+      "rect": { "x": 430, "y": 126, "width": 318, "height": 102, "rx": 8 }
+    },
+    {
+      "zoneId": "vip",
+      "zoneName": "VIP",
+      "ticketTypeName": "VIP",
+      "rect": { "x": 190, "y": 248, "width": 420, "height": 116, "rx": 8 }
+    },
+    {
+      "zoneId": "cat1-left",
+      "zoneName": "CAT1 (Left)",
+      "ticketTypeName": "CAT1",
+      "rect": { "x": 64, "y": 386, "width": 316, "height": 116, "rx": 8 }
+    },
+    {
+      "zoneId": "cat1-right",
+      "zoneName": "CAT1 (Right)",
+      "ticketTypeName": "CAT1",
+      "rect": { "x": 420, "y": 386, "width": 316, "height": 116, "rx": 8 }
+    },
+    {
+      "zoneId": "cat2",
+      "zoneName": "CAT2",
+      "ticketTypeName": "CAT2",
+      "rect": { "x": 66, "y": 524, "width": 668, "height": 96, "rx": 8 }
+    },
+    {
+      "zoneId": "ga",
+      "zoneName": "GA",
+      "ticketTypeName": "GA",
+      "rect": { "x": 46, "y": 632, "width": 708, "height": 124, "rx": 8 }
+    }
+  ]
+}

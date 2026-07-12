@@ -12,7 +12,7 @@ export class OrderTicketResponseDto {
   status!: TicketStatus;
   checkedInAt!: Date | null;
   createdAt!: Date;
-  /** QR payload: {ticketId}:{qrTokenHash}:{timestamp}:{qrSignature} */
+  /** QR payload: {ticketId}:{rawToken} */
   qrPayload!: string;
 }
 
@@ -55,6 +55,7 @@ export class OrderResponseDto {
   ticketCount!: number;
   /** Full ticket records with QR payloads (only available when status = PAID) */
   tickets?: OrderTicketResponseDto[];
+  serverTime?: Date;
 }
 
 export class OrderListResponseDto {

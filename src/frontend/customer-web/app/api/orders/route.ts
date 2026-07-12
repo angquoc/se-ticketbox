@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { backendFetch } from '@/lib/api/backend-fetch';
+import { WAITING_ROOM_TOKEN_HEADER } from '@/lib/waiting-room-constants';
 import type { CreateOrderResponse } from '@/types/order';
 
 function getToken(request: Request): string | null {
@@ -24,13 +25,19 @@ export async function POST(request: Request) {
 
   try {
     const body = await request.json();
+    const waitingRoomToken = request.headers.get('x-waiting-room-token');
+    const forwardHeaders: Record<string, string> = {
+      'Idempotency-Key': idempotencyKey,
+    };
+    if (waitingRoomToken) {
+      forwardHeaders[WAITING_ROOM_TOKEN_HEADER] = waitingRoomToken;
+    }
+
     const data = await backendFetch<CreateOrderResponse>('/orders', {
       method: 'POST',
       token,
       body,
-      headers: {
-        'Idempotency-Key': idempotencyKey,
-      },
+      headers: forwardHeaders,
     });
     return NextResponse.json({ success: true, data }, { status: 201 });
   } catch (error) {

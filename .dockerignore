@@ -1,0 +1,49 @@
+# Dependencies
+**/node_modules
+**/.pnp
+**/.pnp.js
+
+# Build outputs
+**/dist
+**/.next
+**/out
+**/.turbo
+
+# Git
+**/.git
+**/.gitignore
+
+# IDE
+**/.cursor
+**/.idea
+**/*.swp
+**/.vscode
+
+# Environment files — never include these in the image
+**/.env
+**/.env.*
+!**/.env.example
+
+# Logs & caches
+**/*.log
+**/npm-debug.log*
+**/.eslintcache
+**/.prettiercache
+
+# OS
+**/.DS_Store
+**/Thumbs.db
+
+# Coverage
+**/coverage
+
+# Local data
+data/
+*.pem
+
+# Docs (not needed in image)
+blueprint/
+*.md
+
+# CI/CD
+.github/

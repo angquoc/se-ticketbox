@@ -11,6 +11,7 @@ import { InjectQueue } from '@nestjs/bullmq';
 import { Queue } from 'bullmq';
 import { PrismaService } from '../../database/prisma.service';
 import { RedisService } from '../redis/redis.service';
+import { buildQrPayload } from '../ticket/utils/qr-payload.util';
 import {
   ConcertStatus,
   TicketTypeStatus,
@@ -34,6 +35,8 @@ import {
   NOTIFICATION_QUEUE,
 } from '../queue/queue.constants';
 import { PaymentService } from '../payment/payment.service';
+import { SeatmapBroadcastService } from '../seatmap/seatmap-broadcast.service';
+import { ConcertService } from '../concert/concert.service';
 
 const DEFAULT_RESERVATION_TTL_SECONDS = 15 * 60; // 15 minutes
 
@@ -44,8 +47,8 @@ type TicketWithQr = {
   status: TicketStatus;
   checkedInAt: Date | null;
   createdAt: Date;
-  qrTokenHash: string;
-  qrSignature: string | null;
+  qrRawToken: string;
+  gateId: string | null;
   ticketType: Pick<TicketType, 'name'>;
 };
 
@@ -80,6 +83,8 @@ export class OrderService {
     private redis: RedisService,
     private configService: ConfigService,
     private paymentService: PaymentService,
+    private readonly seatmapBroadcastService: SeatmapBroadcastService,
+    private readonly concertService: ConcertService,
     @InjectQueue(ORDER_EXPIRE_QUEUE) private readonly expireQueue: Queue,
     @InjectQueue(NOTIFICATION_QUEUE) private readonly notificationQueue: Queue,
   ) {}
@@ -90,12 +95,14 @@ export class OrderService {
 
   private buildQrPayload(ticket: {
     id: string;
-    qrTokenHash: string;
-    qrSignature: string | null;
-    createdAt: Date;
+    qrRawToken: string;
+    gateId: string | null;
   }): string {
-    const timestamp = Math.floor(ticket.createdAt.getTime() / 1000);
-    return `${ticket.id}:${ticket.qrTokenHash}:${timestamp}:${ticket.qrSignature ?? ''}`;
+    return buildQrPayload({
+      id: ticket.id,
+      rawToken: ticket.qrRawToken,
+      gateId: ticket.gateId ?? '',
+    });
   }
 
   private toOrderItemResponse(item: {
@@ -161,6 +168,7 @@ export class OrderService {
       paymentUrl,
       ticketCount: tickets.length,
       tickets: order.status === OrderStatus.PAID ? tickets : undefined,
+      serverTime: new Date(),
     };
   }
 
@@ -190,6 +198,7 @@ export class OrderService {
         (sum, item) => sum + (item.tickets?.length ?? 0),
         0,
       ),
+      serverTime: new Date(),
     };
   }
 
@@ -263,21 +272,32 @@ export class OrderService {
     return { maxPerUser: ticketType.maxPerUser, unitPrice: ticketType.price };
   }
 
+  /**
+   * Lazy-seed Redis stock only if the key is missing.
+   * Uses SET NX so concurrent first-hits cannot overwrite a stock value that
+   * another request has already decremented (EXISTS+SET race → oversell).
+   * Prefer seeding at ticket-type create / health reset instead of this path.
+   */
   private async ensureRedisStock(ticketTypeId: string): Promise<void> {
     const key = `stock:${ticketTypeId}`;
-    const exists = await this.redis.exists(key);
-    if (!exists) {
-      const tt = await this.prisma.ticketType.findUnique({
-        where: { id: ticketTypeId },
-        select: { totalQty: true, soldQty: true, reservedQty: true },
-      });
-      if (tt) {
-        const available = tt.totalQty - tt.soldQty - tt.reservedQty;
-        await this.redis.set(key, String(Math.max(0, available)));
-        this.logger.debug(
-          `Seeded Redis stock for ${ticketTypeId}: ${available}`,
-        );
-      }
+    if (await this.redis.exists(key)) {
+      return;
+    }
+
+    const tt = await this.prisma.ticketType.findUnique({
+      where: { id: ticketTypeId },
+      select: { totalQty: true, soldQty: true, reservedQty: true },
+    });
+    if (!tt) {
+      return;
+    }
+
+    const available = Math.max(0, tt.totalQty - tt.soldQty - tt.reservedQty);
+    const seeded = await this.redis.setNx(key, String(available));
+    if (seeded) {
+      this.logger.debug(
+        `Seeded Redis stock for ${ticketTypeId}: ${available}`,
+      );
     }
   }
 
@@ -448,22 +468,64 @@ export class OrderService {
       );
     }
 
-    // Update UserTicketCounter in PostgreSQL (source of truth for per-user limits)
-    await Promise.all(
-      ticketMeta.map((m) =>
-        this.prisma.userTicketCounter.upsert({
-          where: {
-            userId_ticketTypeId: { userId, ticketTypeId: m.ticketTypeId },
-          },
-          create: {
-            userId,
+    // Sync PostgreSQL inventory counters (second defense against oversell:
+    // reject if reservedQty + soldQty + qty would exceed totalQty)
+    try {
+      await this.prisma.$transaction(async (tx) => {
+        for (const m of ticketMeta) {
+          const affected = await tx.$executeRaw`
+            UPDATE "TicketType"
+            SET "reservedQty" = "reservedQty" + ${m.quantity},
+                "updatedAt" = NOW()
+            WHERE "id" = ${m.ticketTypeId}
+              AND ("reservedQty" + "soldQty" + ${m.quantity}) <= "totalQty"
+          `;
+          if (Number(affected) === 0) {
+            throw new UnprocessableEntityException(
+              `Not enough tickets available for ticket type "${m.ticketTypeId}"`,
+            );
+          }
+
+          await tx.userTicketCounter.upsert({
+            where: {
+              userId_ticketTypeId: { userId, ticketTypeId: m.ticketTypeId },
+            },
+            create: {
+              userId,
+              ticketTypeId: m.ticketTypeId,
+              reservedQty: m.quantity,
+            },
+            update: { reservedQty: { increment: m.quantity } },
+          });
+        }
+      });
+    } catch (inventoryErr) {
+      this.logger.error(
+        `Failed to sync inventory for order ${orderId} — rolling back Redis + order`,
+        inventoryErr,
+      );
+
+      await Promise.all(
+        ticketMeta.map((m) =>
+          this.redis.releaseReservation({
             ticketTypeId: m.ticketTypeId,
-            reservedQty: m.quantity,
-          },
-          update: { reservedQty: { increment: m.quantity } },
-        }),
-      ),
-    );
+            userId,
+            orderId,
+            quantity: m.quantity,
+          }),
+        ),
+      );
+      await this.prisma.order
+        .delete({ where: { id: orderId } })
+        .catch(() => undefined);
+
+      if (inventoryErr instanceof UnprocessableEntityException) {
+        throw inventoryErr;
+      }
+      throw new BadRequestException(
+        'Failed to create order. Please try again.',
+      );
+    }
 
     // Create PaymentTransaction and get payment URL from gateway
     let paymentUrl: string;
@@ -491,9 +553,15 @@ export class OrderService {
         ),
       );
 
-      // Rollback UserTicketCounter
-      await Promise.all(
-        ticketMeta.map((m) =>
+      // Rollback PostgreSQL inventory counters
+      await Promise.all([
+        ...ticketMeta.map((m) =>
+          this.prisma.ticketType.update({
+            where: { id: m.ticketTypeId },
+            data: { reservedQty: { decrement: m.quantity } },
+          }),
+        ),
+        ...ticketMeta.map((m) =>
           this.prisma.userTicketCounter.update({
             where: {
               userId_ticketTypeId: { userId, ticketTypeId: m.ticketTypeId },
@@ -501,7 +569,7 @@ export class OrderService {
             data: { reservedQty: { decrement: m.quantity } },
           }),
         ),
-      );
+      ]);
 
       // Delete the order record (it only exists because payment failed)
       await this.prisma.order.delete({ where: { id: orderId } });
@@ -520,6 +588,17 @@ export class OrderService {
       { delay: delayMs, jobId: `expire-${orderId}` },
     );
     this.logger.debug(`Expire job scheduled for order ${orderId} in ${ttl}s`);
+
+    // Broadcast seatmap updates
+    for (const m of ticketMeta) {
+      void this.seatmapBroadcastService.refreshAndBroadcast(
+        dto.concertId,
+        m.ticketTypeId,
+      );
+    }
+
+    // reservedQty changed — refresh concert detail/list cache
+    void this.concertService.invalidateCache(dto.concertId);
 
     return {
       // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
@@ -546,8 +625,8 @@ export class OrderService {
                 status: true,
                 checkedInAt: true,
                 createdAt: true,
-                qrTokenHash: true,
-                qrSignature: true,
+                qrRawToken: true,
+                gateId: true,
                 ticketType: { select: { name: true } },
               },
             },
@@ -663,9 +742,15 @@ export class OrderService {
       ),
     );
 
-    // Release per-user reservedQty in PostgreSQL
-    await Promise.all(
-      order.items.map((item) =>
+    // Release PostgreSQL inventory counters
+    await Promise.all([
+      ...order.items.map((item) =>
+        this.prisma.ticketType.update({
+          where: { id: item.ticketTypeId },
+          data: { reservedQty: { decrement: item.quantity } },
+        }),
+      ),
+      ...order.items.map((item) =>
         this.prisma.userTicketCounter.update({
           where: {
             userId_ticketTypeId: { userId, ticketTypeId: item.ticketTypeId },
@@ -673,7 +758,7 @@ export class OrderService {
           data: { reservedQty: { decrement: item.quantity } },
         }),
       ),
-    );
+    ]);
 
     const updated = await this.prisma.order.update({
       where: { id: orderId },
@@ -696,6 +781,17 @@ export class OrderService {
     });
 
     this.logger.log(`Order ${orderId} cancelled by user ${userId}`);
+
+    // Broadcast seatmap updates
+    for (const item of updated.items) {
+      void this.seatmapBroadcastService.refreshAndBroadcast(
+        updated.concertId,
+        item.ticketTypeId,
+      );
+    }
+
+    void this.concertService.invalidateCache(updated.concertId);
+
     return this.toOrderResponseMinimal(updated, null);
   }
 
@@ -852,6 +948,16 @@ export class OrderService {
       },
     });
 
-    this.logger.log(`Order ${orderId} expired — inventory released`);
+    this.logger.log(`Order ${orderId} expired and inventory released`);
+
+    // Broadcast seatmap updates
+    for (const item of order.items) {
+      void this.seatmapBroadcastService.refreshAndBroadcast(
+        order.concertId,
+        item.ticketTypeId,
+      );
+    }
+
+    void this.concertService.invalidateCache(order.concertId);
   }
 }

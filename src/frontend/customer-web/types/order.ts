@@ -23,6 +23,7 @@ export interface OrderTicket {
   checkedInAt: string | null;
   createdAt: string;
   qrPayload: string;
+  gateId?: string;
 }
 
 export interface OrderItem {
@@ -64,6 +65,7 @@ export interface Order {
   ticketCount: number;
   /** Present when status is PAID — includes QR payloads for e-tickets */
   tickets?: OrderTicket[];
+  serverTime?: string;
 }
 
 export interface CreateOrderResponse {

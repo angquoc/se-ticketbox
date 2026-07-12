@@ -23,8 +23,12 @@ import { HealthModule } from './modules/health/health.module';
 import { OrderModule } from './modules/order/order.module';
 import { TicketModule } from './modules/ticket/ticket.module';
 import { NotificationModule } from './modules/notification/notification.module';
-import { WorkerModule } from './worker/worker.module';
+import { CheckinModule } from './modules/checkin/checkin.module';
+import { GateModule } from './modules/gate/gate.module';
+import { RateLimitModule } from './modules/rate-limit/rate-limit.module';
 import { UploadsModule } from './modules/uploads/uploads.module';
+import { AdminModule } from './modules/admin/admin.module';
+import { SeatmapModule } from './modules/seatmap/seatmap.module';
 
 @Module({
   imports: [
@@ -45,17 +49,33 @@ import { UploadsModule } from './modules/uploads/uploads.module';
     OrderModule,
     TicketModule,
     NotificationModule,
-    WorkerModule,
+    CheckinModule,
+    GateModule,
+    // Worker processors run only in the dedicated worker process (worker/main.ts).
+    // Do not import WorkerModule here — dual consumers would duplicate emails (AC-05).
+    RateLimitModule,
     BullModule.forRootAsync({
       imports: [ConfigModule],
       inject: [ConfigService],
-      useFactory: (configService: ConfigService) => ({
-        connection: {
-          url: configService.get<string>('redis.url', 'redis://localhost:6379'),
-        },
-      }),
+      useFactory: (config: ConfigService) => {
+        const url =
+          config.get<string>('REDIS_URL') ||
+          config.get<string>('redis.url') ||
+          'redis://localhost:6379';
+        const isTls = url.startsWith('rediss://') || url.includes('upstash');
+        const isUpstash = url.includes('upstash');
+        return {
+          connection: {
+            url,
+            family: isUpstash ? 0 : 4,
+            ...(isTls ? { tls: { rejectUnauthorized: false } } : {}),
+          },
+        };
+      },
     }),
     UploadsModule,
+    AdminModule,
+    SeatmapModule,
   ],
   controllers: [AppController],
   providers: [AppService],

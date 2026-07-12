@@ -11,7 +11,7 @@ export interface ResolvedSeatmapConfig {
   seatMapUrl: string;
 }
 
-export const DEFAULT_SEATMAP_URL = '/seatmaps/concerts/summer-music-festival-2026.svg';
+export const DEFAULT_SEATMAP_URL = '/seatmaps/concerts/theater-tiered.svg';
 
 export function resolveSeatMapUrl(
   backendSeatMapUrl: string | null | undefined,

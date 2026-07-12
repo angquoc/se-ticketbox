@@ -8,6 +8,10 @@ import { PdfExtractService } from '../services/pdf-extract.service';
 import { AiService } from '../services/ai.service';
 import { ConfigService } from '@nestjs/config';
 import Redis from 'ioredis';
+import {
+  REDIS_KEY_CONCERT_DETAIL,
+  REDIS_KEY_CONCERT_LIST,
+} from '../../modules/redis/redis-keys';
 
 @Processor(AI_BIO_QUEUE)
 export class AiBioProcessor extends WorkerHost {
@@ -22,10 +26,15 @@ export class AiBioProcessor extends WorkerHost {
     private readonly config: ConfigService,
   ) {
     super();
-    this.redis = new Redis({
-      host: this.config.get<string>('REDIS_HOST', 'localhost'),
-      port: Number(this.config.get<string>('REDIS_PORT', '6379')),
-      password: this.config.get<string>('REDIS_PASSWORD') || undefined,
+    const url =
+      this.config.get<string>('redis.url') ||
+      process.env.REDIS_URL ||
+      'redis://localhost:6379';
+    const isTls = url.startsWith('rediss://') || url.includes('upstash');
+    const isUpstash = url.includes('upstash');
+    this.redis = new Redis(url, {
+      family: isUpstash ? 0 : 4,
+      ...(isTls ? { tls: { rejectUnauthorized: false } } : {}),
     });
   }
 
@@ -92,8 +101,8 @@ export class AiBioProcessor extends WorkerHost {
 
       // Xóa bộ nhớ đệm trên Redis để giao diện hiển thị thông tin mới ngay lập tức
       await this.redis.del(`cache:artist-bio:${concertId}`);
-      await this.redis.del(`cache:concert:detail:${concertId}`);
-      await this.redis.del('cache:concert:list');
+      await this.redis.del(REDIS_KEY_CONCERT_DETAIL(concertId));
+      await this.redis.del(REDIS_KEY_CONCERT_LIST);
 
       return {
         status: 'COMPLETED',

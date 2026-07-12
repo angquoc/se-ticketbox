@@ -1,11 +1,23 @@
+/**
+ * Database seed — populates the database with demo data.
+ *
+ * Run from the backend directory:
+ *   npx ts-node -r tsconfig-paths/register ../data/seed/seed.ts
+ *
+ * Or via the npm script in src/backend/package.json:
+ *   npm run db:seed
+ */
+
 import { PrismaClient, Role, ConcertStatus, TicketTypeStatus, OrderStatus, PaymentProvider, PaymentStatus, TicketStatus } from '@prisma/client';
+import { seedTestData } from './seed-test';
 import { Pool } from 'pg';
 import { PrismaPg } from '@prisma/adapter-pg';
 import * as crypto from 'crypto';
 import * as bcrypt from 'bcrypt';
 import * as dotenv from 'dotenv';
+import * as path from 'path';
 
-dotenv.config();
+dotenv.config({ path: path.resolve(__dirname, '../.env') });
 
 const connectionString = process.env.DATABASE_URL;
 if (!connectionString) {
@@ -16,12 +28,43 @@ const pool = new Pool({ connectionString });
 const adapter = new PrismaPg(pool);
 const prisma = new PrismaClient({ adapter });
 
+const QR_SECRET = process.env.QR_SIGNATURE_SECRET ?? 'dev_qr_secret';
+
 function hashPassword(password: string): string {
   return bcrypt.hashSync(password, 10);
 }
 
-function generateQrToken(): string {
-  return crypto.randomBytes(32).toString('hex');
+/**
+ * Generates QR token data for a ticket — identical to TicketIssueProcessor.generateQrToken.
+ * - rawToken: a random UUID (never stored in DB)
+ * - qrTokenHash: SHA-256 of rawToken
+ * - qrSignature: HMAC-SHA256 of {ticketId}:{qrTokenHash}:{gateName}
+ *
+ * @param ticketId  UUID of the ticket
+ * @param gateName  Gate name (e.g. "GATE-A"), matches Ticket.gateId
+ */
+function generateQrToken(
+  ticketId: string,
+  gateName: string,
+): { rawToken: string; qrTokenHash: string; qrSignature: string } {
+  const rawToken = crypto.randomUUID();
+  const qrTokenHash = crypto.createHash('sha256').update(rawToken).digest('hex');
+  const signaturePayload = `${ticketId}:${qrTokenHash}:${gateName}`;
+  const qrSignature = crypto
+    .createHmac('sha256', QR_SECRET)
+    .update(signaturePayload)
+    .digest('hex');
+  return { rawToken, qrTokenHash, qrSignature };
+}
+
+async function createGatesForConcert(
+  prisma: any,
+  concertId: string,
+  gateNames: string[],
+) {
+  for (const name of gateNames) {
+    await prisma.gate.create({ data: { concertId, name } });
+  }
 }
 
 async function main() {
@@ -36,6 +79,7 @@ async function main() {
   await prisma.idempotencyKey.deleteMany();
   await prisma.userTicketCounter.deleteMany();
   await prisma.guestListEntry.deleteMany();
+  await prisma.gate.deleteMany();
   await prisma.ticketType.deleteMany();
   await prisma.concert.deleteMany();
   await prisma.user.deleteMany();
@@ -117,24 +161,24 @@ async function main() {
       organizerId: organizer1.id,
       title: 'TOKYO GIRLS COLLECTION in VIETNAM 2026',
       slug: 'tgc-vietnam-2026',
-      description: 'Tokyo Girls Collection (TGC) - one of Japan most iconic fashion and cultural festivals - officially debuted in Vietnam. The event gathered leading artists and cultural icons from both Vietnam and Japan.',
+      description:
+        'Tokyo Girls Collection (TGC) - one of Japan most iconic fashion and cultural festivals - officially debuted in Vietnam. The event gathered leading artists and cultural icons from both Vietnam and Japan.',
       artistBio: 'W TOKYO and POPS Entertainment collaborated to bring this global cultural platform to Southeast Asia.',
       venue: 'Van Phuc City, Ho Chi Minh City, Vietnam',
       startsAt: new Date('2026-03-29T18:30:00'),
       saleStartsAt: new Date('2026-02-09T09:00:00'),
       saleEndsAt: new Date('2026-03-29T17:00:00'),
       status: ConcertStatus.COMPLETED,
-      seatMapUrl: '/seatmaps/concerts/tgc-vietnam-2026.svg',
+      seatMapUrl: '/seatmaps/concerts/theater-tiered.svg',
       coverImageUrl: 'https://popsww.com/tgc-vietnam-2026.jpg',
     },
   });
 
-  // Ticket types for TGC
   const tgcTicketTypes = await Promise.all([
     prisma.ticketType.create({
       data: {
         concertId: tgcConcert.id,
-        name: 'SKY LOUNGE',
+        name: 'SVIP',
         price: 5000000,
         totalQty: 50,
         soldQty: 50,
@@ -148,7 +192,7 @@ async function main() {
     prisma.ticketType.create({
       data: {
         concertId: tgcConcert.id,
-        name: 'GINZA',
+        name: 'VIP',
         price: 2800000,
         totalQty: 100,
         soldQty: 100,
@@ -162,7 +206,7 @@ async function main() {
     prisma.ticketType.create({
       data: {
         concertId: tgcConcert.id,
-        name: 'VIP 1',
+        name: 'CAT1',
         price: 2200000,
         totalQty: 200,
         soldQty: 180,
@@ -176,7 +220,7 @@ async function main() {
     prisma.ticketType.create({
       data: {
         concertId: tgcConcert.id,
-        name: 'SHIBUYA 1',
+        name: 'CAT2',
         price: 990000,
         totalQty: 500,
         soldQty: 500,
@@ -190,21 +234,7 @@ async function main() {
     prisma.ticketType.create({
       data: {
         concertId: tgcConcert.id,
-        name: 'SHIBUYA 2',
-        price: 790000,
-        totalQty: 500,
-        soldQty: 450,
-        reservedQty: 0,
-        maxPerUser: 4,
-        saleStartsAt: new Date('2026-02-09T09:00:00'),
-        saleEndsAt: new Date('2026-03-29T17:00:00'),
-        status: TicketTypeStatus.ACTIVE,
-      },
-    }),
-    prisma.ticketType.create({
-      data: {
-        concertId: tgcConcert.id,
-        name: 'HARAJUKU 1',
+        name: 'GA',
         price: 550000,
         totalQty: 1000,
         soldQty: 800,
@@ -219,26 +249,46 @@ async function main() {
 
   console.log('Created TGC Vietnam 2026 concert and ticket types');
 
+  await createGatesForConcert(prisma, tgcConcert.id, [
+    'GATE-A',
+    'GATE-B',
+    'GATE-C',
+  ]);
+
   // Concert 2: Kangin Fan Meeting
   const kanginConcert = await prisma.concert.create({
     data: {
       organizerId: organizer2.id,
       title: '2026 KANGIN FAN MEETING TOUR: STUNNING TOGETHER in HO CHI MINH CITY',
       slug: '2026-kangin-fan-meeting-in-ho-chi-minh',
-      description: 'Kangin, former member of Super Junior, returns to Vietnam for his first fan meeting tour. An intimate opportunity for fans to meet their favorite K-pop idol.',
+      description:
+        'Kangin, former member of Super Junior, returns to Vietnam for his first fan meeting tour. An intimate opportunity for fans to meet their favorite K-pop idol.',
       artistBio: 'Kangin (Le Dong Bang) is a South Korean singer, actor, and former member of Super Junior.',
       venue: 'Ben Thanh Theater, Ho Chi Minh City, Vietnam',
       startsAt: new Date('2026-01-24T19:00:00'),
       saleStartsAt: new Date('2025-11-20T09:00:00'),
       saleEndsAt: new Date('2026-01-24T18:00:00'),
       status: ConcertStatus.COMPLETED,
-      seatMapUrl: '/seatmaps/concerts/2026-kangin-fan-meeting-in-ho-chi-minh.svg',
+      seatMapUrl: '/seatmaps/concerts/theater-tiered.svg',
       coverImageUrl: 'https://kangintour-2026.com/poster.jpg',
     },
   });
 
-  // Ticket types for Kangin Fan Meeting
   const kanginTicketTypes = await Promise.all([
+    prisma.ticketType.create({
+      data: {
+        concertId: kanginConcert.id,
+        name: 'SVIP',
+        price: 4500000,
+        totalQty: 50,
+        soldQty: 50,
+        reservedQty: 0,
+        maxPerUser: 2,
+        saleStartsAt: new Date('2025-11-20T09:00:00'),
+        saleEndsAt: new Date('2026-01-24T18:00:00'),
+        status: TicketTypeStatus.SOLD_OUT,
+      },
+    }),
     prisma.ticketType.create({
       data: {
         concertId: kanginConcert.id,
@@ -256,7 +306,7 @@ async function main() {
     prisma.ticketType.create({
       data: {
         concertId: kanginConcert.id,
-        name: 'PATRON',
+        name: 'CAT1',
         price: 2500000,
         totalQty: 200,
         soldQty: 200,
@@ -270,7 +320,21 @@ async function main() {
     prisma.ticketType.create({
       data: {
         concertId: kanginConcert.id,
-        name: 'GEN AD',
+        name: 'CAT2',
+        price: 1800000,
+        totalQty: 200,
+        soldQty: 150,
+        reservedQty: 0,
+        maxPerUser: 4,
+        saleStartsAt: new Date('2025-11-20T09:00:00'),
+        saleEndsAt: new Date('2026-01-24T18:00:00'),
+        status: TicketTypeStatus.ACTIVE,
+      },
+    }),
+    prisma.ticketType.create({
+      data: {
+        concertId: kanginConcert.id,
+        name: 'GA',
         price: 1500000,
         totalQty: 300,
         soldQty: 280,
@@ -285,44 +349,33 @@ async function main() {
 
   console.log('Created Kangin Fan Meeting concert and ticket types');
 
+  await createGatesForConcert(prisma, kanginConcert.id, ['GATE-A', 'GATE-B']);
+
   // Concert 3: Jessica's Reflections Concert
   const jessicaConcert = await prisma.concert.create({
     data: {
       organizerId: organizer1.id,
       title: "JESSICA'S REFLECTIONS CONCERT TOUR IN HO CHI MINH CITY 2026",
       slug: 'jessica-reflections-2026',
-      description: "Jessica Jung, former member of Girls' Generation, brings her Reflections Concert Tour to Ho Chi Minh City. The concert falls on her birthday, making it an extra special event for fans.",
-      artistBio: 'Jessica Jung is a South Korean-American singer, actress, and former member of Girls Generation (SNSD).',
+      description:
+        "Jessica Jung, former member of Girls' Generation, brings her Reflections Concert Tour to Ho Chi Minh City. The concert falls on her birthday, making it an extra special event for fans.",
+      artistBio:
+        "Jessica Jung is a South Korean-American singer, actress, and former member of Girls Generation (SNSD).",
       venue: 'Tan Binh Stadium, Ho Chi Minh City, Vietnam',
       startsAt: new Date('2026-04-18T18:30:00'),
       saleStartsAt: new Date('2026-02-24T09:00:00'),
       saleEndsAt: new Date('2026-04-18T17:00:00'),
       status: ConcertStatus.COMPLETED,
-      seatMapUrl: '/seatmaps/concerts/jessica-reflections-2026.svg',
+      seatMapUrl: '/seatmaps/concerts/theater-tiered.svg',
       coverImageUrl: 'https://ticketbox.vn/jessica-reflections-2026.jpg',
     },
   });
 
-  // Ticket types for Jessica Concert
   const jessicaTicketTypes = await Promise.all([
     prisma.ticketType.create({
       data: {
         concertId: jessicaConcert.id,
-        name: 'SVIP-1',
-        price: 5000000,
-        totalQty: 100,
-        soldQty: 100,
-        reservedQty: 0,
-        maxPerUser: 2,
-        saleStartsAt: new Date('2026-02-24T09:00:00'),
-        saleEndsAt: new Date('2026-04-18T17:00:00'),
-        status: TicketTypeStatus.SOLD_OUT,
-      },
-    }),
-    prisma.ticketType.create({
-      data: {
-        concertId: jessicaConcert.id,
-        name: 'SVIP-2',
+        name: 'SVIP',
         price: 5000000,
         totalQty: 100,
         soldQty: 100,
@@ -350,7 +403,7 @@ async function main() {
     prisma.ticketType.create({
       data: {
         concertId: jessicaConcert.id,
-        name: 'PRE',
+        name: 'CAT1',
         price: 3500000,
         totalQty: 300,
         soldQty: 200,
@@ -364,7 +417,7 @@ async function main() {
     prisma.ticketType.create({
       data: {
         concertId: jessicaConcert.id,
-        name: 'CAT1',
+        name: 'CAT2',
         price: 2750000,
         totalQty: 500,
         soldQty: 350,
@@ -378,21 +431,7 @@ async function main() {
     prisma.ticketType.create({
       data: {
         concertId: jessicaConcert.id,
-        name: 'CAT2',
-        price: 2250000,
-        totalQty: 500,
-        soldQty: 300,
-        reservedQty: 0,
-        maxPerUser: 6,
-        saleStartsAt: new Date('2026-02-24T09:00:00'),
-        saleEndsAt: new Date('2026-04-18T17:00:00'),
-        status: TicketTypeStatus.ACTIVE,
-      },
-    }),
-    prisma.ticketType.create({
-      data: {
-        concertId: jessicaConcert.id,
-        name: 'CAT3',
+        name: 'GA',
         price: 1500000,
         totalQty: 500,
         soldQty: 500,
@@ -407,79 +446,100 @@ async function main() {
 
   console.log('Created Jessica Reflections concert and ticket types');
 
+  await createGatesForConcert(prisma, jessicaConcert.id, [
+    'GATE-A',
+    'GATE-B',
+    'GATE-C',
+    'GATE-D',
+  ]);
+
   // Concert 4: Summer Music Festival Vietnam 2026
   const summerConcert = await prisma.concert.create({
     data: {
       organizerId: organizer1.id,
       title: 'SUMMER MUSIC FESTIVAL VIETNAM 2026',
       slug: 'summer-music-festival-2026',
-      description: 'The biggest summer music festival in Vietnam featuring top international and local artists. Three days of non-stop music, performances, and entertainment.',
+      description:
+        'The biggest summer music festival in Vietnam featuring top international and local artists. Three days of non-stop music, performances, and entertainment.',
       artistBio: 'Featuring performances from international superstars and emerging Vietnamese artists.',
       venue: 'Quang Truong Ba Dinh, Ha Noi, Vietnam',
-      startsAt: new Date('2026-07-08T18:00:00'),
+      startsAt: new Date('2026-09-08T18:00:00'),
       saleStartsAt: new Date('2026-05-01T09:00:00'),
-      saleEndsAt: new Date('2026-07-08T17:00:00'),
+      saleEndsAt: new Date('2026-09-08T17:00:00'),
       status: ConcertStatus.SALE_OPEN,
-      seatMapUrl: '/seatmaps/concerts/summer-music-festival-2026.svg',
+      seatMapUrl: '/seatmaps/concerts/summer-festival.svg',
       coverImageUrl: 'https://ticketbox.vn/summer-festival-2026.jpg',
     },
   });
 
-  // Ticket types for Summer Music Festival
   const summerTicketTypes = await Promise.all([
     prisma.ticketType.create({
       data: {
         concertId: summerConcert.id,
-        name: 'PLATINUM PASS',
+        name: 'SVIP',
         price: 8500000,
         totalQty: 100,
         soldQty: 45,
         reservedQty: 10,
         maxPerUser: 2,
         saleStartsAt: new Date('2026-05-01T09:00:00'),
-        saleEndsAt: new Date('2026-07-08T17:00:00'),
+        saleEndsAt: new Date('2026-09-08T17:00:00'),
         status: TicketTypeStatus.ACTIVE,
       },
     }),
     prisma.ticketType.create({
       data: {
         concertId: summerConcert.id,
-        name: 'GOLD PASS',
+        name: 'VIP',
         price: 5500000,
         totalQty: 300,
         soldQty: 180,
         reservedQty: 20,
         maxPerUser: 4,
         saleStartsAt: new Date('2026-05-01T09:00:00'),
-        saleEndsAt: new Date('2026-07-08T17:00:00'),
+        saleEndsAt: new Date('2026-09-08T17:00:00'),
         status: TicketTypeStatus.ACTIVE,
       },
     }),
     prisma.ticketType.create({
       data: {
         concertId: summerConcert.id,
-        name: 'SILVER PASS',
+        name: 'CAT1',
         price: 3200000,
         totalQty: 500,
         soldQty: 320,
         reservedQty: 30,
         maxPerUser: 4,
         saleStartsAt: new Date('2026-05-01T09:00:00'),
-        saleEndsAt: new Date('2026-07-08T17:00:00'),
+        saleEndsAt: new Date('2026-09-08T17:00:00'),
         status: TicketTypeStatus.ACTIVE,
       },
     }),
     prisma.ticketType.create({
       data: {
         concertId: summerConcert.id,
-        name: 'GENERAL ADMISSION',
+        name: 'CAT2',
+        price: 2200000,
+        totalQty: 500,
+        soldQty: 200,
+        reservedQty: 10,
+        maxPerUser: 4,
+        saleStartsAt: new Date('2026-05-01T09:00:00'),
+        saleEndsAt: new Date('2026-09-08T17:00:00'),
+        status: TicketTypeStatus.ACTIVE,
+      },
+    }),
+    prisma.ticketType.create({
+      data: {
+        concertId: summerConcert.id,
+        name: 'GA',
         price: 1500000,
         totalQty: 2000,
         soldQty: 1200,
         reservedQty: 100,
         maxPerUser: 6,
         saleStartsAt: new Date('2026-05-01T09:00:00'),
-        saleEndsAt: new Date('2026-07-08T17:00:00'),
+        saleEndsAt: new Date('2026-09-08T17:00:00'),
         status: TicketTypeStatus.ACTIVE,
       },
     }),
@@ -487,7 +547,111 @@ async function main() {
 
   console.log('Created Summer Music Festival concert and ticket types');
 
-  // Create sample orders with tickets
+  await createGatesForConcert(prisma, summerConcert.id, [
+    'GATE-A',
+    'GATE-B',
+    'GATE-C',
+    'GATE-D',
+    'GATE-E',
+  ]);
+
+  // Concert 5: Autumn K-Pop Wave 2026 (SALE_CLOSED - Đã bán hết / Đóng bán)
+  const autumnConcert = await prisma.concert.create({
+    data: {
+      organizerId: organizer2.id,
+      title: 'AUTUMN K-POP WAVE VIETNAM 2026',
+      slug: 'autumn-kpop-wave-2026',
+      description:
+        'The ultimate Autumn gathering for K-Pop fans in Vietnam. Ticket sales are closed as all seats are sold out.',
+      artistBio: 'Featuring performances from major K-Pop group line-ups.',
+      venue: 'Quan Ngua Sports Palace, Ha Noi, Vietnam',
+      startsAt: new Date('2026-10-15T19:00:00'),
+      saleStartsAt: new Date('2026-06-01T09:00:00'),
+      saleEndsAt: new Date('2026-06-15T17:00:00'),
+      status: ConcertStatus.SALE_CLOSED,
+      seatMapUrl: '/seatmaps/concerts/theater-tiered.svg',
+      coverImageUrl: 'https://ticketbox.vn/autumn-kpop-wave-2026.jpg',
+    },
+  });
+
+  const autumnTicketTypes = await Promise.all([
+    prisma.ticketType.create({
+      data: {
+        concertId: autumnConcert.id,
+        name: 'SVIP',
+        price: 6000000,
+        totalQty: 50,
+        soldQty: 50,
+        reservedQty: 0,
+        maxPerUser: 2,
+        saleStartsAt: new Date('2026-06-01T09:00:00'),
+        saleEndsAt: new Date('2026-06-15T17:00:00'),
+        status: TicketTypeStatus.SOLD_OUT,
+      },
+    }),
+    prisma.ticketType.create({
+      data: {
+        concertId: autumnConcert.id,
+        name: 'VIP',
+        price: 4000000,
+        totalQty: 100,
+        soldQty: 100,
+        reservedQty: 0,
+        maxPerUser: 4,
+        saleStartsAt: new Date('2026-06-01T09:00:00'),
+        saleEndsAt: new Date('2026-06-15T17:00:00'),
+        status: TicketTypeStatus.SOLD_OUT,
+      },
+    }),
+    prisma.ticketType.create({
+      data: {
+        concertId: autumnConcert.id,
+        name: 'CAT1',
+        price: 3000000,
+        totalQty: 150,
+        soldQty: 150,
+        reservedQty: 0,
+        maxPerUser: 4,
+        saleStartsAt: new Date('2026-06-01T09:00:00'),
+        saleEndsAt: new Date('2026-06-15T17:00:00'),
+        status: TicketTypeStatus.SOLD_OUT,
+      },
+    }),
+    prisma.ticketType.create({
+      data: {
+        concertId: autumnConcert.id,
+        name: 'CAT2',
+        price: 2000000,
+        totalQty: 200,
+        soldQty: 200,
+        reservedQty: 0,
+        maxPerUser: 4,
+        saleStartsAt: new Date('2026-06-01T09:00:00'),
+        saleEndsAt: new Date('2026-06-15T17:00:00'),
+        status: TicketTypeStatus.SOLD_OUT,
+      },
+    }),
+    prisma.ticketType.create({
+      data: {
+        concertId: autumnConcert.id,
+        name: 'GA',
+        price: 1200000,
+        totalQty: 300,
+        soldQty: 300,
+        reservedQty: 0,
+        maxPerUser: 6,
+        saleStartsAt: new Date('2026-06-01T09:00:00'),
+        saleEndsAt: new Date('2026-06-15T17:00:00'),
+        status: TicketTypeStatus.SOLD_OUT,
+      },
+    }),
+  ]);
+
+  await createGatesForConcert(prisma, autumnConcert.id, ['GATE-A', 'GATE-B']);
+
+  console.log('Created Autumn K-Pop Wave concert and ticket types');
+  console.log('Created gates for all concerts');
+
   // Order 1: Customer 1 bought TGC tickets
   const order1 = await prisma.order.create({
     data: {
@@ -503,7 +667,7 @@ async function main() {
   const orderItem1 = await prisma.orderItem.create({
     data: {
       orderId: order1.id,
-      ticketTypeId: tgcTicketTypes[1].id, // GINZA
+      ticketTypeId: tgcTicketTypes[1].id,
       quantity: 1,
       unitPrice: 2800000,
       subtotal: 2800000,
@@ -513,7 +677,7 @@ async function main() {
   const orderItem2 = await prisma.orderItem.create({
     data: {
       orderId: order1.id,
-      ticketTypeId: tgcTicketTypes[4].id, // SHIBUYA 2
+      ticketTypeId: tgcTicketTypes[4].id,
       quantity: 2,
       unitPrice: 790000,
       subtotal: 1580000,
@@ -531,8 +695,14 @@ async function main() {
     },
   });
 
-  // Tickets for order 1
+  const tgcGates = await prisma.gate.findMany({
+    where: { concertId: tgcConcert.id },
+    orderBy: { name: 'asc' },
+  });
   for (let i = 0; i < 3; i++) {
+    const gateName = tgcGates[i % tgcGates.length].name;
+    const ticketId = crypto.randomUUID();
+    const { rawToken, qrTokenHash, qrSignature } = generateQrToken(ticketId, gateName);
     await prisma.ticket.create({
       data: {
         orderId: order1.id,
@@ -540,7 +710,10 @@ async function main() {
         concertId: tgcConcert.id,
         ticketTypeId: i === 0 ? tgcTicketTypes[1].id : tgcTicketTypes[4].id,
         userId: customer1.id,
-        qrTokenHash: hashPassword(generateQrToken()),
+        gateId: gateName,
+        qrRawToken: rawToken,
+        qrTokenHash,
+        qrSignature,
         status: TicketStatus.ISSUED,
       },
     });
@@ -561,7 +734,7 @@ async function main() {
   const orderItem3 = await prisma.orderItem.create({
     data: {
       orderId: order2.id,
-      ticketTypeId: jessicaTicketTypes[2].id, // VIP
+      ticketTypeId: jessicaTicketTypes[2].id,
       quantity: 1,
       unitPrice: 4250000,
       subtotal: 4250000,
@@ -571,7 +744,7 @@ async function main() {
   const orderItem4 = await prisma.orderItem.create({
     data: {
       orderId: order2.id,
-      ticketTypeId: jessicaTicketTypes[4].id, // CAT1
+      ticketTypeId: jessicaTicketTypes[4].id,
       quantity: 2,
       unitPrice: 2750000,
       subtotal: 5000000,
@@ -589,8 +762,14 @@ async function main() {
     },
   });
 
-  // Tickets for order 2
+  const jessicaGates = await prisma.gate.findMany({
+    where: { concertId: jessicaConcert.id },
+    orderBy: { name: 'asc' },
+  });
   for (let i = 0; i < 3; i++) {
+    const gateName = jessicaGates[i % jessicaGates.length].name;
+    const ticketId = crypto.randomUUID();
+    const { rawToken, qrTokenHash, qrSignature } = generateQrToken(ticketId, gateName);
     await prisma.ticket.create({
       data: {
         orderId: order2.id,
@@ -598,7 +777,10 @@ async function main() {
         concertId: jessicaConcert.id,
         ticketTypeId: i === 0 ? jessicaTicketTypes[2].id : jessicaTicketTypes[4].id,
         userId: customer2.id,
-        qrTokenHash: hashPassword(generateQrToken()),
+        gateId: gateName,
+        qrRawToken: rawToken,
+        qrTokenHash,
+        qrSignature,
         status: i === 2 ? TicketStatus.CHECKED_IN : TicketStatus.ISSUED,
         checkedInAt: i === 2 ? new Date('2026-04-18T18:45:00') : null,
       },
@@ -620,7 +802,7 @@ async function main() {
   const orderItem5 = await prisma.orderItem.create({
     data: {
       orderId: order3.id,
-      ticketTypeId: kanginTicketTypes[0].id, // VIP
+      ticketTypeId: kanginTicketTypes[0].id,
       quantity: 1,
       unitPrice: 3500000,
       subtotal: 3500000,
@@ -638,7 +820,13 @@ async function main() {
     },
   });
 
-  // Ticket for order 3
+  const kanginGates = await prisma.gate.findMany({
+    where: { concertId: kanginConcert.id },
+    orderBy: { name: 'asc' },
+  });
+  const kanginGateName = kanginGates[0].name;
+  const ticket3Id = crypto.randomUUID();
+  const ticket3Token = generateQrToken(ticket3Id, kanginGateName);
   const ticket3 = await prisma.ticket.create({
     data: {
       orderId: order3.id,
@@ -646,43 +834,45 @@ async function main() {
       concertId: kanginConcert.id,
       ticketTypeId: kanginTicketTypes[0].id,
       userId: customer3.id,
-      qrTokenHash: hashPassword(generateQrToken()),
+      gateId: kanginGateName,
+      qrRawToken: ticket3Token.rawToken,
+      qrTokenHash: ticket3Token.qrTokenHash,
+      qrSignature: ticket3Token.qrSignature,
       status: TicketStatus.CHECKED_IN,
       checkedInAt: new Date('2026-01-24T19:15:00'),
     },
   });
 
-  // Checkin logs
   await prisma.checkinLog.create({
     data: {
       ticketId: ticket3.id,
       staffId: staff.id,
       concertId: kanginConcert.id,
       deviceId: 'CHECKIN-Device-001',
-      gate: 'Gate A',
+      gate: kanginGateName,
       status: 'SUCCESS' as any,
       scannedAt: new Date('2026-01-24T19:15:00'),
     },
   });
 
-  // Pending order (not paid yet)
+  // Pending order
   const pendingOrder = await prisma.order.create({
     data: {
       userId: customer1.id,
       concertId: jessicaConcert.id,
       status: OrderStatus.PENDING_PAYMENT,
-      totalAmountInVnd: 5000000,
-      expiresAt: new Date(Date.now() + 15 * 60 * 1000), // 15 minutes from now
+      totalAmountInVnd: 2750000,
+      expiresAt: new Date(Date.now() + 15 * 60 * 1000),
     },
   });
 
-  const pendingOrderItem = await prisma.orderItem.create({
+  await prisma.orderItem.create({
     data: {
       orderId: pendingOrder.id,
-      ticketTypeId: jessicaTicketTypes[3].id, // PRE
+      ticketTypeId: jessicaTicketTypes[3].id,
       quantity: 1,
-      unitPrice: 3500000,
-      subtotal: 3500000,
+      unitPrice: 2750000,
+      subtotal: 2750000,
     },
   });
 
@@ -691,7 +881,7 @@ async function main() {
       orderId: pendingOrder.id,
       provider: PaymentProvider.MOCK,
       status: PaymentStatus.INITIATED,
-      amount: 5000000,
+      amount: 2750000,
     },
   });
 
@@ -723,6 +913,7 @@ async function main() {
   });
 
   console.log('Created orders, tickets, payments, and guest list entries');
+  await seedTestData(prisma);
   console.log('Seeding completed successfully!');
 }
 

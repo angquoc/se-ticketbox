@@ -49,6 +49,7 @@ export interface RedisClient {
   del(key: string): Promise<number>;
   exists(key: string): Promise<number>;
   ping(): Promise<string>;
+  flushall(): Promise<string>;
   quit(): Promise<string>;
   on(event: 'connect' | 'error', cb: (arg?: unknown) => void): void;
 }
@@ -74,9 +75,14 @@ export class RedisService implements OnModuleDestroy, OnModuleInit {
         'redis.url',
         'redis://localhost:6379',
       );
+      const isTls =
+        redisUrl.startsWith('rediss://') || redisUrl.includes('upstash');
+      const isUpstash = redisUrl.includes('upstash');
       const redis = new Redis(redisUrl, {
         maxRetriesPerRequest: 1,
         enableReadyCheck: true,
+        family: isUpstash ? 0 : 4,
+        ...(isTls ? { tls: { rejectUnauthorized: false } } : {}),
       });
 
       redis.on('connect', () => this.logger.log('Connected to Redis'));
@@ -104,7 +110,10 @@ export class RedisService implements OnModuleDestroy, OnModuleInit {
     // At runtime __dirname = dist/src/modules/redis/
     // Lua files are at dist/modules/redis/scripts/
     const distRoot = join(__dirname, '..', '..', '..');
-    return join(distRoot, 'modules', 'redis', 'scripts', filename);
+    if (__dirname.includes('dist')) {
+      return join(distRoot, 'modules', 'redis', 'scripts', filename);
+    }
+    return join(distRoot, 'src', 'modules', 'redis', 'scripts', filename);
   }
 
   private async initScripts(): Promise<void> {
@@ -200,12 +209,36 @@ export class RedisService implements OnModuleDestroy, OnModuleInit {
     return this.client.set(key, value) as Promise<'OK' | null>;
   }
 
+  /**
+   * Atomic SET only if key does not exist (SET NX).
+   * Returns true when this caller created the key; false if it already existed.
+   * Prevents concurrent lazy-seed races from overwriting a stock that other
+   * requests have already DECRBY'd.
+   */
+  async setNx(key: string, value: string): Promise<boolean> {
+    const result = await this.client.set(key, value, 'NX');
+    return result === 'OK';
+  }
+
   async del(key: string): Promise<number> {
     return this.client.del(key);
   }
 
   async exists(key: string): Promise<boolean> {
     return (await this.client.exists(key)) === 1;
+  }
+
+  /**
+   * Seed or overwrite Redis stock for a ticket type.
+   * Call on ticket-type create/update and after DB reset — not on the hot
+   * reservation path (use setNx there for lazy fallback only).
+   */
+  async seedStock(ticketTypeId: string, available: number): Promise<void> {
+    await this.set(REDIS_KEY_STOCK(ticketTypeId), String(Math.max(0, available)));
+  }
+
+  async flushall(): Promise<string> {
+    return this.client.flushall();
   }
 
   // ─────────────────────────────────────────────────────────────────────────

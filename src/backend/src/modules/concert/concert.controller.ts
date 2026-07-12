@@ -19,6 +19,9 @@ import { Role } from '@prisma/client';
 import { AuthGuard } from '../auth/guards/auth.guard';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import type { AuthUser } from '../auth/decorators/current-user.decorator';
+import { RateLimitGuard } from '../rate-limit/rate-limit.guard';
+import { RateLimit } from '../rate-limit/rate-limit.decorator';
+import { RATE_LIMIT_DEFAULTS } from '../rate-limit/rate-limit.service';
 
 @Controller()
 export class ConcertController {
@@ -28,8 +31,17 @@ export class ConcertController {
    * GET /concerts
    * Public endpoint - returns a paginated list of published concerts.
    * Supports optional status filter and pagination parameters.
+   *
+   * Rate limit: 60 req/min/IP (CONCERT_LIST)
    */
   @Get('concerts')
+  @UseGuards(RateLimitGuard)
+  @RateLimit({
+    route: '/concerts',
+    capacity: RATE_LIMIT_DEFAULTS.CONCERT_LIST.capacity,
+    refillRate: RATE_LIMIT_DEFAULTS.CONCERT_LIST.refillRate,
+    tokensPerRequest: RATE_LIMIT_DEFAULTS.CONCERT_LIST.tokensPerRequest,
+  })
   async findAll(@Query() query: ConcertQueryDto) {
     return this.concertService.findAll(query);
   }
@@ -38,8 +50,17 @@ export class ConcertController {
    * GET /concerts/:id
    * Public endpoint - returns a single concert by ID.
    * Only published concerts are visible to the public.
+   *
+   * Rate limit: 120 req/min/IP (CONCERT_DETAIL)
    */
   @Get('concerts/:id')
+  @UseGuards(RateLimitGuard)
+  @RateLimit({
+    route: '/concerts/:id',
+    capacity: RATE_LIMIT_DEFAULTS.CONCERT_DETAIL.capacity,
+    refillRate: RATE_LIMIT_DEFAULTS.CONCERT_DETAIL.refillRate,
+    tokensPerRequest: RATE_LIMIT_DEFAULTS.CONCERT_DETAIL.tokensPerRequest,
+  })
   async findOne(@Param('id') id: string) {
     return this.concertService.findOne(id);
   }
@@ -73,8 +94,8 @@ export class ConcertController {
   @Get('admin/concerts/:id')
   @UseGuards(AuthGuard, RolesGuard)
   @Roles(Role.ADMIN, Role.ORGANIZER)
-  async findAdminOne(@Param('id') id: string) {
-    return this.concertService.findAdminOne(id);
+  async findAdminOne(@Param('id') id: string, @CurrentUser() user: AuthUser) {
+    return this.concertService.findAdminOne(id, user.sub, user.role);
   }
 
   /**
@@ -84,8 +105,11 @@ export class ConcertController {
   @Get('admin/concerts/:id/guests')
   @UseGuards(AuthGuard, RolesGuard)
   @Roles(Role.ADMIN, Role.ORGANIZER)
-  async findAdminGuests(@Param('id') id: string) {
-    return this.concertService.findAdminGuests(id);
+  async findAdminGuests(
+    @Param('id') id: string,
+    @CurrentUser() user: AuthUser,
+  ) {
+    return this.concertService.findAdminGuests(id, user.sub, user.role);
   }
 
   /**
@@ -110,8 +134,12 @@ export class ConcertController {
   @Patch('admin/concerts/:id')
   @UseGuards(AuthGuard, RolesGuard)
   @Roles(Role.ADMIN, Role.ORGANIZER)
-  async update(@Param('id') id: string, @Body() dto: UpdateConcertDto) {
-    return this.concertService.update(id, dto);
+  async update(
+    @Param('id') id: string,
+    @Body() dto: UpdateConcertDto,
+    @CurrentUser() user: AuthUser,
+  ) {
+    return this.concertService.update(id, dto, user.sub, user.role);
   }
 
   /**

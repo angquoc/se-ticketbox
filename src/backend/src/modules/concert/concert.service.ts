@@ -3,6 +3,9 @@ import {
   NotFoundException,
   ConflictException,
   BadRequestException,
+  ForbiddenException,
+  Inject,
+  Logger,
 } from '@nestjs/common';
 import { PrismaService } from '../../database/prisma.service';
 import {
@@ -11,12 +14,21 @@ import {
   TicketType,
   Prisma,
   UploadedFile,
+  Role,
 } from '@prisma/client';
 import { CreateConcertDto, UpdateConcertDto, ConcertQueryDto } from './dto';
 import {
   ConcertResponseDto,
   ConcertListResponseDto,
 } from './dto/concert-response.dto';
+import { ReminderService } from '../notification/reminder.service';
+import { RedisService } from '../redis/redis.service';
+import {
+  REDIS_KEY_CONCERT_DETAIL,
+  REDIS_KEY_CONCERT_LIST,
+  REDIS_KEY_CONCERT_LIST_QUERY,
+  REDIS_TTL_CONCERT_CACHE,
+} from '../redis/redis-keys';
 
 // Định nghĩa payload
 type ConcertPayload = Concert & {
@@ -27,7 +39,74 @@ type ConcertPayload = Concert & {
 
 @Injectable()
 export class ConcertService {
-  constructor(private prisma: PrismaService) {}
+  private readonly logger = new Logger(ConcertService.name);
+
+  constructor(
+    private prisma: PrismaService,
+    @Inject(ReminderService) private reminderService: ReminderService,
+    private readonly redis: RedisService,
+  ) {}
+
+  /**
+   * Invalidate public concert caches after admin updates, inventory changes,
+   * or successful payment (cache-aside write path is read-only).
+   */
+  async invalidateCache(concertId?: string): Promise<void> {
+    try {
+      const deletes: Promise<number>[] = [
+        this.redis.del(REDIS_KEY_CONCERT_LIST),
+      ];
+      if (concertId) {
+        deletes.push(this.redis.del(REDIS_KEY_CONCERT_DETAIL(concertId)));
+      }
+      await Promise.all(deletes);
+    } catch (err) {
+      this.logger.warn(
+        `Failed to invalidate concert cache${concertId ? ` for ${concertId}` : ''}`,
+        err instanceof Error ? err.message : String(err),
+      );
+    }
+  }
+
+  private listCacheKey(query: ConcertQueryDto): string {
+    const status = query.status || ConcertStatus.PUBLISHED;
+    const page = query.page ?? 1;
+    const limit = query.limit ?? 20;
+    // Canonical key from design.md for the default public listing
+    if (status === ConcertStatus.PUBLISHED && page === 1 && limit === 20) {
+      return REDIS_KEY_CONCERT_LIST;
+    }
+    return REDIS_KEY_CONCERT_LIST_QUERY(status, page, limit);
+  }
+
+  private async cacheGet<T>(key: string): Promise<T | null> {
+    try {
+      const raw = await this.redis.get(key);
+      if (!raw) return null;
+      return JSON.parse(raw) as T;
+    } catch (err) {
+      this.logger.warn(
+        `Concert cache read failed for ${key}`,
+        err instanceof Error ? err.message : String(err),
+      );
+      return null;
+    }
+  }
+
+  private async cacheSet(key: string, value: unknown): Promise<void> {
+    try {
+      await this.redis.set(
+        key,
+        JSON.stringify(value),
+        REDIS_TTL_CONCERT_CACHE,
+      );
+    } catch (err) {
+      this.logger.warn(
+        `Concert cache write failed for ${key}`,
+        err instanceof Error ? err.message : String(err),
+      );
+    }
+  }
 
   /**
    * Transform raw concert data from Prisma into a structured response DTO.
@@ -92,8 +171,15 @@ export class ConcertService {
   /**
    * List all public concerts with optional status filter and pagination.
    * Public endpoint - only returns published concerts by default.
+   * Cache-aside: Redis first, then PostgreSQL (TTL 60s).
    */
   async findAll(query: ConcertQueryDto): Promise<ConcertListResponseDto> {
+    const cacheKey = this.listCacheKey(query);
+    const cached = await this.cacheGet<ConcertListResponseDto>(cacheKey);
+    if (cached) {
+      return cached;
+    }
+
     const { status, page = 1, limit = 20 } = query;
     const skip = (page - 1) * limit;
 
@@ -119,20 +205,30 @@ export class ConcertService {
       this.prisma.concert.count({ where }),
     ]);
 
-    return {
+    const result: ConcertListResponseDto = {
       data: concerts.map((c) => this.toResponse(c)),
       total,
       page,
       limit,
       totalPages: Math.ceil(total / limit),
     };
+
+    await this.cacheSet(cacheKey, result);
+    return result;
   }
 
   /**
    * Get a single concert by ID with all ticket types.
    * Public endpoint - only returns published concerts.
+   * Cache-aside: Redis first, then PostgreSQL (TTL 60s).
    */
   async findOne(id: string): Promise<ConcertResponseDto> {
+    const cacheKey = REDIS_KEY_CONCERT_DETAIL(id);
+    const cached = await this.cacheGet<ConcertResponseDto>(cacheKey);
+    if (cached) {
+      return cached;
+    }
+
     const concert = await this.prisma.concert.findUnique({
       where: { id },
       include: {
@@ -149,15 +245,14 @@ export class ConcertService {
       throw new NotFoundException(`Concert with ID "${id}" not found`);
     }
 
-    // Only allow viewing published concerts publicly
-    if (
-      concert.status !== ConcertStatus.PUBLISHED &&
-      concert.status !== ConcertStatus.SALE_OPEN
-    ) {
+    // Hide drafts from the public
+    if (concert.status === ConcertStatus.DRAFT) {
       throw new NotFoundException(`Concert with ID "${id}" not found`);
     }
 
-    return this.toResponse(concert);
+    const result = this.toResponse(concert);
+    await this.cacheSet(cacheKey, result);
+    return result;
   }
 
   /**
@@ -181,11 +276,8 @@ export class ConcertService {
       throw new NotFoundException(`Concert with slug "${slug}" not found`);
     }
 
-    // Only allow viewing published concerts publicly
-    if (
-      concert.status !== ConcertStatus.PUBLISHED &&
-      concert.status !== ConcertStatus.SALE_OPEN
-    ) {
+    // Hide drafts from the public
+    if (concert.status === ConcertStatus.DRAFT) {
       throw new NotFoundException(`Concert with slug "${slug}" not found`);
     }
 
@@ -230,13 +322,28 @@ export class ConcertService {
       },
     });
 
+    // Schedule 24h reminder if concert is published immediately
+    const initialStatus = dto.status || ConcertStatus.DRAFT;
+    if (
+      initialStatus === ConcertStatus.PUBLISHED ||
+      initialStatus === ConcertStatus.SALE_OPEN
+    ) {
+      void this.reminderService.scheduleReminder(concert.id);
+      void this.invalidateCache(concert.id);
+    }
+
     return this.toResponse(concert);
   }
 
   /**
-   * Update an existing concert. Admin only.
+   * Update an existing concert. Admin or authorized organizer.
    */
-  async update(id: string, dto: UpdateConcertDto): Promise<ConcertResponseDto> {
+  async update(
+    id: string,
+    dto: UpdateConcertDto,
+    userId?: string,
+    userRole?: Role,
+  ): Promise<ConcertResponseDto> {
     // Check if concert exists
     const existing = await this.prisma.concert.findUnique({
       where: { id },
@@ -244,6 +351,10 @@ export class ConcertService {
 
     if (!existing) {
       throw new NotFoundException(`Concert with ID "${id}" not found`);
+    }
+
+    if (userRole === Role.ORGANIZER && existing.organizerId !== userId) {
+      throw new ForbiddenException('Bạn không có quyền cập nhật concert này');
     }
 
     // If slug is being updated, check for conflicts
@@ -289,6 +400,20 @@ export class ConcertService {
         },
       },
     });
+
+    // Reschedule reminder if startsAt or status changed (triggers/removes delayed job)
+    const startsAtChanged =
+      dto.startsAt !== undefined &&
+      existing.startsAt.getTime() !== new Date(dto.startsAt).getTime();
+    const statusChanged =
+      dto.status !== undefined && dto.status !== existing.status;
+
+    if (startsAtChanged || statusChanged) {
+      // Non-blocking: don't delay the API response
+      void this.reminderService.scheduleReminder(id);
+    }
+
+    void this.invalidateCache(id);
 
     return this.toResponse(concert);
   }
@@ -356,6 +481,8 @@ export class ConcertService {
       }),
     ]);
 
+    void this.invalidateCache(id);
+
     return { message: `Concert "${concert.title}" deleted successfully` };
   }
 
@@ -400,7 +527,11 @@ export class ConcertService {
   /**
    * Get a single concert details by ID for admin (including drafts, files, ticket types, and organizer).
    */
-  async findAdminOne(id: string): Promise<ConcertResponseDto> {
+  async findAdminOne(
+    id: string,
+    userId?: string,
+    userRole?: Role,
+  ): Promise<ConcertResponseDto> {
     const concert = await this.prisma.concert.findUnique({
       where: { id },
       include: {
@@ -418,18 +549,28 @@ export class ConcertService {
       throw new NotFoundException(`Concert with ID "${id}" not found`);
     }
 
+    if (userRole === Role.ORGANIZER && concert.organizerId !== userId) {
+      throw new ForbiddenException('Bạn không có quyền xem concert này');
+    }
+
     return this.toResponse(concert);
   }
 
   /**
    * Get all guest list entries for a single concert.
    */
-  async findAdminGuests(id: string) {
+  async findAdminGuests(id: string, userId?: string, userRole?: Role) {
     const concert = await this.prisma.concert.findUnique({
       where: { id },
     });
     if (!concert) {
       throw new NotFoundException(`Concert with ID "${id}" not found`);
+    }
+
+    if (userRole === Role.ORGANIZER && concert.organizerId !== userId) {
+      throw new ForbiddenException(
+        'Bạn không có quyền xem danh sách khách mời của concert này',
+      );
     }
 
     return this.prisma.guestListEntry.findMany({

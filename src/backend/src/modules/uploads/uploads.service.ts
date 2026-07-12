@@ -58,7 +58,9 @@ export class UploadsService {
     if (!concert) throw new NotFoundException('Không tìm thấy concert');
 
     if (role !== 'ADMIN' && concert.organizerId !== userId) {
-      throw new ForbiddenException('Bạn không có quyền import danh sách cho concert này');
+      throw new ForbiddenException(
+        'Bạn không có quyền import danh sách cho concert này',
+      );
     }
 
     const safeFileName = file.originalname.replace(/[^\w.-]+/g, '_');
@@ -103,6 +105,7 @@ export class UploadsService {
       message: 'CSV uploaded successfully',
       jobStatus: uploadedFile.status,
       jobId: job.id,
+      uploadedFileId: uploadedFile.id,
     };
   }
 

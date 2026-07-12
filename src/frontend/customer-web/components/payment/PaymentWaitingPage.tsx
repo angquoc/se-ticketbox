@@ -1,29 +1,23 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import CustomerHeader from '@/components/layout/CustomerHeader';
 import { usePaymentStatus } from '@/hooks/usePaymentStatus';
 import { clearPendingOrder } from '@/lib/checkout-storage';
+import { abandonPurchaseFlow } from '@/lib/waiting-room-abandon';
 import { getConcertName } from '@/lib/concert-names';
+import { formatReservationCountdown, isReservationExpired } from '@/lib/order-expiry';
 import { formatVnd } from '@/lib/format';
 import { orderApi, paymentApi } from '@/lib/api-client';
-import { createIdempotencyKey } from '@/lib/idempotency';
+import { getPaymentIdempotencyKey, clearPaymentIdempotencyKey } from '@/lib/idempotency';
+import { orderStatusLabel } from '@/lib/order-status';
 import { normalizeMockPaymentUrl } from '@/lib/normalize-payment-url';
 import type { Order } from '@/types/order';
 
 interface PaymentWaitingPageProps {
   orderId: string;
-}
-
-function formatCountdown(expiresAt: string | null): string {
-  if (!expiresAt) return '--:--';
-  const diffMs = new Date(expiresAt).getTime() - Date.now();
-  if (diffMs <= 0) return '00:00';
-  const minutes = Math.floor(diffMs / 60000);
-  const seconds = Math.floor((diffMs % 60000) / 1000);
-  return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
 }
 
 export default function PaymentWaitingPage({ orderId }: PaymentWaitingPageProps) {
@@ -38,32 +32,37 @@ export default function PaymentWaitingPage({ orderId }: PaymentWaitingPageProps)
   const [cancelling, setCancelling] = useState(false);
   const [creatingPaymentUrl, setCreatingPaymentUrl] = useState(false);
   const [localPaymentUrl, setLocalPaymentUrl] = useState<string | null>(null);
+  const hasAutoOpenedRef = useRef(false);
+  const createPaymentLockRef = useRef(false);
 
   const { status, loading, error, refresh } = usePaymentStatus({
     orderId,
     onTerminal: (result) => {
       if (result.status === 'PAID' && concertId) {
         clearPendingOrder(concertId);
+        clearPaymentIdempotencyKey(orderId);
+      }
+      if (
+        (result.status === 'EXPIRED' ||
+          result.status === 'PAYMENT_FAILED' ||
+          result.status === 'CANCELLED') &&
+        concertId
+      ) {
+        clearPendingOrder(concertId);
+        clearPaymentIdempotencyKey(orderId);
       }
     },
   });
 
   useEffect(() => {
+    if (concertId) {
+      abandonPurchaseFlow(concertId);
+    }
+  }, [concertId]);
+
+  useEffect(() => {
     void orderApi.getById(orderId).then(setOrder).catch(() => undefined);
   }, [orderId]);
-
-  useEffect(() => {
-    if (status?.status === 'PAID') {
-      router.replace(`/orders/${orderId}?concertId=${encodeURIComponent(concertId)}`);
-    }
-  }, [status?.status, orderId, concertId, router]);
-
-  useEffect(() => {
-    const timer = setInterval(() => {
-      setCountdown(formatCountdown(order?.expiresAt ?? null));
-    }, 1000);
-    return () => clearInterval(timer);
-  }, [order?.expiresAt]);
 
   const resolvedPaymentUrl = useMemo(() => {
     const raw =
@@ -74,13 +73,67 @@ export default function PaymentWaitingPage({ orderId }: PaymentWaitingPageProps)
     return raw ? normalizeMockPaymentUrl(raw) : null;
   }, [localPaymentUrl, paymentUrl, status?.payments]);
 
-  async function handleCreatePaymentUrl() {
+  useEffect(() => {
+    if (status?.status === 'PAID') {
+      router.replace(
+        `/orders/${orderId}?concertId=${encodeURIComponent(concertId)}&paid=1`,
+      );
+    }
+  }, [status?.status, orderId, concertId, router]);
+
+  useEffect(() => {
+    if (
+      hasAutoOpenedRef.current ||
+      !resolvedPaymentUrl ||
+      (status?.status && status.status !== 'PENDING_PAYMENT')
+    ) {
+      return;
+    }
+
+    hasAutoOpenedRef.current = true;
+    window.open(resolvedPaymentUrl, '_blank', 'noopener,noreferrer');
+  }, [resolvedPaymentUrl, status?.status]);
+
+  const [driftMs, setDriftMs] = useState<number>(0);
+
+  useEffect(() => {
+    if (order?.serverTime) {
+      setDriftMs(Date.now() - new Date(order.serverTime).getTime());
+    }
+  }, [order?.serverTime]);
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      let serverTime: string | null = null;
+      if (order?.serverTime) {
+        serverTime = new Date(Date.now() - driftMs).toISOString();
+      }
+      const next = formatReservationCountdown(order?.expiresAt ?? null, serverTime);
+      setCountdown(next);
+
+      if (order?.expiresAt && isReservationExpired(order.expiresAt, serverTime)) {
+        void refresh();
+      }
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [order?.expiresAt, order?.serverTime, driftMs, refresh]);
+
+  async function handleCreatePaymentUrl(button?: HTMLButtonElement) {
+    if (createPaymentLockRef.current) return;
+
+    createPaymentLockRef.current = true;
+    if (button) button.disabled = true;
+
+    const idempotencyKey = getPaymentIdempotencyKey(orderId);
     setCreatingPaymentUrl(true);
+
     try {
-      const response = await paymentApi.create(orderId, createIdempotencyKey());
+      const response = await paymentApi.create(orderId, idempotencyKey);
       setLocalPaymentUrl(response.paymentUrl);
       await refresh();
     } catch (err) {
+      createPaymentLockRef.current = false;
+      if (button) button.disabled = false;
       alert(err instanceof Error ? err.message : 'Không thể tạo payment URL');
     } finally {
       setCreatingPaymentUrl(false);
@@ -91,8 +144,12 @@ export default function PaymentWaitingPage({ orderId }: PaymentWaitingPageProps)
     setCancelling(true);
     try {
       await orderApi.cancel(orderId);
-      if (concertId) clearPendingOrder(concertId);
-      router.replace(`/concerts/${concertId}/seats`);
+      if (concertId) {
+        clearPendingOrder(concertId);
+        abandonPurchaseFlow(concertId);
+      }
+      clearPaymentIdempotencyKey(orderId);
+      router.replace('/orders');
     } catch (err) {
       alert(err instanceof Error ? err.message : 'Không thể hủy đơn');
     } finally {
@@ -118,7 +175,7 @@ export default function PaymentWaitingPage({ orderId }: PaymentWaitingPageProps)
             <div className="flex items-center justify-between text-sm">
               <span className="text-slate-600">Trạng thái</span>
               <span className="font-semibold text-slate-900">
-                {loading ? 'Đang tải...' : (status?.status ?? 'PENDING_PAYMENT')}
+                {loading ? 'Đang tải...' : orderStatusLabel(status?.status ?? 'PENDING_PAYMENT')}
               </span>
             </div>
             {order && (
@@ -139,8 +196,8 @@ export default function PaymentWaitingPage({ orderId }: PaymentWaitingPageProps)
             <div className="rounded-xl border border-indigo-200 bg-indigo-50 p-5">
               <h2 className="font-semibold text-indigo-900">Bước tiếp theo</h2>
               <p className="mt-2 text-sm text-indigo-800">
-                Mở cổng thanh toán mock, chọn kết quả giao dịch, sau đó quay lại trang này để
-                hệ thống cập nhật trạng thái.
+                Cổng thanh toán mock sẽ mở trong tab mới. Chọn kết quả giao dịch, sau đó quay
+                lại trang này để hệ thống cập nhật trạng thái.
               </p>
               {resolvedPaymentUrl ? (
                 <a
@@ -158,9 +215,10 @@ export default function PaymentWaitingPage({ orderId }: PaymentWaitingPageProps)
                   </p>
                   <button
                     type="button"
-                    onClick={() => void handleCreatePaymentUrl()}
+                    onClick={(event) => void handleCreatePaymentUrl(event.currentTarget)}
                     disabled={creatingPaymentUrl}
-                    className="inline-flex rounded-lg border border-indigo-300 bg-white px-4 py-2 text-sm font-medium text-indigo-800 hover:bg-indigo-100 disabled:opacity-50"
+                    aria-busy={creatingPaymentUrl}
+                    className="inline-flex rounded-lg border border-indigo-300 bg-white px-4 py-2 text-sm font-medium text-indigo-800 hover:bg-indigo-100 disabled:cursor-not-allowed disabled:opacity-50"
                   >
                     {creatingPaymentUrl ? 'Đang tạo...' : 'Tạo lại payment URL'}
                   </button>

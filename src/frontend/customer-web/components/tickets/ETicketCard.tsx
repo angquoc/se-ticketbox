@@ -2,6 +2,7 @@
 
 import QRCode from 'react-qr-code';
 import type { Ticket } from '@/types/ticket';
+import { parseGateIdFromQrPayload } from '@/lib/qr-payload';
 
 interface ETicketCardProps {
   ticket: Ticket;
@@ -85,6 +86,15 @@ export default function ETicketCard({ ticket, index, total }: ETicketCardProps) 
             <dt className="text-slate-500">Thời gian</dt>
             <dd className="font-medium text-slate-900">{formatEventDate(ticket.concertStartsAt)}</dd>
           </div>
+          {(() => {
+            const gateId = ticket.gateId || (ticket.qrPayload ? parseGateIdFromQrPayload(ticket.qrPayload) : null);
+            return gateId ? (
+              <div>
+                <dt className="text-slate-500">Cổng vào (Gate)</dt>
+                <dd className="font-bold text-indigo-700 text-base">{gateId}</dd>
+              </div>
+            ) : null;
+          })()}
           <div>
             <dt className="text-slate-500">Mã vé</dt>
             <dd className="font-mono text-xs text-slate-700">{shortId}</dd>

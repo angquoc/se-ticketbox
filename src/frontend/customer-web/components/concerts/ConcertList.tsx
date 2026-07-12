@@ -3,7 +3,9 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import CustomerHeader from '@/components/layout/CustomerHeader';
+import { setPurchaseIntent } from '@/lib/waiting-room-intent';
 import BackendNotice from '@/components/ui/BackendNotice';
+import { concertStatusLabel, formatShortDate } from '@/lib/concert-display';
 import type { ConcertCardData } from '@/types/concert';
 
 interface ConcertsApiResponse {
@@ -14,28 +16,11 @@ interface ConcertsApiResponse {
 }
 
 function formatDate(iso: string): string {
-  return new Date(iso).toLocaleDateString('vi-VN', {
-    day: '2-digit',
-    month: '2-digit',
-    year: 'numeric',
-  });
+  return formatShortDate(iso);
 }
 
 function statusLabel(status: ConcertCardData['status']): string {
-  switch (status) {
-    case 'SALE_OPEN':
-      return 'Đang mở bán';
-    case 'PUBLISHED':
-      return 'Sắp mở bán';
-    case 'COMPLETED':
-      return 'Đã diễn ra';
-    case 'SALE_CLOSED':
-      return 'Đóng bán';
-    case 'CANCELLED':
-      return 'Đã hủy';
-    default:
-      return status;
-  }
+  return concertStatusLabel(status);
 }
 
 function canBuyTickets(status: ConcertCardData['status']): boolean {
@@ -47,6 +32,7 @@ export default function ConcertList() {
   const [loading, setLoading] = useState(true);
   const [source, setSource] = useState<'backend' | 'mock' | null>(null);
   const [backendError, setBackendError] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<'SALE_OPEN' | 'SOLD_OUT' | 'PAST'>('SALE_OPEN');
 
   useEffect(() => {
     let cancelled = false;
@@ -76,6 +62,18 @@ export default function ConcertList() {
     };
   }, []);
 
+  const filteredConcerts = concerts.filter((concert) => {
+    const isPast = new Date(concert.startsAt).getTime() < Date.now();
+    if (activeTab === 'PAST') {
+      return concert.status === 'COMPLETED' || concert.status === 'CANCELLED' || isPast;
+    }
+    if (activeTab === 'SOLD_OUT') {
+      return concert.status === 'SALE_CLOSED' && !isPast;
+    }
+    // activeTab === 'SALE_OPEN'
+    return (concert.status === 'SALE_OPEN' || concert.status === 'PUBLISHED') && !isPast;
+  });
+
   return (
     <div className="min-h-screen bg-slate-50">
       <CustomerHeader />
@@ -84,7 +82,7 @@ export default function ConcertList() {
         <h1 className="text-3xl font-bold text-slate-900">Sự kiện nổi bật</h1>
         <p className="mt-2 text-slate-600">
           {source === 'backend'
-            ? 'Danh sách từ Backend API (PostgreSQL seed)'
+            ? 'Danh sách sự kiện'
             : 'Chọn sự kiện và bắt đầu chọn ghế'}
         </p>
 
@@ -92,45 +90,82 @@ export default function ConcertList() {
           <BackendNotice backendError={backendError} source={source} />
         </div>
 
+        {/* Tab filters */}
+        <div className="mt-6 flex border-b border-slate-200 gap-2 overflow-x-auto">
+          <button
+            onClick={() => setActiveTab('SALE_OPEN')}
+            className={`pb-3 px-4 text-sm font-semibold transition-colors border-b-2 whitespace-nowrap ${
+              activeTab === 'SALE_OPEN'
+                ? 'border-indigo-600 text-indigo-600'
+                : 'border-transparent text-slate-500 hover:text-slate-700'
+            }`}
+          >
+            Đang mở bán
+          </button>
+          <button
+            onClick={() => setActiveTab('SOLD_OUT')}
+            className={`pb-3 px-4 text-sm font-semibold transition-colors border-b-2 whitespace-nowrap ${
+              activeTab === 'SOLD_OUT'
+                ? 'border-indigo-600 text-indigo-600'
+                : 'border-transparent text-slate-500 hover:text-slate-700'
+            }`}
+          >
+            Đã bán hết / Đóng bán
+          </button>
+          <button
+            onClick={() => setActiveTab('PAST')}
+            className={`pb-3 px-4 text-sm font-semibold transition-colors border-b-2 whitespace-nowrap ${
+              activeTab === 'PAST'
+                ? 'border-indigo-600 text-indigo-600'
+                : 'border-transparent text-slate-500 hover:text-slate-700'
+            }`}
+          >
+            Đã diễn ra
+          </button>
+        </div>
+
         {loading ? (
           <div className="mt-10 flex justify-center">
             <div className="h-10 w-10 animate-spin rounded-full border-4 border-indigo-200 border-t-indigo-600" />
           </div>
-        ) : concerts.length === 0 ? (
-          <p className="mt-10 text-center text-slate-600">Chưa có sự kiện nào.</p>
+        ) : filteredConcerts.length === 0 ? (
+          <p className="mt-10 text-center text-slate-600">Chưa có sự kiện nào trong mục này.</p>
         ) : (
           <div className="mt-8 grid gap-4 sm:grid-cols-2">
-            {concerts.map((concert) => (
+            {filteredConcerts.map((concert) => (
               <article
                 key={concert.id}
                 className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm transition-shadow hover:shadow-md"
               >
-                <div className="flex items-start justify-between gap-2">
-                  <h2 className="text-lg font-semibold text-slate-900">{concert.title}</h2>
-                  <span className="shrink-0 rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-600">
-                    {statusLabel(concert.status)}
-                  </span>
-                </div>
-                <p className="mt-1 text-sm text-slate-500">{concert.venue}</p>
-                <p className="mt-1 text-sm text-slate-500">{formatDate(concert.startsAt)}</p>
-                {canBuyTickets(concert.status) ? (
-                  <Link
-                    href={`/concerts/${concert.id}/seats`}
-                    className="mt-4 inline-flex rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700"
-                  >
-                    Mua vé
-                  </Link>
-                ) : (
-                  <p className="mt-4 text-sm text-slate-500">
-                    Sự kiện không mở bán — có thể xem sơ đồ demo
-                  </p>
-                )}
-                <Link
-                  href={`/concerts/${concert.id}/seats`}
-                  className="mt-2 inline-flex text-sm font-medium text-indigo-600 hover:text-indigo-700"
-                >
-                  Xem sơ đồ ghế →
+                <Link href={`/concerts/${concert.id}`} className="block">
+                  <div className="flex items-start justify-between gap-2">
+                    <h2 className="text-lg font-semibold text-slate-900 hover:text-indigo-700">
+                      {concert.title}
+                    </h2>
+                    <span className="shrink-0 rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-600">
+                      {statusLabel(concert.status)}
+                    </span>
+                  </div>
+                  <p className="mt-1 text-sm text-slate-500">{concert.venue}</p>
+                  <p className="mt-1 text-sm text-slate-500">{formatDate(concert.startsAt)}</p>
                 </Link>
+                <div className="mt-4 flex flex-wrap gap-3">
+                  <Link
+                    href={`/concerts/${concert.id}`}
+                    className="inline-flex rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
+                  >
+                    Xem chi tiết
+                  </Link>
+                  {canBuyTickets(concert.status) && (
+                    <Link
+                      href={`/concerts/${concert.id}/waiting`}
+                      onClick={() => setPurchaseIntent(concert.id)}
+                      className="inline-flex rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700"
+                    >
+                      Mua vé
+                    </Link>
+                  )}
+                </div>
               </article>
             ))}
           </div>

@@ -10,6 +10,7 @@ import {
   TicketResponseDto,
   TicketListResponseDto,
 } from './dto/ticket-response.dto';
+import { buildQrPayload } from './utils/qr-payload.util';
 
 @Injectable()
 export class TicketService {
@@ -26,9 +27,11 @@ export class TicketService {
     checkedInAt: Date | null;
     createdAt: Date;
     ticketType: { name: string };
-    qrTokenHash: string;
-    qrSignature: string | null;
+    qrRawToken: string;
+    /** Ticket.gateId stores gate name (e.g. "GATE-A") */
+    gateId: string | null;
   }): TicketResponseDto {
+    const gateName = ticket.gateId ?? '';
     return {
       id: ticket.id,
       concertId: ticket.concertId,
@@ -38,18 +41,13 @@ export class TicketService {
       status: ticket.status,
       checkedInAt: ticket.checkedInAt,
       createdAt: ticket.createdAt,
-      qrPayload: this.buildQrPayload(ticket),
+      qrPayload: buildQrPayload({
+        id: ticket.id,
+        rawToken: ticket.qrRawToken,
+        gateId: gateName,
+      }),
+      gateId: gateName,
     };
-  }
-
-  private buildQrPayload(ticket: {
-    id: string;
-    qrTokenHash: string;
-    qrSignature: string | null;
-    createdAt: Date;
-  }): string {
-    const timestamp = Math.floor(ticket.createdAt.getTime() / 1000);
-    return `${ticket.id}:${ticket.qrTokenHash}:${timestamp}:${ticket.qrSignature ?? ''}`;
   }
 
   /**
@@ -69,7 +67,16 @@ export class TicketService {
         skip,
         take: limit,
         orderBy: { createdAt: 'desc' },
-        include: {
+        select: {
+          id: true,
+          concertId: true,
+          ticketTypeId: true,
+          orderId: true,
+          status: true,
+          checkedInAt: true,
+          createdAt: true,
+          qrRawToken: true,
+          gateId: true,
           ticketType: { select: { name: true } },
         },
       }),
@@ -96,7 +103,16 @@ export class TicketService {
     const tickets = await this.prisma.ticket.findMany({
       where: { userId, concertId },
       orderBy: { createdAt: 'asc' },
-      include: {
+      select: {
+        id: true,
+        concertId: true,
+        ticketTypeId: true,
+        orderId: true,
+        status: true,
+        checkedInAt: true,
+        createdAt: true,
+        qrRawToken: true,
+        gateId: true,
         ticketType: { select: { name: true } },
       },
     });
@@ -114,9 +130,18 @@ export class TicketService {
   ): Promise<TicketResponseDto> {
     const ticket = await this.prisma.ticket.findUnique({
       where: { id: ticketId },
-      include: {
+      select: {
+        id: true,
+        concertId: true,
+        ticketTypeId: true,
+        orderId: true,
+        status: true,
+        checkedInAt: true,
+        createdAt: true,
+        userId: true,
+        qrRawToken: true,
+        gateId: true,
         ticketType: { select: { name: true } },
-        concert: { select: { title: true, venue: true, startsAt: true } },
       },
     });
 
@@ -130,17 +155,7 @@ export class TicketService {
       );
     }
 
-    return {
-      id: ticket.id,
-      concertId: ticket.concertId,
-      ticketTypeId: ticket.ticketTypeId,
-      ticketTypeName: ticket.ticketType.name,
-      orderId: ticket.orderId,
-      status: ticket.status,
-      checkedInAt: ticket.checkedInAt,
-      createdAt: ticket.createdAt,
-      qrPayload: this.buildQrPayload(ticket),
-    };
+    return this.toTicketResponse(ticket);
   }
 
   /**
@@ -158,10 +173,9 @@ export class TicketService {
       select: {
         id: true,
         userId: true,
-        qrTokenHash: true,
-        qrSignature: true,
+        qrRawToken: true,
         status: true,
-        createdAt: true,
+        gateId: true,
       },
     });
 
@@ -181,8 +195,11 @@ export class TicketService {
       );
     }
 
-    // Return the full QR payload so the frontend can render the QR code directly
-    const qrPayload = this.buildQrPayload(ticket);
+    const qrPayload = buildQrPayload({
+      id: ticket.id,
+      rawToken: ticket.qrRawToken,
+      gateId: ticket.gateId ?? '',
+    });
     this.logger.debug(`QR data requested for ticket ${ticketId}`);
     return { qrToken: qrPayload };
   }

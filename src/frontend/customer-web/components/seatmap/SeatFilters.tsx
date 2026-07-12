@@ -51,19 +51,21 @@ export default function SeatFilters({
         ))}
       </div>
 
-      <select
-        value={zoneFilter}
-        onChange={(e) => onZoneChange(e.target.value)}
-        className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
-        aria-label="Lọc theo khu vực"
-      >
-        <option value={ALL_ZONES}>Tất cả khu vực</option>
-        {zones.map((zone) => (
-          <option key={zone.zoneId} value={zone.zoneId}>
-            {zone.zoneName}
-          </option>
-        ))}
-      </select>
+      <div className="w-full">
+        <select
+          value={zoneFilter}
+          onChange={(e) => onZoneChange(e.target.value)}
+          className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+          aria-label="Lọc theo khu vực"
+        >
+          <option value={ALL_ZONES}>Tất cả khu vực</option>
+          {zones.map((zone) => (
+            <option key={zone.zoneId} value={zone.zoneId}>
+              {zone.zoneName}
+            </option>
+          ))}
+        </select>
+      </div>
     </div>
   );
 }

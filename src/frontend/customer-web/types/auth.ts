@@ -20,3 +20,16 @@ export interface RegisterPayload {
   password: string;
   fullName: string;
 }
+
+export interface UpdateProfilePayload {
+  fullName?: string;
+}
+
+export interface ChangePasswordPayload {
+  currentPassword: string;
+  newPassword: string;
+}
+
+export interface ChangePasswordResponse {
+  message: string;
+}

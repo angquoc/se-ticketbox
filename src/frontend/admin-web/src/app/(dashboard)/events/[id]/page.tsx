@@ -45,7 +45,7 @@ export default function EventDetailPage({ params }: EventDetailPageProps) {
   const sellThrough = totalCapacity > 0 ? Math.round((totalSold / totalCapacity) * 100) : 0;
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '24px', maxWidth: '1200px' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
 
       {/* ── Breadcrumb ── */}
       <nav style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px' }}>

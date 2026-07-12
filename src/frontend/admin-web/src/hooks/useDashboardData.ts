@@ -12,7 +12,7 @@ export function useDashboardData(activeRange: '30 Days' | '7 Days' | '24 Hours',
     totalRevenue: 0,
     ticketsSold: 0,
     activeEvents: 0,
-    newUsers: 892,
+    newUsers: 0,
   });
   const [upcomingEventsList, setUpcomingEventsList] = useState<any[]>([]);
 

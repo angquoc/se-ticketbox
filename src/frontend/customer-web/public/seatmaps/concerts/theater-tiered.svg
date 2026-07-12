@@ -1,0 +1,45 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 780" role="img" aria-label="Separated theater seat map">
+  <rect width="800" height="780" fill="#f8fafc"/>
+
+  <rect x="240" y="20" width="320" height="56" rx="10" fill="#1e293b"/>
+  <text x="400" y="53" text-anchor="middle" fill="white" font-size="16" font-weight="700" font-family="system-ui,sans-serif">SÂN KHẤU CHÍNH</text>
+  <line x1="80" y1="92" x2="720" y2="92" stroke="#94a3b8" stroke-width="2" stroke-dasharray="8 8"/>
+  <text x="400" y="112" text-anchor="middle" fill="#64748b" font-size="12" font-weight="600" font-family="system-ui,sans-serif">Lối kỹ thuật / khoảng cách an toàn</text>
+
+  <!-- SVIP -->
+  <rect x="52" y="126" width="318" height="102" rx="8" fill="#FEF3C7" opacity="0.68" stroke="#F59E0B" stroke-width="1.5"/>
+  <rect x="430" y="126" width="318" height="102" rx="8" fill="#FEF3C7" opacity="0.68" stroke="#F59E0B" stroke-width="1.5"/>
+  <text x="70" y="146" fill="#92400e" font-size="12" font-weight="700" font-family="system-ui,sans-serif">SVIP (Left)</text>
+  <text x="448" y="146" fill="#92400e" font-size="12" font-weight="700" font-family="system-ui,sans-serif">SVIP (Right)</text>
+
+  <!-- VIP -->
+  <rect x="190" y="248" width="420" height="116" rx="8" fill="#FFEDD5" opacity="0.68" stroke="#F97316" stroke-width="1.5"/>
+  <text x="208" y="268" fill="#9a3412" font-size="12" font-weight="700" font-family="system-ui,sans-serif">VIP</text>
+
+  <!-- CAT1 -->
+  <rect x="64" y="386" width="316" height="116" rx="8" fill="#DBEAFE" opacity="0.68" stroke="#3B82F6" stroke-width="1.5"/>
+  <rect x="420" y="386" width="316" height="116" rx="8" fill="#DBEAFE" opacity="0.68" stroke="#3B82F6" stroke-width="1.5"/>
+  <text x="82" y="406" fill="#1d4ed8" font-size="12" font-weight="700" font-family="system-ui,sans-serif">CAT1 (Left)</text>
+  <text x="438" y="406" fill="#1d4ed8" font-size="12" font-weight="700" font-family="system-ui,sans-serif">CAT1 (Right)</text>
+
+  <!-- CAT2 -->
+  <rect x="66" y="524" width="668" height="96" rx="8" fill="#E0E7FF" opacity="0.68" stroke="#6366F1" stroke-width="1.5"/>
+  <text x="84" y="544" fill="#3730a3" font-size="12" font-weight="700" font-family="system-ui,sans-serif">CAT2</text>
+
+  <!-- GA -->
+  <rect x="46" y="632" width="708" height="124" rx="8" fill="#DCFCE7" opacity="0.68" stroke="#22C55E" stroke-width="1.5"/>
+  <text x="64" y="652" fill="#166534" font-size="12" font-weight="700" font-family="system-ui,sans-serif">GA / GENERAL ADMISSION</text>
+
+  <line x1="400" y1="120" x2="400" y2="744" stroke="#cbd5e1" stroke-width="1" stroke-dasharray="6 8"/>
+  <text x="400" y="770" text-anchor="middle" fill="#64748b" font-size="11" font-family="system-ui,sans-serif">Trục giữa sân khấu</text>
+
+  <g id="zones" style="cursor: pointer;">
+    <rect id="svip-left" data-zone="svip-left" data-ticket-type="SVIP" data-status="AVAILABLE" data-selected="false" data-hovered="false" x="52" y="126" width="318" height="102" rx="8" />
+    <rect id="svip-right" data-zone="svip-right" data-ticket-type="SVIP" data-status="AVAILABLE" data-selected="false" data-hovered="false" x="430" y="126" width="318" height="102" rx="8" />
+    <rect id="vip" data-zone="vip" data-ticket-type="VIP" data-status="AVAILABLE" data-selected="false" data-hovered="false" x="190" y="248" width="420" height="116" rx="8" />
+    <rect id="cat1-left" data-zone="cat1-left" data-ticket-type="CAT1" data-status="AVAILABLE" data-selected="false" data-hovered="false" x="64" y="386" width="316" height="116" rx="8" />
+    <rect id="cat1-right" data-zone="cat1-right" data-ticket-type="CAT1" data-status="AVAILABLE" data-selected="false" data-hovered="false" x="420" y="386" width="316" height="116" rx="8" />
+    <rect id="cat2" data-zone="cat2" data-ticket-type="CAT2" data-status="AVAILABLE" data-selected="false" data-hovered="false" x="66" y="524" width="668" height="96" rx="8" />
+    <rect id="ga" data-zone="ga" data-ticket-type="GA" data-status="AVAILABLE" data-selected="false" data-hovered="false" x="46" y="632" width="708" height="124" rx="8" />
+  </g>
+</svg>
