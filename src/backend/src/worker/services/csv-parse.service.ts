@@ -49,15 +49,15 @@ export class CsvParseService {
       const email = row.email?.trim() || null;
       const phone = row.phone?.trim() || null;
 
-      let hasError = false;
+
 
       if (email) {
         if (!emailRegex.test(email)) {
           errors.push(`Dòng ${i + 2}: Email sai định dạng (${email})`);
-          hasError = true;
+
         } else if (seenEmails.has(email)) {
           errors.push(`Dòng ${i + 2}: Email bị trùng lặp trong file (${email})`);
-          hasError = true;
+
         }
         seenEmails.add(email);
       }
@@ -65,10 +65,10 @@ export class CsvParseService {
       if (phone) {
         if (!phoneRegex.test(phone)) {
           errors.push(`Dòng ${i + 2}: Số điện thoại sai định dạng (${phone})`);
-          hasError = true;
+
         } else if (seenPhones.has(phone)) {
           errors.push(`Dòng ${i + 2}: Số điện thoại bị trùng lặp trong file (${phone})`);
-          hasError = true;
+
         }
         seenPhones.add(phone);
       }
