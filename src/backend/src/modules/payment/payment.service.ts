@@ -73,7 +73,7 @@ export class PaymentService {
     private readonly concertService: ConcertService,
     @InjectQueue(NOTIFICATION_QUEUE)
     private readonly notificationQueue: Queue,
-  ) {}
+  ) { }
 
   private async recordLateWebhook(dto: MockWebhookDto) {
     await this.prisma.paymentTransaction.upsert({
@@ -554,17 +554,8 @@ export class PaymentService {
       }
     });
 
-    // Clean up Redis: delete reservation + decrement user_limit
+    // Clean up Redis: delete reservation (do not decrement user_limit so paid tickets continue to count)
     await this.redisService.del(`reservation:${dto.orderId}`);
-    await Promise.all(
-      order.items.map((item) =>
-        this.redisService.decrementUserLimit({
-          ticketTypeId: item.ticketTypeId,
-          userId: order.userId,
-          quantity: item.quantity,
-        }),
-      ),
-    );
 
     // Invalidate concert cache so soldQty / availability reflect the purchase
     void this.concertService.invalidateCache(order.concertId);

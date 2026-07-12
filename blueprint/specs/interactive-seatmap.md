@@ -1,4 +1,4 @@
-﻿# Interactive Seatmap Specification
+# Interactive Seatmap Specification
 
 ## Overview
 

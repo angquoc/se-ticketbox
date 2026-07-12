@@ -83,15 +83,18 @@ export class GateService {
       throw new NotFoundException(`Gate ${gateId} not found`);
     }
 
-    if (dto.name && dto.name !== gate.name) {
+    const oldName = gate.name;
+    const newName = dto.name;
+
+    if (newName && newName !== oldName) {
       const existing = await this.prisma.gate.findUnique({
         where: {
-          concertId_name: { concertId: gate.concertId, name: dto.name },
+          concertId_name: { concertId: gate.concertId, name: newName },
         },
       });
       if (existing) {
         throw new ConflictException(
-          `Gate "${dto.name}" already exists for this concert`,
+          `Gate "${newName}" already exists for this concert`,
         );
       }
     }
@@ -100,6 +103,36 @@ export class GateService {
       where: { id: gateId },
       data: dto,
     });
+
+    if (newName && newName !== oldName) {
+      // Find all tickets assigned to the old gate name
+      const targetTickets = await this.prisma.ticket.findMany({
+        where: { gateId: oldName },
+        select: { id: true, qrTokenHash: true },
+      });
+
+      if (targetTickets.length > 0) {
+        await this.prisma.$transaction(async (tx) => {
+          for (const t of targetTickets) {
+            const newSignature = createHmac('sha256', this.qrSecret)
+              .update(`${t.id}:${t.qrTokenHash}:${newName}`)
+              .digest('hex');
+
+            await tx.ticket.update({
+              where: { id: t.id },
+              data: {
+                gateId: newName,
+                qrSignature: newSignature,
+              },
+            });
+          }
+        });
+
+        this.logger.log(
+          `Renamed gateId from "${oldName}" to "${newName}" and updated signatures for ${targetTickets.length} tickets`,
+        );
+      }
+    }
 
     // Ticket.gateId stores gate name — recount by new name
     const ticketCount = await this.prisma.ticket.count({
@@ -143,14 +176,32 @@ export class GateService {
         );
       }
 
-      // Move tickets to the first available gate (update by gate NAME)
-      await this.prisma.ticket.updateMany({
+      const targetGateName = otherGates[0].name;
+
+      // Move tickets to the first available gate and recompute signatures
+      const targetTickets = await this.prisma.ticket.findMany({
         where: { gateId: gateName },
-        data: { gateId: otherGates[0].name },
+        select: { id: true, qrTokenHash: true },
+      });
+
+      await this.prisma.$transaction(async (tx) => {
+        for (const t of targetTickets) {
+          const newSignature = createHmac('sha256', this.qrSecret)
+            .update(`${t.id}:${t.qrTokenHash}:${targetGateName}`)
+            .digest('hex');
+
+          await tx.ticket.update({
+            where: { id: t.id },
+            data: {
+              gateId: targetGateName,
+              qrSignature: newSignature,
+            },
+          });
+        }
       });
 
       this.logger.log(
-        `Reassigned ${ticketCount} tickets from gate "${gateName}" to "${otherGates[0].name}"`,
+        `Reassigned ${ticketCount} tickets from gate "${gateName}" to "${targetGateName}" and recomputed signatures`,
       );
     }
 
@@ -306,12 +357,23 @@ export class GateService {
       });
     }
 
-    // NOTE: ticketCount reflects number of tickets REASSIGNED during this rebalance,
-    // not the total ticket count per gate. Per spec the response should show total.
+    // Count total tickets assigned to each gate
+    const totalTicketCounts = await this.prisma.ticket.groupBy({
+      by: ['gateId'],
+      where: {
+        concertId,
+        gateId: { not: null },
+      },
+      _count: { id: true },
+    });
+    const totalCountMap = new Map(
+      totalTicketCounts.map((c) => [c.gateId, c._count.id]),
+    );
+
     const gateStats = gates.map((g) => ({
-      id: g.name, // gate name as identifier (consistent with Ticket.gateId)
+      id: g.id,
       name: g.name,
-      ticketCount: updatedGateCounts.get(g.name) ?? 0,
+      ticketCount: totalCountMap.get(g.name) ?? 0,
     }));
 
     this.logger.log(
@@ -345,8 +407,7 @@ export class GateService {
       });
     } catch (err) {
       this.logger.warn(
-        `Failed to send gate update notification to ${params.to}: ${
-          err instanceof Error ? err.message : String(err)
+        `Failed to send gate update notification to ${params.to}: ${err instanceof Error ? err.message : String(err)
         }`,
       );
     }

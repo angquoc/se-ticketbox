@@ -87,7 +87,7 @@ export class OrderService {
     private readonly concertService: ConcertService,
     @InjectQueue(ORDER_EXPIRE_QUEUE) private readonly expireQueue: Queue,
     @InjectQueue(NOTIFICATION_QUEUE) private readonly notificationQueue: Queue,
-  ) {}
+  ) { }
 
   // ─────────────────────────────────────────────────────────────────────────────
   // Mapping helpers
@@ -301,6 +301,28 @@ export class OrderService {
     }
   }
 
+  private async ensureRedisUserLimit(userId: string, ticketTypeId: string): Promise<void> {
+    const key = `user_limit:${userId}:${ticketTypeId}`;
+    if (await this.redis.exists(key)) {
+      return;
+    }
+
+    const counter = await this.prisma.userTicketCounter.findUnique({
+      where: {
+        userId_ticketTypeId: { userId, ticketTypeId },
+      },
+      select: { paidQty: true, reservedQty: true },
+    });
+
+    const currentCount = counter ? (counter.paidQty + counter.reservedQty) : 0;
+    const seeded = await this.redis.setNx(key, String(currentCount));
+    if (seeded) {
+      this.logger.debug(
+        `Seeded Redis user limit for user ${userId}, ticketType ${ticketTypeId}: ${currentCount}`,
+      );
+    }
+  }
+
   private getReservationTtl(): number {
     return (
       this.configService.get<number>('order.reservationTtlSeconds') ??
@@ -343,9 +365,12 @@ export class OrderService {
       });
     }
 
-    // Step 2: Seed Redis stock for each ticket type
+    // Step 2: Seed Redis stock and user limit for each ticket type
     await Promise.all(
-      ticketMeta.map((m) => this.ensureRedisStock(m.ticketTypeId)),
+      ticketMeta.flatMap((m) => [
+        this.ensureRedisStock(m.ticketTypeId),
+        this.ensureRedisUserLimit(userId, m.ticketTypeId),
+      ]),
     );
 
     // Step 3: Generate order ID before calling Redis
