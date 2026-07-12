@@ -63,7 +63,7 @@ export default function EventsPage() {
       </div>
 
       {/* ── Content: Table + Config Panel ── */}
-      <div style={{ display: 'flex', gap: '24px', alignItems: 'stretch', flex: 1, minHeight: 0 }}>
+      <div style={{ display: 'flex', gap: '24px', alignItems: 'flex-start', flex: 1, minHeight: 0 }}>
 
         {/* Event Roster Table */}
         <div style={{
@@ -86,9 +86,6 @@ export default function EventsPage() {
             borderBottom: '1px solid #C3C5D7',
           }}>
             <span style={{ fontWeight: 600, fontSize: '15px', color: '#191B23' }}>Event Roster</span>
-            <span style={{ fontSize: '13px', color: '#434654' }}>
-              {loading ? 'Loading…' : `Showing 1-${concerts.length} of ${total}`}
-            </span>
           </div>
 
           {/* Column headers */}
@@ -115,7 +112,7 @@ export default function EventsPage() {
           </div>
 
           {/* Rows */}
-          <div style={{ flex: 1, overflowY: 'auto', minHeight: '300px' }}>
+          <div style={{ display: 'flex', flexDirection: 'column' }}>
             {loading ? (
               <div style={{ padding: '40px', textAlign: 'center', color: '#434654' }}>Loading events...</div>
             ) : concerts.length === 0 ? (
