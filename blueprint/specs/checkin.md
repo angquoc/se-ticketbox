@@ -68,7 +68,6 @@ model Gate {
   name      String   // e.g. "GATE-A", "Cổng 1", "Entrance Main"
   concertId String
   concert   Concert  @relation(fields: [concertId], references: [id], onDelete: Cascade)
-  tickets   Ticket[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -85,10 +84,9 @@ model Ticket {
   concertId    String
   // ...
   gateId       String?  // stores Gate.name (e.g. "GATE-A"), NOT Gate.id
-  gate         Gate?   @relation(fields: [gateId], references: [name])
 
   // QR token storage strategy v2 (security by design):
-  // - qrRawToken:   raw UUID token — sent to frontend for QR rendering, stored in DB.
+  // - qrRawToken:   raw UUID token — sent to frontend for QR rendering, stored in DB as plaintext.
   // - qrTokenHash:  SHA-256 of qrRawToken — stored in DB, used for verification.
   // - qrSignature:  HMAC-SHA256 of {ticketId}:{qrTokenHash}:{gateId} — stored in DB,
   //                 used for tamper detection at check-in time.

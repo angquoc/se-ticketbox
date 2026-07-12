@@ -45,7 +45,7 @@ Redis đóng vai trò là lớp lưu trữ thông tin tồn kho tạm thời (ho
 | Key | Kiểu | TTL | Ý nghĩa |
 |-----|------|-----|---------|
 | `stock:{ticketTypeId}` | String (integer) | Không có TTL | Số vé còn lại trong hot path. Khởi tạo = `availableQty`. Tăng/giảm nguyên tử khi reserve/pay/cancel/refund. |
-| `user-limit:{userId}:{ticketTypeId}` | String (integer) | Không có TTL | Tổng số vé user đã mua (đã thanh toán) + đang giữ (PENDING) của loại vé này. Dùng để kiểm tra `maxPerUser`. |
+| `user-limit:{userId}:{ticketTypeId}` | String (integer) | Không có TTL | Tổng số vé user đã mua (đã thanh toán) + đang giữ (PENDING_PAYMENT) của loại vé này. Dùng để kiểm tra `maxPerUser`. |
 | `reservation:{orderId}` | Hash | `expiresAt - now()` | Lưu thông tin reservation tạm thời: `{ ticketTypeId: quantity, ... }`. Tự động bị xóa khi TTL hết hạn. |
 | `idempotency:{userId}:{key}` | String | 15 phút | Idempotency key cho request tạo/sửa/xóa ticket type. |
 
@@ -305,7 +305,7 @@ Xóa loại vé.
 | Thời điểm | `reservedQty` | `soldQty` | Redis `stock` | Redis `user-limit` |
 |-----------|---------------|-----------|---------------|-------------------|
 | Order được tạo (PENDING) | `+= quantity` | — | DECR | INCR |
-| Order được thanh toán (PAID) | `-= quantity` | `+= quantity` | DECR thêm 1 lần | INCR (chuyển reserved -> paid) |
+| Order được thanh toán (PAID) | `-= quantity` | `+= quantity` | Giữ nguyên (đã trừ từ trước) | Giữ nguyên (chuyển reserved -> paid) |
 | Order bị hủy hoặc hết hạn | `-= quantity` | — | INCR | DECR |
 | Order bị refund | — | `-= quantity` | INCR | DECR |
 
