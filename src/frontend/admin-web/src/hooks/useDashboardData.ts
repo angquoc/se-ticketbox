@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
-import { getConcerts, getConcertById } from '@/services/concertService';
+import { getAdminConcerts, getAdminConcertById } from '@/services/concertService';
 import { getAdminOrders, Order } from '@/services/orderService';
 import { getUsers } from '@/services/userService';
 import type { Concert } from '@/types/api';
@@ -21,7 +21,7 @@ export function useDashboardData(activeRange: '30 Days' | '7 Days' | '24 Hours',
       try {
         setLoading(true);
         const [response, ordersResponse] = await Promise.all([
-          getConcerts(1, 100),
+          getAdminConcerts(1, 100),
           getAdminOrders(1, 1000, 'PAID')
         ]);
 
@@ -36,7 +36,7 @@ export function useDashboardData(activeRange: '30 Days' | '7 Days' | '24 Hours',
         }
 
         const concertsData = await Promise.all(
-          response.data.map((c) => getConcertById(c.id).catch(() => null))
+          response.data.map((c) => getAdminConcertById(c.id).catch(() => null))
         );
 
         const validConcerts = concertsData.filter((c): c is Concert => c !== null);
@@ -178,7 +178,7 @@ export function useDashboardData(activeRange: '30 Days' | '7 Days' | '24 Hours',
 
     const evsChange = calculateChangePct(currentEventsCount, previousEventsCount);
 
-    const chartPoints: Array<{ day: string; value: number; [key: string]: any }> = [];
+    const chartPoints: Array<{ day: string; value: number;[key: string]: any }> = [];
 
     if (activeRange === '24 Hours') {
       for (let i = 23; i >= 0; i--) {
